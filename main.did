@@ -1,0 +1,90 @@
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type URole = 
+ variant {
+   HOD;
+   Lecturer;
+   Registrar;
+   Student;
+   SuperAdmin;
+ };
+type Student = 
+ record {
+   departmentId: nat;
+   id: nat;
+   level: nat;
+   matricNumber: text;
+   name: text;
+   status: text;
+   userPrincipal: text;
+ };
+type Result = 
+ record {
+   caScore: float64;
+   courseId: nat;
+   examScore: float64;
+   grade: text;
+   gradePoint: float64;
+   id: nat;
+   status: text;
+   studentId: nat;
+   totalScore: float64;
+ };
+type Department = 
+ record {
+   id: nat;
+   name: text;
+ };
+type Course = 
+ record {
+   code: text;
+   creditUnits: nat;
+   departmentId: nat;
+   id: nat;
+   lecturerPrincipal: text;
+   name: text;
+   semester: text;
+ };
+service : {
+  _initializeAccessControlWithSecret: (userSecret: text) -> ();
+  approveResult: (resultId: nat) -> (opt Result);
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  calculateStudentGPA: (studentId: nat) -> (float64) query;
+  createCourse: (name: text, code: text, creditUnits: nat, departmentId: 
+   nat, lecturerPrincipal: text, semester: text) -> (Course);
+  createDepartment: (name: text) -> (Department);
+  createStudent: (name: text, matricNumber: text, departmentId: nat, level:
+   nat, userPrincipal: text) -> (Student);
+  enterResult: (studentId: nat, courseId: nat, caScore: float64, examScore:
+   float64) -> (Result);
+  getAllResults: () -> (vec Result) query;
+  getAllUserRoles: () -> (vec record {
+                                text;
+                                URole;
+                              }) query;
+  getApprovedResults: () -> (vec Result) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getCourses: () -> (vec Course) query;
+  getCoursesByDepartment: (deptId: nat) -> (vec Course) query;
+  getDepartments: () -> (vec Department) query;
+  getMyCourses: () -> (vec Course) query;
+  getMyStudentProfile: () -> (opt Student) query;
+  getMyURole: () -> (opt URole) query;
+  getPendingResults: () -> (vec Result) query;
+  getResultsByCourse: (courseId: nat) -> (vec Result) query;
+  getResultsByStudent: (studentId: nat) -> (vec Result) query;
+  getStudentCourses: (studentId: nat) -> (vec Course) query;
+  getStudents: () -> (vec Student) query;
+  isCallerAdmin: () -> (bool) query;
+  publishResult: (resultId: nat) -> (opt Result);
+  registerStudentCourse: (studentId: nat, courseId: nat) -> ();
+  rejectResult: (resultId: nat) -> (opt Result);
+  setUserRole: ("principal": text, role: URole) -> ();
+  submitResult: (resultId: nat) -> (opt Result);
+  updateResult: (resultId: nat, caScore: float64, examScore: float64) ->
+   (opt Result);
+}
