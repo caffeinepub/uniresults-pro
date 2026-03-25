@@ -1,5 +1,13 @@
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Table,
   TableBody,
   TableCell,
@@ -7,15 +15,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import {
   BookOpen,
   Building2,
   CheckCircle,
   ClipboardList,
+  FileText,
   Users,
   XCircle,
 } from "lucide-react";
-import { useContext } from "react";
+import type React from "react";
+import { useContext, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -31,14 +42,48 @@ import { TabContext } from "../components/Layout";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { useApp } from "../context/AppContext";
+import type { GraduationApplication } from "../context/AppContext";
+import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
+import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import FacultyReportTab from "./tabs/FacultyReportTab";
 
 export default function DeanDashboard() {
-  const { activeTab } = useContext(TabContext);
-  if (activeTab === "overview") return <OverviewTab />;
-  if (activeTab === "approvals") return <ApprovalsTab />;
-  if (activeTab === "departments") return <DepartmentsTab />;
-  if (activeTab === "results") return <AllResultsTab />;
-  return <OverviewTab />;
+  const { activeTab, setActiveTab } = useContext(TabContext);
+
+  const quickActions = [
+    { label: "Faculty Report", tab: "faculty_report", icon: FileText },
+    { label: "Approve Results", tab: "approvals", icon: CheckCircle },
+  ];
+
+  let view: React.ReactNode;
+  if (activeTab === "approvals") view = <ApprovalsTab />;
+  else if (activeTab === "departments") view = <DepartmentsTab />;
+  else if (activeTab === "results") view = <AllResultsTab />;
+  else if (activeTab === "graduation") view = <DeanGraduationTab />;
+  else if (activeTab === "faculty_report") view = <FacultyReportTab />;
+  else if (activeTab === "exam_schedule") view = <DeanExamScheduleTab />;
+  else if (activeTab === "course_feedback") view = <DeanCourseFeedbackTab />;
+  else view = <OverviewTab />;
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
+        {quickActions.map((a) => (
+          <button
+            key={a.tab}
+            type="button"
+            data-ocid={`dean_quick.${a.tab}.button`}
+            onClick={() => setActiveTab(a.tab)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === a.tab ? "bg-primary/10 text-primary border-primary/30" : ""}`}
+          >
+            <a.icon className="w-3 h-3" />
+            {a.label}
+          </button>
+        ))}
+      </div>
+      {view}
+    </>
+  );
 }
 
 function OverviewTab() {
@@ -524,4 +569,190 @@ function AllResultsTab() {
       </div>
     </div>
   );
+}
+
+// ===================== DEAN GRADUATION TAB =====================
+function DeanGraduationTab() {
+  const { graduationApplications, updateGraduationStatus } = useApp();
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [selected, setSelected] = useState<GraduationApplication | null>(null);
+  const [note, setNote] = useState("");
+  const [actionType, setActionType] = useState<"approve" | "reject">("approve");
+
+  const pending = graduationApplications.filter(
+    (a) => a.status === "pending_dean",
+  );
+
+  function openAction(app: GraduationApplication, type: "approve" | "reject") {
+    setSelected(app);
+    setActionType(type);
+    setNote("");
+    setNoteOpen(true);
+  }
+
+  function confirmAction() {
+    if (!selected) return;
+    const newStatus: GraduationApplication["status"] =
+      actionType === "approve" ? "pending_registrar" : "rejected";
+    updateGraduationStatus(
+      selected.id,
+      newStatus,
+      note || undefined,
+      "deanNote",
+    );
+    setNoteOpen(false);
+    toast.success(
+      actionType === "approve"
+        ? "Forwarded to Registrar"
+        : "Application rejected",
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold">Graduation Applications</h1>
+        <p className="text-sm text-muted-foreground">
+          {pending.length} application{pending.length !== 1 ? "s" : ""} pending
+          Dean approval
+        </p>
+      </div>
+      <div className="bg-card rounded-xl border border-border shadow-xs">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Student</TableHead>
+              <TableHead>Matric</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Session</TableHead>
+              <TableHead>Credit Check</TableHead>
+              <TableHead>No F Grades</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pending.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="text-center py-8 text-muted-foreground"
+                  data-ocid="dean_graduation.empty_state"
+                >
+                  No pending graduation applications
+                </TableCell>
+              </TableRow>
+            )}
+            {pending.map((app, i) => (
+              <TableRow
+                key={String(app.id)}
+                data-ocid={`dean_graduation.item.${i + 1}`}
+                className="hover:bg-muted/30"
+              >
+                <TableCell className="font-medium">{app.studentName}</TableCell>
+                <TableCell className="font-mono text-sm">
+                  {app.matric}
+                </TableCell>
+                <TableCell className="text-sm">{app.department}</TableCell>
+                <TableCell className="text-sm">{app.session}</TableCell>
+                <TableCell>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${app.creditCheck ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                  >
+                    {app.creditCheck ? "✓ Pass" : "✗ Fail"}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${app.carryoverCheck ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                  >
+                    {app.carryoverCheck ? "✓ Clear" : "✗ Has F"}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button
+                      data-ocid={`dean_graduation.confirm_button.${i + 1}`}
+                      size="sm"
+                      onClick={() => openAction(app, "approve")}
+                      className="h-7 text-xs bg-success text-success-foreground hover:bg-success/90"
+                    >
+                      Approve → Registrar
+                    </Button>
+                    <Button
+                      data-ocid={`dean_graduation.delete_button.${i + 1}`}
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => openAction(app, "reject")}
+                      className="h-7 text-xs"
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
+        <DialogContent data-ocid="dean_graduation.dialog">
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === "approve"
+                ? "Approve Application"
+                : "Reject Application"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Student: <strong>{selected?.studentName}</strong>
+            </p>
+            <label htmlFor="dean-note" className="text-sm font-medium">
+              Dean's Note (optional)
+            </label>
+            <Textarea
+              id="dean-note"
+              data-ocid="dean_graduation.textarea"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add a note..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              data-ocid="dean_graduation.cancel_button"
+              variant="outline"
+              onClick={() => setNoteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              data-ocid="dean_graduation.confirm_button.1"
+              onClick={confirmAction}
+              className={
+                actionType === "approve"
+                  ? "bg-success text-success-foreground"
+                  : "bg-destructive text-destructive-foreground"
+              }
+            >
+              {actionType === "approve"
+                ? "Approve & Forward"
+                : "Confirm Rejection"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function DeanExamScheduleTab() {
+  return <ExamScheduleTab filterCourseCodes={undefined} isAdmin={false} />;
+}
+
+function DeanCourseFeedbackTab() {
+  const { courses } = useApp();
+  return <CourseFeedbackView courses={courses} />;
 }

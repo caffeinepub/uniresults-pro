@@ -69,3 +69,48 @@
     font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   }
 }
+
+/* ===== Print Optimization ===== */
+@media print {
+  nav,
+  .no-print,
+  .notification-bell,
+  header,
+  footer {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+  .print-area {
+    page-break-inside: avoid;
+  }
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+  th,
+  td {
+    border: 1px solid #ccc !important;
+    padding: 4px 8px !important;
+    font-size: 10pt !important;
+    color: black !important;
+  }
+  thead tr {
+    background: #f0f0f0 !important;
+  }
+  @page {
+    margin: 15mm;
+    size: A4;
+  }
+  .rounded-xl,
+  .rounded-lg {
+    border-radius: 0 !important;
+  }
+  .shadow-lg,
+  .shadow-xs {
+    box-shadow: none !important;
+  }
+}

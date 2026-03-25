@@ -28,6 +28,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import type React from "react";
 import { useContext, useMemo, useState } from "react";
 import {
   Bar,
@@ -45,18 +46,59 @@ import { TabContext } from "../components/Layout";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { calcGradePoint, useApp } from "../context/AppContext";
+import type { GraduationApplication } from "../context/AppContext";
 import type { ExtendedResult, GradeAppeal } from "../context/AppContext";
+import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
+import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
+import DeptReportTab from "./tabs/DeptReportTab";
+import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
 
 export default function HODDashboard() {
-  const { activeTab } = useContext(TabContext);
-  if (activeTab === "overview") return <OverviewTab />;
-  if (activeTab === "approvals") return <ApprovalsTab />;
-  if (activeTab === "analytics") return <AnalyticsTab />;
-  if (activeTab === "carryovers") return <CarryoversTab />;
-  if (activeTab === "courses") return <HODCoursesTab />;
-  if (activeTab === "results") return <HODResultsTab />;
-  if (activeTab === "appeals") return <HODAppealsTab />;
-  return <OverviewTab />;
+  const { activeTab, setActiveTab } = useContext(TabContext);
+
+  const quickActions = [
+    { label: "Approve Results", tab: "approvals", icon: CheckCircle },
+    { label: "View Analytics", tab: "analytics", icon: BarChart2 },
+    { label: "Dept Report", tab: "dept_report", icon: ClipboardList },
+  ];
+
+  let content: React.ReactNode;
+  if (activeTab === "approvals") content = <ApprovalsTab />;
+  else if (activeTab === "analytics") content = <AnalyticsTab />;
+  else if (activeTab === "carryovers") content = <CarryoversTab />;
+  else if (activeTab === "courses") content = <HODCoursesTab />;
+  else if (activeTab === "results") content = <HODResultsTab />;
+  else if (activeTab === "appeals") content = <HODAppealsTab />;
+  else if (activeTab === "graduation") content = <HODGraduationTab />;
+  else if (activeTab === "dept_report") content = <DeptReportTab />;
+  else if (activeTab === "course_assignments")
+    content = <CourseAssignmentsTab />;
+  else if (activeTab === "exam_schedule") content = <HodExamScheduleTab />;
+  else if (activeTab === "course_feedback") content = <HodCourseFeedbackTab />;
+  else if (activeTab === "lecturer_performance")
+    content = <LecturerPerformanceTab />;
+  else content = <OverviewTab />;
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
+        {quickActions.map((a) => (
+          <button
+            key={a.tab}
+            type="button"
+            data-ocid={`hod_quick.${a.tab}.button`}
+            onClick={() => setActiveTab(a.tab)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === a.tab ? "bg-primary/10 text-primary border-primary/30" : ""}`}
+          >
+            <a.icon className="w-3 h-3" />
+            {a.label}
+          </button>
+        ))}
+      </div>
+      {content}
+    </>
+  );
 }
 
 function OverviewTab() {
@@ -658,7 +700,8 @@ const GRADE_COLORS: Record<string, string> = {
 };
 
 function AnalyticsTab() {
-  const { currentUser, courses, students, results } = useApp();
+  const { currentUser, courses, students, results, attendanceSessions } =
+    useApp();
   const deptId = currentUser?.departmentId ?? BigInt(1);
   const deptCourses = courses.filter((c) => c.departmentId === deptId);
   const deptStudents = students.filter((s) => s.departmentId === deptId);
@@ -1240,6 +1283,176 @@ function AnalyticsTab() {
           </Table>
         )}
       </div>
+
+      <div className="bg-card rounded-xl border border-border shadow-xs">
+        <div className="p-4 border-b border-border">
+          <h2 className="text-sm font-semibold">
+            Attendance Summary per Course
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Courses below 75% avg attendance are highlighted
+          </p>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Course</TableHead>
+              <TableHead className="text-center">Sessions</TableHead>
+              <TableHead className="text-center">Avg Attendance</TableHead>
+              <TableHead className="text-center">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {deptCourses.map((c, i) => {
+              const sessions = attendanceSessions.filter(
+                (s) => s.courseId === c.id,
+              );
+              const avgPct =
+                sessions.length === 0
+                  ? null
+                  : Math.round(
+                      sessions.reduce((sum, s) => {
+                        const pct =
+                          s.records.length === 0
+                            ? 0
+                            : (s.records.filter((r) => r.present).length /
+                                s.records.length) *
+                              100;
+                        return sum + pct;
+                      }, 0) / sessions.length,
+                    );
+              return (
+                <TableRow
+                  key={String(c.id)}
+                  data-ocid={`attendance_stats.item.${i + 1}`}
+                  className={
+                    avgPct !== null && avgPct < 75 ? "bg-destructive/5" : ""
+                  }
+                >
+                  <TableCell className="font-medium">
+                    {c.code}{" "}
+                    <span className="text-muted-foreground font-normal text-xs">
+                      {c.name}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {sessions.length}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {avgPct === null ? (
+                      <span className="text-muted-foreground text-xs">
+                        No data
+                      </span>
+                    ) : (
+                      <span
+                        className={
+                          avgPct >= 75
+                            ? "text-success font-semibold"
+                            : "text-destructive font-semibold"
+                        }
+                      >
+                        {avgPct}%
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {avgPct === null ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : avgPct >= 75 ? (
+                      <span className="text-xs bg-success/10 text-success border border-success/20 rounded-full px-2 py-0.5 font-medium">
+                        Good
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-destructive/10 text-destructive border border-destructive/20 rounded-full px-2 py-0.5 font-medium">
+                        Low
+                      </span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="bg-card rounded-xl border border-border shadow-xs">
+        <div className="p-4 border-b border-border">
+          <h2 className="text-sm font-semibold">Semester Trend by Course</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Average score: First vs Second semester
+          </p>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Course</TableHead>
+              <TableHead className="text-center">First Sem Avg</TableHead>
+              <TableHead className="text-center">Second Sem Avg</TableHead>
+              <TableHead className="text-center">Trend</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {deptCourses.map((c, i) => {
+              const cResults = deptResults.filter((r) => r.courseId === c.id);
+              const firstAvg =
+                c.semester === "First" && cResults.length > 0
+                  ? Math.round(
+                      cResults.reduce((s, r) => s + r.totalScore, 0) /
+                        cResults.length,
+                    )
+                  : null;
+              const secondAvg =
+                c.semester === "Second" && cResults.length > 0
+                  ? Math.round(
+                      cResults.reduce((s, r) => s + r.totalScore, 0) /
+                        cResults.length,
+                    )
+                  : null;
+              return (
+                <TableRow key={String(c.id)} data-ocid={`trend.item.${i + 1}`}>
+                  <TableCell className="font-medium">{c.code}</TableCell>
+                  <TableCell className="text-center">
+                    {firstAvg !== null ? (
+                      <span className="font-semibold">{firstAvg}</span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {secondAvg !== null ? (
+                      <span className="font-semibold">{secondAvg}</span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {firstAvg !== null && secondAvg !== null ? (
+                      <span
+                        className={
+                          secondAvg > firstAvg
+                            ? "text-success"
+                            : secondAvg < firstAvg
+                              ? "text-destructive"
+                              : "text-muted-foreground"
+                        }
+                      >
+                        {secondAvg > firstAvg
+                          ? "↑ Improved"
+                          : secondAvg < firstAvg
+                            ? "↓ Declined"
+                            : "→ Same"}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        Single sem
+                      </span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
@@ -1530,4 +1743,200 @@ function HODAppealsTab() {
       )}
     </div>
   );
+}
+
+// ===================== HOD GRADUATION TAB =====================
+function HODGraduationTab() {
+  const {
+    currentUser,
+    departments,
+    graduationApplications,
+    updateGraduationStatus,
+  } = useApp();
+  const deptId = currentUser?.departmentId ?? BigInt(1);
+  const dept = departments.find((d) => d.id === deptId);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [selected, setSelected] = useState<GraduationApplication | null>(null);
+  const [note, setNote] = useState("");
+  const [actionType, setActionType] = useState<"approve" | "reject">("approve");
+
+  const myApps = graduationApplications.filter(
+    (a) => a.status === "pending_hod" && a.department === (dept?.name ?? ""),
+  );
+
+  function openAction(app: GraduationApplication, type: "approve" | "reject") {
+    setSelected(app);
+    setActionType(type);
+    setNote("");
+    setNoteOpen(true);
+  }
+
+  function confirmAction() {
+    if (!selected) return;
+    const newStatus: GraduationApplication["status"] =
+      actionType === "approve" ? "pending_dean" : "rejected";
+    updateGraduationStatus(
+      selected.id,
+      newStatus,
+      note || undefined,
+      "hodNote",
+    );
+    setNoteOpen(false);
+    toast.success(
+      actionType === "approve" ? "Forwarded to Dean" : "Application rejected",
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold">Graduation Applications</h1>
+        <p className="text-sm text-muted-foreground">
+          {myApps.length} application{myApps.length !== 1 ? "s" : ""} pending
+          your review in {dept?.name}
+        </p>
+      </div>
+      <div className="bg-card rounded-xl border border-border shadow-xs">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Student</TableHead>
+              <TableHead>Matric</TableHead>
+              <TableHead>Session</TableHead>
+              <TableHead>Credit Check</TableHead>
+              <TableHead>No F Grades</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {myApps.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-8 text-muted-foreground"
+                  data-ocid="hod_graduation.empty_state"
+                >
+                  No pending graduation applications
+                </TableCell>
+              </TableRow>
+            )}
+            {myApps.map((app, i) => (
+              <TableRow
+                key={String(app.id)}
+                data-ocid={`hod_graduation.item.${i + 1}`}
+                className="hover:bg-muted/30"
+              >
+                <TableCell className="font-medium">{app.studentName}</TableCell>
+                <TableCell className="font-mono text-sm">
+                  {app.matric}
+                </TableCell>
+                <TableCell className="text-sm">{app.session}</TableCell>
+                <TableCell>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${app.creditCheck ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                  >
+                    {app.creditCheck ? "✓ Pass" : "✗ Fail"}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${app.carryoverCheck ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                  >
+                    {app.carryoverCheck ? "✓ Clear" : "✗ Has F"}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button
+                      data-ocid={`hod_graduation.confirm_button.${i + 1}`}
+                      size="sm"
+                      onClick={() => openAction(app, "approve")}
+                      className="h-7 text-xs bg-success text-success-foreground hover:bg-success/90"
+                    >
+                      Approve → Dean
+                    </Button>
+                    <Button
+                      data-ocid={`hod_graduation.delete_button.${i + 1}`}
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => openAction(app, "reject")}
+                      className="h-7 text-xs"
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
+        <DialogContent data-ocid="hod_graduation.dialog">
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === "approve"
+                ? "Approve Application"
+                : "Reject Application"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Student: <strong>{selected?.studentName}</strong>
+            </p>
+            <label className="text-sm font-medium" htmlFor="hod-grad-note">
+              HOD Note (optional)
+            </label>
+            <Textarea
+              data-ocid="hod_graduation.textarea"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add a note..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              data-ocid="hod_graduation.cancel_button"
+              variant="outline"
+              onClick={() => setNoteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              data-ocid="hod_graduation.confirm_button.1"
+              onClick={confirmAction}
+              className={
+                actionType === "approve"
+                  ? "bg-success text-success-foreground"
+                  : "bg-destructive text-destructive-foreground"
+              }
+            >
+              {actionType === "approve"
+                ? "Approve & Forward"
+                : "Confirm Rejection"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function HodExamScheduleTab() {
+  const { currentUser, courses } = useApp();
+  const deptId = currentUser?.departmentId ?? BigInt(1);
+  const deptCourseCodes = courses
+    .filter((c) => c.departmentId === deptId)
+    .map((c) => c.code);
+  return (
+    <ExamScheduleTab filterCourseCodes={deptCourseCodes} isAdmin={false} />
+  );
+}
+
+function HodCourseFeedbackTab() {
+  const { currentUser, courses } = useApp();
+  const deptId = currentUser?.departmentId ?? BigInt(1);
+  return <CourseFeedbackView departmentIds={[deptId]} courses={courses} />;
 }

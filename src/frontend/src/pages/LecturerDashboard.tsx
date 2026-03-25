@@ -27,6 +27,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   BookOpen,
   CheckCircle,
+  ClipboardCheck,
+  ClipboardList,
   Download,
   FileUp,
   MessageSquare,
@@ -46,12 +48,49 @@ import type {
   ExtendedResult,
   GradeAppeal,
 } from "../context/AppContext";
+import AttendanceTab from "./tabs/AttendanceTab";
+import ExamScheduleTab from "./tabs/ExamScheduleTab";
 
 export default function LecturerDashboard() {
-  const { activeTab } = useContext(TabContext);
-  if (activeTab === "bulk_upload") return <BulkUploadView />;
-  if (activeTab === "appeals") return <LecturerAppealsTab />;
-  return <CoursesView />;
+  const { activeTab, setActiveTab } = useContext(TabContext);
+
+  const quickActions = [
+    { label: "Enter Results", tab: "results", icon: ClipboardList },
+    { label: "Mark Attendance", tab: "attendance", icon: ClipboardCheck },
+    { label: "View Courses", tab: "overview", icon: BookOpen },
+  ];
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-2 px-0 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
+        {quickActions.map((a) => (
+          <button
+            key={a.tab}
+            type="button"
+            data-ocid={`lecturer_quick.${a.tab}.button`}
+            onClick={() => setActiveTab(a.tab)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === a.tab ? "bg-primary/10 text-primary border-primary/30" : ""}`}
+          >
+            <a.icon className="w-3 h-3" />
+            {a.label}
+          </button>
+        ))}
+      </div>
+      {activeTab === "bulk_upload" ? (
+        <BulkUploadView />
+      ) : activeTab === "appeals" ? (
+        <LecturerAppealsTab />
+      ) : activeTab === "schedule" ? (
+        <TeachingScheduleTab />
+      ) : activeTab === "attendance" ? (
+        <AttendanceTab />
+      ) : activeTab === "exam_schedule" ? (
+        <LecturerExamScheduleTab />
+      ) : (
+        <CoursesView />
+      )}
+    </>
+  );
 }
 
 function gradePreviewBg(grade: string): string {
@@ -1107,4 +1146,96 @@ function LecturerAppealsTab() {
       )}
     </div>
   );
+}
+
+// ===================== TEACHING SCHEDULE TAB =====================
+function TeachingScheduleTab() {
+  const { currentUser, timetableEntries, courses } = useApp();
+  const myCourses = courses.filter(
+    (c) => c.lecturerPrincipal === currentUser?.principal,
+  );
+  const myCourseIds = new Set(myCourses.map((c) => c.id));
+  const myEntries = [...timetableEntries]
+    .filter((e) => myCourseIds.has(e.courseId))
+    .sort((a, b) => {
+      const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+      const di = days.indexOf(a.day) - days.indexOf(b.day);
+      if (di !== 0) return di;
+      return a.startTime.localeCompare(b.startTime);
+    });
+
+  const dayColor: Record<string, string> = {
+    Monday: "bg-blue-100 text-blue-700",
+    Tuesday: "bg-purple-100 text-purple-700",
+    Wednesday: "bg-green-100 text-green-700",
+    Thursday: "bg-orange-100 text-orange-700",
+    Friday: "bg-pink-100 text-pink-700",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold">My Teaching Schedule</h1>
+        <p className="text-sm text-muted-foreground">
+          {myEntries.length} scheduled class{myEntries.length !== 1 ? "es" : ""}{" "}
+          across {myCourses.length} course{myCourses.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+      {myEntries.length === 0 ? (
+        <div
+          className="bg-card rounded-xl border border-border p-10 text-center"
+          data-ocid="schedule.empty_state"
+        >
+          <p className="text-muted-foreground">
+            No timetable entries for your courses yet.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Contact the Registrar to add your schedule.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {myEntries.map((entry, i) => {
+            const course = courses.find((c) => c.id === entry.courseId);
+            return (
+              <div
+                key={String(entry.id)}
+                data-ocid={`schedule.item.${i + 1}`}
+                className="bg-card rounded-xl border border-border p-4 shadow-xs flex items-center gap-4 hover:bg-muted/30 transition-colors border-l-4 border-l-primary"
+              >
+                <div className="flex-shrink-0 text-center w-24">
+                  <span
+                    className={`text-xs font-medium px-2 py-1 rounded-full ${dayColor[entry.day] ?? "bg-muted text-muted-foreground"}`}
+                  >
+                    {entry.day}
+                  </span>
+                  <p className="text-xs font-mono font-semibold mt-1">
+                    {entry.startTime} – {entry.endTime}
+                  </p>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold">
+                    {course?.code ?? "?"} – {course?.name ?? "Unknown"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    📍 {entry.venue} · {entry.semester} Semester
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LecturerExamScheduleTab() {
+  const { currentUser, courses } = useApp();
+  // Show courses where lecturerPrincipal matches current user
+  const myCourses = courses.filter(
+    (c) => c.lecturerPrincipal === currentUser?.principal,
+  );
+  const myCourseCodes = myCourses.map((c) => c.code);
+  return <ExamScheduleTab filterCourseCodes={myCourseCodes} isAdmin={false} />;
 }

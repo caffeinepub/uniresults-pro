@@ -1,4 +1,7 @@
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -12,6 +15,7 @@ import {
   Award,
   BookOpen,
   Download,
+  FileText,
   GraduationCap,
   MessageSquare,
   MinusCircle,
@@ -21,6 +25,7 @@ import {
   Star,
   TrendingUp,
 } from "lucide-react";
+import type React from "react";
 import { useContext, useMemo, useState } from "react";
 import {
   Bar,
@@ -35,7 +40,18 @@ import { toast } from "sonner";
 import { TabContext } from "../components/Layout";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
-import { type GradeAppeal, useApp } from "../context/AppContext";
+import {
+  type GradeAppeal,
+  type GraduationApplication,
+  getAcademicStanding,
+  useApp,
+} from "../context/AppContext";
+import { CarryOverBanner } from "./tabs/CarryOverAutoTab";
+import CourseEvaluationTab from "./tabs/CourseEvaluationTab";
+import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import FeeStatusTab from "./tabs/FeeStatusTab";
+import StudentDocumentsTab from "./tabs/StudentDocumentsTab";
+import StudentProgressTab from "./tabs/StudentProgressTab";
 
 function classifyDegree(cgpa: number): { label: string; color: string } {
   if (cgpa >= 4.5) return { label: "First Class", color: "text-success" };
@@ -48,15 +64,51 @@ function classifyDegree(cgpa: number): { label: string; color: string } {
 }
 
 export default function StudentDashboard() {
-  const { activeTab } = useContext(TabContext);
-  if (activeTab === "overview") return <OverviewTab />;
-  if (activeTab === "course_reg") return <CourseRegistrationTab />;
-  if (activeTab === "results") return <ResultsTab />;
-  if (activeTab === "semester_summary") return <SemesterSummaryTab />;
-  if (activeTab === "gpa") return <GPATab />;
-  if (activeTab === "transcript") return <TranscriptTab />;
-  if (activeTab === "appeals") return <GradeAppealsTab />;
-  return <OverviewTab />;
+  const { activeTab, setActiveTab } = useContext(TabContext);
+
+  const quickActions = [
+    { label: "View Transcript", tab: "transcript", icon: FileText },
+    { label: "Submit Appeal", tab: "appeals", icon: MessageSquare },
+    { label: "View Progress", tab: "progress", icon: TrendingUp },
+    { label: "My Documents", tab: "documents", icon: Award },
+  ];
+
+  let content: React.ReactNode;
+  if (activeTab === "course_reg") content = <CourseRegistrationTab />;
+  else if (activeTab === "results") content = <ResultsTab />;
+  else if (activeTab === "semester_summary") content = <SemesterSummaryTab />;
+  else if (activeTab === "gpa") content = <GPATab />;
+  else if (activeTab === "transcript") content = <TranscriptTab />;
+  else if (activeTab === "appeals") content = <GradeAppealsTab />;
+  else if (activeTab === "graduation") content = <StudentGraduationTab />;
+  else if (activeTab === "timetable") content = <StudentTimetableTab />;
+  else if (activeTab === "fee_status") content = <FeeStatusTab />;
+  else if (activeTab === "deferral") content = <DeferralTab />;
+  else if (activeTab === "progress") content = <StudentProgressTab />;
+  else if (activeTab === "documents") content = <StudentDocumentsTab />;
+  else if (activeTab === "exam_schedule") content = <StudentExamScheduleTab />;
+  else if (activeTab === "course_eval") content = <CourseEvaluationTab />;
+  else content = <OverviewTab />;
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
+        {quickActions.map((a) => (
+          <button
+            key={a.tab}
+            type="button"
+            data-ocid={`student_quick.${a.tab}.button`}
+            onClick={() => setActiveTab(a.tab)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === a.tab ? "bg-primary/10 text-primary border-primary/30" : ""}`}
+          >
+            <a.icon className="w-3 h-3" />
+            {a.label}
+          </button>
+        ))}
+      </div>
+      {content}
+    </>
+  );
 }
 
 function getStudentData() {
@@ -95,11 +147,23 @@ function OverviewTab() {
 
   return (
     <div className="space-y-6">
+      <CarryOverBanner />
       <div>
         <h1 className="text-2xl font-bold">Student Portal</h1>
         <p className="text-sm text-muted-foreground">
           {me?.name} &middot; {me?.matricNumber}
         </p>
+        {myResults.length > 0 &&
+          (() => {
+            const standing = getAcademicStanding(cgpa);
+            return (
+              <span
+                className={`inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${standing.badgeClass}`}
+              >
+                {standing.label}
+              </span>
+            );
+          })()}
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -459,6 +523,17 @@ function ResultsTab() {
           <p className="text-sm text-muted-foreground">
             Published results only
           </p>
+          {myResults.length > 0 &&
+            (() => {
+              const standing = getAcademicStanding(cgpa);
+              return (
+                <span
+                  className={`inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${standing.badgeClass}`}
+                >
+                  Academic Standing: {standing.label}
+                </span>
+              );
+            })()}
         </div>
         {myResults.length > 0 && (
           <Button
@@ -1620,4 +1695,519 @@ function GradeAppealsTab() {
       </div>
     </div>
   );
+}
+
+// ===================== STUDENT GRADUATION TAB =====================
+function StudentGraduationTab() {
+  const {
+    currentUser,
+    students,
+    results,
+    departments,
+    graduationApplications,
+    submitGraduationApplication,
+  } = useApp();
+  const me = students.find((s) => s.userPrincipal === currentUser?.principal);
+  const dept = departments.find((d) => d.id === me?.departmentId);
+  const myResults = results.filter((r) => r.studentId === me?.id);
+  const publishedResults = myResults.filter((r) => r.status === "published");
+
+  const existing = me
+    ? graduationApplications.find((a) => a.studentId === me.id)
+    : undefined;
+
+  const [session, setSession] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const creditCheck = publishedResults.length > 0;
+  const carryoverCheck = !publishedResults.some((r) => r.grade === "F");
+
+  function handleSubmit() {
+    if (!me) return;
+    if (!session.trim()) {
+      toast.error("Please enter your session/year");
+      return;
+    }
+    if (!confirmed) {
+      toast.error("Please confirm your application");
+      return;
+    }
+
+    const app: GraduationApplication = {
+      id: BigInt(Date.now()),
+      studentId: me.id,
+      studentName: me.name,
+      matric: me.matricNumber,
+      department: dept?.name ?? "Unknown",
+      session: session.trim(),
+      submittedAt: new Date().toISOString(),
+      status: "pending_hod",
+      creditCheck,
+      carryoverCheck,
+    };
+    submitGraduationApplication(app);
+    setSubmitted(true);
+    toast.success("Graduation application submitted successfully");
+  }
+
+  function statusLabel(status: GraduationApplication["status"]) {
+    const map: Record<string, string> = {
+      pending_hod: "Pending HOD Review",
+      pending_dean: "Pending Dean Review",
+      pending_registrar: "Pending Registrar Review",
+      approved: "Approved ✓",
+      rejected: "Rejected",
+    };
+    return map[status] ?? status;
+  }
+
+  function statusColor(status: GraduationApplication["status"]) {
+    if (status === "approved")
+      return "bg-green-100 text-green-700 border-green-200";
+    if (status === "rejected") return "bg-red-100 text-red-700 border-red-200";
+    return "bg-yellow-50 text-yellow-700 border-yellow-200";
+  }
+
+  if (!me) {
+    return (
+      <div
+        className="p-8 text-center text-muted-foreground"
+        data-ocid="graduation.empty_state"
+      >
+        Student record not found.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <GraduationCap className="w-5 h-5 text-primary" />
+          Graduation Clearance
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Apply for graduation clearance for your final session
+        </p>
+      </div>
+
+      {existing || submitted ? (
+        <div
+          className={`rounded-xl border p-5 ${existing ? statusColor(existing.status) : "bg-green-50 text-green-700 border-green-200"}`}
+          data-ocid="graduation.panel"
+        >
+          <p className="font-semibold text-lg mb-1">Application Status</p>
+          <p className="font-medium">
+            {existing
+              ? statusLabel(existing.status)
+              : "Submitted — Pending HOD Review"}
+          </p>
+          {existing?.session && (
+            <p className="text-sm mt-1">Session: {existing.session}</p>
+          )}
+          {existing?.hodNote && (
+            <p className="text-sm mt-1">HOD Note: {existing.hodNote}</p>
+          )}
+          {existing?.deanNote && (
+            <p className="text-sm mt-1">Dean Note: {existing.deanNote}</p>
+          )}
+          {existing?.registrarNote && (
+            <p className="text-sm mt-1">
+              Registrar Note: {existing.registrarNote}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="bg-card rounded-xl border border-border p-5 space-y-5 shadow-xs">
+          <h2 className="font-semibold">Eligibility Checks</h2>
+          <div className="space-y-2">
+            <div
+              className={`flex items-center gap-3 p-3 rounded-lg border ${creditCheck ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}
+            >
+              <span
+                className={`text-lg ${creditCheck ? "text-green-600" : "text-red-500"}`}
+              >
+                {creditCheck ? "✓" : "✗"}
+              </span>
+              <div>
+                <p className="text-sm font-medium">Published Results</p>
+                <p className="text-xs text-muted-foreground">
+                  {publishedResults.length} published result
+                  {publishedResults.length !== 1 ? "s" : ""} on record
+                </p>
+              </div>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-3 rounded-lg border ${carryoverCheck ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}
+            >
+              <span
+                className={`text-lg ${carryoverCheck ? "text-green-600" : "text-red-500"}`}
+              >
+                {carryoverCheck ? "✓" : "✗"}
+              </span>
+              <div>
+                <p className="text-sm font-medium">No Outstanding Failures</p>
+                <p className="text-xs text-muted-foreground">
+                  {carryoverCheck
+                    ? "No F grades in published results"
+                    : "You have F grades that need to be cleared"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="grad-session">Graduation Session / Year</Label>
+            <Input
+              id="grad-session"
+              data-ocid="graduation.input"
+              value={session}
+              onChange={(e) => setSession(e.target.value)}
+              placeholder="e.g. 2024/2025"
+            />
+          </div>
+
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="grad-confirm"
+              data-ocid="graduation.checkbox"
+              checked={confirmed}
+              onCheckedChange={(v) => setConfirmed(v === true)}
+            />
+            <label
+              htmlFor="grad-confirm"
+              className="text-sm leading-relaxed cursor-pointer"
+            >
+              I confirm that all information is accurate and I am eligible for
+              graduation based on university requirements.
+            </label>
+          </div>
+
+          <Button
+            data-ocid="graduation.submit_button"
+            onClick={handleSubmit}
+            disabled={!creditCheck}
+            className="w-full bg-primary text-primary-foreground"
+          >
+            Submit Graduation Application
+          </Button>
+          {!creditCheck && (
+            <p className="text-xs text-destructive">
+              You must have at least one published result to apply for
+              graduation.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===================== STUDENT TIMETABLE TAB =====================
+function StudentTimetableTab() {
+  const {
+    currentUser,
+    students,
+    courseRegistrations,
+    timetableEntries,
+    courses,
+  } = useApp();
+  const me = students.find((s) => s.userPrincipal === currentUser?.principal);
+  const myRegCourseIds = new Set(
+    courseRegistrations
+      .filter((r) => r.studentId === me?.id)
+      .map((r) => r.courseId),
+  );
+  const myEntries = [...timetableEntries]
+    .filter((e) => myRegCourseIds.has(e.courseId))
+    .sort((a, b) => {
+      const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+      const di = days.indexOf(a.day) - days.indexOf(b.day);
+      if (di !== 0) return di;
+      return a.startTime.localeCompare(b.startTime);
+    });
+
+  const dayColor: Record<string, string> = {
+    Monday: "bg-blue-100 text-blue-700 border-blue-200",
+    Tuesday: "bg-purple-100 text-purple-700 border-purple-200",
+    Wednesday: "bg-green-100 text-green-700 border-green-200",
+    Thursday: "bg-orange-100 text-orange-700 border-orange-200",
+    Friday: "bg-pink-100 text-pink-700 border-pink-200",
+  };
+
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <BookOpen className="w-5 h-5 text-primary" />
+          My Weekly Timetable
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {myEntries.length} class{myEntries.length !== 1 ? "es" : ""} scheduled
+          for your registered courses
+        </p>
+      </div>
+
+      {myEntries.length === 0 ? (
+        <div
+          className="bg-card rounded-xl border border-border p-10 text-center"
+          data-ocid="timetable.empty_state"
+        >
+          <p className="text-muted-foreground">
+            No timetable entries for your registered courses.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Register for courses or check back later when your schedule is
+            posted.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {days.map((day) => {
+            const dayEntries = myEntries.filter((e) => e.day === day);
+            if (dayEntries.length === 0) return null;
+            return (
+              <div
+                key={day}
+                className="bg-card rounded-xl border border-border shadow-xs overflow-hidden"
+              >
+                <div className="px-4 py-2.5 bg-muted/40 border-b border-border">
+                  <h3 className="font-semibold text-sm">{day}</h3>
+                </div>
+                <div className="divide-y divide-border">
+                  {dayEntries.map((entry, i) => {
+                    const course = courses.find((c) => c.id === entry.courseId);
+                    return (
+                      <div
+                        key={String(entry.id)}
+                        data-ocid={`timetable.item.${i + 1}`}
+                        className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors"
+                      >
+                        <div
+                          className={`text-xs font-mono font-medium px-2 py-1 rounded-md border ${dayColor[day] ?? "bg-muted text-muted-foreground"}`}
+                        >
+                          {entry.startTime}–{entry.endTime}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">
+                            {course?.code ?? "?"} – {course?.name ?? "Unknown"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            📍 {entry.venue} · {entry.semester} Semester
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeferralTab() {
+  const {
+    currentUser,
+    students,
+    deferralApplications,
+    submitDeferralApplication,
+  } = useApp();
+  const me = students.find((s) => s.userPrincipal === currentUser?.principal);
+  const [reason, setReason] = useState("");
+  const [returnDate, setReturnDate] = useState("");
+
+  if (!me) return null;
+
+  const myApps = deferralApplications.filter((a) => a.studentId === me.id);
+  const hasApproved = myApps.some((a) => a.status === "approved");
+  const hasPending = myApps.some((a) => a.status === "pending");
+
+  function handleSubmit() {
+    if (!reason.trim()) {
+      toast.error("Please provide a reason");
+      return;
+    }
+    if (!returnDate) {
+      toast.error("Please provide an expected return date");
+      return;
+    }
+    if (!me) return;
+    submitDeferralApplication({
+      id: BigInt(Date.now()),
+      studentId: me.id,
+      studentName: me.name,
+      matric: me.matricNumber,
+      reason: reason.trim(),
+      returnDate,
+      submittedAt: new Date().toISOString(),
+      status: "pending",
+    });
+    setReason("");
+    setReturnDate("");
+    toast.success("Deferral application submitted");
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold">Deferral / Leave of Absence</h1>
+        <p className="text-sm text-muted-foreground">
+          Apply for academic deferral
+        </p>
+      </div>
+
+      {hasApproved && (
+        <div className="bg-success/10 border border-success/20 rounded-xl p-4">
+          <p className="text-sm font-semibold text-success">
+            ✓ You have an approved deferral
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Your academic standing is paused. Contact the Registrar for more
+            information.
+          </p>
+        </div>
+      )}
+
+      {/* Application form */}
+      {!hasApproved && !hasPending && (
+        <div className="bg-card rounded-xl border border-border shadow-xs p-5 space-y-4">
+          <h2 className="text-sm font-semibold">Submit Application</h2>
+          <div className="space-y-3">
+            <div>
+              <label
+                className="text-sm font-medium block mb-1"
+                htmlFor="deferral-reason"
+              >
+                Reason for Deferral *
+              </label>
+              <textarea
+                id="deferral-reason"
+                data-ocid="deferral.textarea"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Explain your reason for requesting deferral (medical, financial, personal)..."
+                rows={4}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <div>
+              <label
+                className="text-sm font-medium block mb-1"
+                htmlFor="deferral-return"
+              >
+                Expected Return Date *
+              </label>
+              <input
+                id="deferral-return"
+                type="date"
+                data-ocid="deferral.input"
+                value={returnDate}
+                onChange={(e) => setReturnDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <button
+              type="button"
+              data-ocid="deferral.submit_button"
+              onClick={handleSubmit}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+            >
+              Submit Application
+            </button>
+          </div>
+        </div>
+      )}
+
+      {hasPending && !hasApproved && (
+        <div className="bg-warning/10 border border-warning/20 rounded-xl p-4">
+          <p className="text-sm font-semibold text-warning">
+            ⏳ Application Pending
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Your deferral application is under review by the Registrar.
+          </p>
+        </div>
+      )}
+
+      {/* History */}
+      {myApps.length > 0 && (
+        <div className="bg-card rounded-xl border border-border shadow-xs">
+          <div className="p-4 border-b border-border">
+            <h2 className="text-sm font-semibold">Application History</h2>
+          </div>
+          <div className="divide-y divide-border">
+            {myApps.map((app) => (
+              <div key={String(app.id)} className="p-4 space-y-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">
+                    Return Date:{" "}
+                    {new Date(app.returnDate).toLocaleDateString("en-NG", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                  {app.status === "pending" && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-warning/10 text-warning border border-warning/20">
+                      Pending
+                    </span>
+                  )}
+                  {app.status === "approved" && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-success/10 text-success border border-success/20">
+                      Approved
+                    </span>
+                  )}
+                  {app.status === "rejected" && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20">
+                      Rejected
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{app.reason}</p>
+                {app.registrarNote && (
+                  <p className="text-xs text-foreground bg-muted/40 rounded p-2 mt-1">
+                    <span className="font-medium">Registrar note:</span>{" "}
+                    {app.registrarNote}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StudentExamScheduleTab() {
+  const {
+    currentUser,
+    students,
+    courseRegistrations,
+    courses,
+    academicCalendars,
+  } = useApp();
+  const student = students.find(
+    (s) => s.userPrincipal === currentUser?.principal,
+  );
+  const activeCalendar = academicCalendars.find((c) => c.isActive);
+  const activeSemester = activeCalendar?.semester ?? "First";
+  const myRegistrations = student
+    ? courseRegistrations.filter(
+        (r) => r.studentId === student.id && r.semester === activeSemester,
+      )
+    : [];
+  const myCourseIds = myRegistrations.map((r) => r.courseId);
+  const myCourseCodes = courses
+    .filter((c) => myCourseIds.includes(c.id))
+    .map((c) => c.code);
+  return <ExamScheduleTab filterCourseCodes={myCourseCodes} isAdmin={false} />;
 }

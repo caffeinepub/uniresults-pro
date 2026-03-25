@@ -35,6 +35,7 @@ import {
   CheckCircle,
   ClipboardList,
   Download,
+  FileText,
   Filter,
   Globe,
   Pencil,
@@ -46,6 +47,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import type React from "react";
 import { useContext, useMemo, useRef, useState } from "react";
 import {
   Bar,
@@ -65,24 +67,72 @@ import StatusBadge from "../components/StatusBadge";
 import {
   type AcademicCalendar,
   type ExtendedStudent,
+  type Faculty,
+  type GraduationApplication,
+  type TimetableEntry,
+  getAcademicStanding,
   useApp,
 } from "../context/AppContext";
+import BenchmarkingTab from "./tabs/BenchmarkingTab";
+import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
+import DeferralsTab from "./tabs/DefferralsTab";
+import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import FeeManagementTab from "./tabs/FeeManagementTab";
+import StaffTab from "./tabs/StaffTab";
+import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
 
 export default function AdminDashboard() {
-  const { activeTab } = useContext(TabContext);
-  if (activeTab === "overview") return <OverviewTab />;
-  if (activeTab === "departments") return <DepartmentsTab />;
-  if (activeTab === "students") return <StudentsTab />;
-  if (activeTab === "courses") return <CoursesTab />;
-  if (activeTab === "course_mgmt") return <CourseManagementTab />;
-  if (activeTab === "results") return <ResultsTab />;
-  if (activeTab === "summaries") return <SummariesTab />;
-  if (activeTab === "carryovers") return <CarryoversTab />;
-  if (activeTab === "statistics") return <StatisticsTab />;
-  if (activeTab === "roles") return <RolesTab />;
-  if (activeTab === "calendar") return <AcademicCalendarTab />;
-  if (activeTab === "audit") return <AuditLogTab />;
-  return <OverviewTab />;
+  const { activeTab, setActiveTab } = useContext(TabContext);
+
+  const quickActions = [
+    { label: "Add Student", tab: "students", icon: Users },
+    { label: "Publish Results", tab: "results", icon: CheckCircle },
+    { label: "Fee Reports", tab: "fee_management", icon: BarChart3 },
+    { label: "Add Course", tab: "courses", icon: BookOpen },
+  ];
+
+  let view: React.ReactNode;
+  if (activeTab === "overview") view = <OverviewTab />;
+  else if (activeTab === "departments") view = <DepartmentsTab />;
+  else if (activeTab === "students") view = <StudentsTab />;
+  else if (activeTab === "courses") view = <CoursesTab />;
+  else if (activeTab === "course_mgmt") view = <CourseManagementTab />;
+  else if (activeTab === "results") view = <ResultsTab />;
+  else if (activeTab === "summaries") view = <SummariesTab />;
+  else if (activeTab === "carryovers") view = <CarryoversTab />;
+  else if (activeTab === "statistics") view = <StatisticsTab />;
+  else if (activeTab === "roles") view = <RolesTab />;
+  else if (activeTab === "calendar") view = <AcademicCalendarTab />;
+  else if (activeTab === "audit") view = <AuditLogTab />;
+  else if (activeTab === "faculties") view = <FacultiesTab />;
+  else if (activeTab === "graduation") view = <GraduationClearanceTab />;
+  else if (activeTab === "timetable") view = <TimetableBuilderTab />;
+  else if (activeTab === "fee_management") view = <FeeManagementTab />;
+  else if (activeTab === "staff") view = <StaffTab />;
+  else if (activeTab === "deferrals") view = <DeferralsTab />;
+  else if (activeTab === "benchmarking") view = <BenchmarkingTab />;
+  else if (activeTab === "exam_schedule") view = <ExamScheduleTab isAdmin />;
+  else view = <OverviewTab />;
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
+        {quickActions.map((a) => (
+          <button
+            key={a.tab}
+            type="button"
+            data-ocid={`admin_quick.${a.tab}.button`}
+            onClick={() => setActiveTab(a.tab)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === a.tab ? "bg-primary/10 text-primary border-primary/30" : ""}`}
+          >
+            <a.icon className="w-3 h-3" />
+            {a.label}
+          </button>
+        ))}
+      </div>
+      {view}
+    </>
+  );
 }
 
 function OverviewTab() {
@@ -195,9 +245,70 @@ function RecentResultsTable() {
 }
 
 function DepartmentsTab() {
-  const { departments, addDepartment } = useApp();
+  const { departments, faculties, addDepartment, bulkAddDepartments } =
+    useApp();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [bulkDeptOpen, setBulkDeptOpen] = useState(false);
+  const [bulkDeptRows, setBulkDeptRows] = useState<
+    {
+      deptCode: string;
+      deptName: string;
+      facultyName: string;
+      hodName: string;
+    }[]
+  >([]);
+
+  function downloadDeptTemplate() {
+    const csv =
+      "deptCode,deptName,facultyName,hodName\nCSC,Computer Science,Faculty of Sciences,Dr. Emeka\nEEE,Electrical Engineering,Faculty of Engineering,Prof. Balogun";
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "departments_template.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function handleDeptFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split("\n").filter(Boolean);
+      const rows = lines
+        .slice(1)
+        .map((line) => {
+          const [deptCode, deptName, facultyName, hodName] = line.split(",");
+          return {
+            deptCode: deptCode?.trim() || "",
+            deptName: deptName?.trim() || "",
+            facultyName: facultyName?.trim() || "",
+            hodName: hodName?.trim() || "",
+          };
+        })
+        .filter((r) => r.deptName);
+      setBulkDeptRows(rows);
+    };
+    reader.readAsText(file);
+  }
+
+  function handleDeptImport() {
+    const newDepts = bulkDeptRows.map((r) => {
+      const fac = faculties.find(
+        (f) => f.name.toLowerCase() === r.facultyName.toLowerCase(),
+      );
+      return {
+        id: BigInt(Date.now() + Math.floor(Math.random() * 1000)),
+        name: r.deptName,
+        facultyId: fac?.id,
+      };
+    });
+    bulkAddDepartments(newDepts);
+    toast.success(`${newDepts.length} departments imported`);
+    setBulkDeptOpen(false);
+    setBulkDeptRows([]);
+  }
 
   function handleAdd() {
     if (!name.trim()) return;
@@ -216,44 +327,127 @@ function DepartmentsTab() {
             {departments.length} departments
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button
-              data-ocid="dept.open_modal_button"
-              size="sm"
-              className="bg-primary text-primary-foreground"
-            >
-              <Plus className="w-4 h-4 mr-1" /> Add Department
-            </Button>
-          </DialogTrigger>
-          <DialogContent data-ocid="dept.dialog">
+        <div className="flex gap-2">
+          <Button
+            data-ocid="dept.bulk_upload_button"
+            variant="outline"
+            size="sm"
+            onClick={() => setBulkDeptOpen(true)}
+          >
+            <Upload className="w-4 h-4 mr-1" />
+            Bulk Upload
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button
+                data-ocid="dept.open_modal_button"
+                size="sm"
+                className="bg-primary text-primary-foreground"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add Department
+              </Button>
+            </DialogTrigger>
+            <DialogContent data-ocid="dept.dialog">
+              <DialogHeader>
+                <DialogTitle>New Department</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Label>Name</Label>
+                <Input
+                  data-ocid="dept.input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Computer Science"
+                  onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  data-ocid="dept.cancel_button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  data-ocid="dept.submit_button"
+                  onClick={handleAdd}
+                  className="bg-primary text-primary-foreground"
+                >
+                  Add
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <Dialog open={bulkDeptOpen} onOpenChange={setBulkDeptOpen}>
+          <DialogContent data-ocid="dept.bulk.dialog" className="max-w-xl">
             <DialogHeader>
-              <DialogTitle>New Department</DialogTitle>
+              <DialogTitle>Bulk Upload Departments</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
-              <Label>Name</Label>
-              <Input
-                data-ocid="dept.input"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Computer Science"
-                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              />
+            <div className="space-y-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadDeptTemplate}
+                data-ocid="dept.bulk.download_button"
+              >
+                <Download className="w-4 h-4 mr-1" />
+                Download Template
+              </Button>
+              <div>
+                <Label>Upload CSV</Label>
+                <input
+                  data-ocid="dept.bulk.upload_button"
+                  type="file"
+                  accept=".csv"
+                  className="block w-full text-sm mt-1"
+                  onChange={handleDeptFile}
+                />
+              </div>
+              {bulkDeptRows.length > 0 && (
+                <div className="overflow-auto max-h-40 border rounded">
+                  <table className="text-xs w-full">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-1.5 text-left">Code</th>
+                        <th className="p-1.5 text-left">Dept Name</th>
+                        <th className="p-1.5 text-left">Faculty</th>
+                        <th className="p-1.5 text-left">HOD</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkDeptRows.map((r) => (
+                        <tr
+                          key={`dept-${r.deptCode}-${r.deptName}`}
+                          className="border-t"
+                        >
+                          <td className="p-1.5 font-mono">{r.deptCode}</td>
+                          <td className="p-1.5">{r.deptName}</td>
+                          <td className="p-1.5">{r.facultyName}</td>
+                          <td className="p-1.5">{r.hodName}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button
-                data-ocid="dept.cancel_button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => setBulkDeptOpen(false)}
+                data-ocid="dept.bulk.cancel_button"
               >
                 Cancel
               </Button>
               <Button
-                data-ocid="dept.submit_button"
-                onClick={handleAdd}
+                onClick={handleDeptImport}
+                disabled={bulkDeptRows.length === 0}
                 className="bg-primary text-primary-foreground"
+                data-ocid="dept.bulk.submit_button"
               >
-                Add
+                Import {bulkDeptRows.length} Departments
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -295,9 +489,43 @@ type CsvRow = {
 };
 
 function StudentsTab() {
-  const { students, departments, addStudent } = useApp();
+  const {
+    students,
+    departments,
+    addStudent,
+    results,
+    courses,
+    deferralApplications,
+  } = useApp();
+
+  function getStudentGpa(studentId: bigint) {
+    const sResults = results.filter(
+      (r) =>
+        r.studentId === studentId &&
+        (r.status === "published" || r.status === "approved"),
+    );
+    if (sResults.length === 0) return null;
+    let wp = 0;
+    let tc = 0;
+    for (const r of sResults) {
+      const c = courses.find((c) => c.id === r.courseId);
+      const credits = c ? Number(c.creditUnits) : 0;
+      wp += r.gradePoint * credits;
+      tc += credits;
+    }
+    return tc > 0 ? wp / tc : 0;
+  }
+
+  function isDeferred(studentId: bigint) {
+    return deferralApplications.some(
+      (a) => a.studentId === studentId && a.status === "approved",
+    );
+  }
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [docStudentId, setDocStudentId] = useState<bigint | null>(null);
+  const [docStudentName, setDocStudentName] = useState("");
+  const [docOpen, setDocOpen] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -753,13 +981,15 @@ function StudentsTab() {
               <TableHead>Gender</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Progress</TableHead>
+              <TableHead>Docs</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={9}
                   className="text-center text-muted-foreground py-8"
                   data-ocid="students.empty_state"
                 >
@@ -774,7 +1004,16 @@ function StudentsTab() {
                   key={String(s.id)}
                   data-ocid={`students.item.${i + 1}`}
                 >
-                  <TableCell className="font-medium">{s.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {s.name}
+                      {isDeferred(s.id) && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-muted text-muted-foreground border border-border">
+                          Deferred
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {s.matricNumber}
                   </TableCell>
@@ -791,18 +1030,166 @@ function StudentsTab() {
                   <TableCell>
                     <StatusBadge status={s.status} />
                   </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const gpa = getStudentGpa(s.id);
+                      if (gpa === null)
+                        return (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        );
+                      const standing = getAcademicStanding(gpa);
+                      return (
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${standing.badgeClass}`}
+                        >
+                          {standing.label}
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const sResults = results.filter(
+                        (r) =>
+                          r.studentId === s.id &&
+                          (r.status === "published" || r.status === "approved"),
+                      );
+                      let completed = 0;
+                      for (const r of sResults) {
+                        const c = courses.find((c) => c.id === r.courseId);
+                        if (r.grade !== "F" && c)
+                          completed += Number(c.creditUnits);
+                      }
+                      const pct = Math.min(
+                        100,
+                        Math.round((completed / 120) * 100),
+                      );
+                      return (
+                        <div className="flex items-center gap-1.5 min-w-[80px]">
+                          <div className="h-1.5 w-12 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${pct >= 80 ? "bg-success" : pct >= 50 ? "bg-warning" : "bg-destructive"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {pct}%
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      type="button"
+                      data-ocid={`students.open_modal_button.${i + 1}`}
+                      onClick={() => {
+                        setDocStudentId(s.id);
+                        setDocStudentName(s.name);
+                        setDocOpen(true);
+                      }}
+                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      <FileText className="w-3 h-3" />
+                      Docs
+                    </button>
+                  </TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
       </div>
+      {docStudentId && (
+        <DocumentUploadDialog
+          studentId={docStudentId}
+          studentName={docStudentName}
+          open={docOpen}
+          onOpenChange={setDocOpen}
+        />
+      )}
     </div>
   );
 }
 
 function CoursesTab() {
-  const { courses, departments, addCourse } = useApp();
+  const { courses, departments, addCourse, bulkAddCourses } = useApp();
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkRows, setBulkRows] = useState<
+    {
+      courseCode: string;
+      courseName: string;
+      creditUnits: string;
+      department: string;
+      level: string;
+      description: string;
+    }[]
+  >([]);
+  function downloadCourseTemplate() {
+    const csv =
+      "courseCode,courseName,creditUnits,department,level,description\nCSC401,Advanced Programming,3,Computer Science,400,";
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "courses_template.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function handleBulkFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split("\n").filter(Boolean);
+      const rows = lines
+        .slice(1)
+        .map((line) => {
+          const [
+            courseCode,
+            courseName,
+            creditUnits,
+            department,
+            level,
+            description,
+          ] = line.split(",");
+          return {
+            courseCode: courseCode?.trim() || "",
+            courseName: courseName?.trim() || "",
+            creditUnits: creditUnits?.trim() || "3",
+            department: department?.trim() || "",
+            level: level?.trim() || "",
+            description: description?.trim() || "",
+          };
+        })
+        .filter((r) => r.courseCode && r.courseName);
+      setBulkRows(rows);
+    };
+    reader.readAsText(file);
+  }
+
+  function handleBulkImport() {
+    const newCourses = bulkRows.map((r) => {
+      const dept = departments.find(
+        (d) => d.name.toLowerCase() === r.department.toLowerCase(),
+      );
+      return {
+        id: BigInt(Date.now() + Math.floor(Math.random() * 1000)),
+        name: r.courseName,
+        code: r.courseCode,
+        creditUnits: BigInt(r.creditUnits || "3"),
+        departmentId: dept?.id ?? BigInt(1),
+        lecturerPrincipal: "unassigned",
+        semester: "First",
+      } as import("../backend.d").Course;
+    });
+    bulkAddCourses(newCourses);
+    toast.success(`${newCourses.length} courses imported`);
+    setBulkOpen(false);
+    setBulkRows([]);
+  }
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -845,109 +1232,196 @@ function CoursesTab() {
             {courses.length} courses
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button
-              data-ocid="courses.open_modal_button"
-              size="sm"
-              className="bg-primary text-primary-foreground"
-            >
-              <Plus className="w-4 h-4 mr-1" /> Add Course
-            </Button>
-          </DialogTrigger>
-          <DialogContent data-ocid="courses.dialog">
+        <div className="flex gap-2">
+          <Button
+            data-ocid="courses.bulk_upload_button"
+            variant="outline"
+            size="sm"
+            onClick={() => setBulkOpen(true)}
+          >
+            <Upload className="w-4 h-4 mr-1" /> Bulk Upload
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button
+                data-ocid="courses.open_modal_button"
+                size="sm"
+                className="bg-primary text-primary-foreground"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add Course
+              </Button>
+            </DialogTrigger>
+            <DialogContent data-ocid="courses.dialog">
+              <DialogHeader>
+                <DialogTitle>New Course</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <Label>Course Name</Label>
+                  <Input
+                    data-ocid="courses.name.input"
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, name: e.target.value }))
+                    }
+                    placeholder="e.g. Data Structures"
+                  />
+                </div>
+                <div>
+                  <Label>Course Code</Label>
+                  <Input
+                    data-ocid="courses.code.input"
+                    value={form.code}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, code: e.target.value }))
+                    }
+                    placeholder="e.g. CSC301"
+                  />
+                </div>
+                <div>
+                  <Label>Credit Units</Label>
+                  <Select
+                    value={form.credits}
+                    onValueChange={(v) =>
+                      setForm((f) => ({ ...f, credits: v }))
+                    }
+                  >
+                    <SelectTrigger data-ocid="courses.credits.select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["1", "2", "3", "4", "6"].map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c} unit{c !== "1" ? "s" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Department</Label>
+                  <Select
+                    value={form.deptId}
+                    onValueChange={(v) => setForm((f) => ({ ...f, deptId: v }))}
+                  >
+                    <SelectTrigger data-ocid="courses.dept.select">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((d) => (
+                        <SelectItem key={String(d.id)} value={String(d.id)}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Semester</Label>
+                  <Select
+                    value={form.semester}
+                    onValueChange={(v) =>
+                      setForm((f) => ({ ...f, semester: v }))
+                    }
+                  >
+                    <SelectTrigger data-ocid="courses.semester.select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="First">First</SelectItem>
+                      <SelectItem value="Second">Second</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  data-ocid="courses.cancel_button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  data-ocid="courses.submit_button"
+                  onClick={handleAdd}
+                  className="bg-primary text-primary-foreground"
+                >
+                  Add Course
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+        {/* Bulk Upload Dialog */}
+        <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+          <DialogContent data-ocid="courses.bulk.dialog" className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>New Course</DialogTitle>
+              <DialogTitle>Bulk Upload Courses</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="space-y-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadCourseTemplate}
+                data-ocid="courses.bulk.download_button"
+              >
+                <Download className="w-4 h-4 mr-1" />
+                Download Template
+              </Button>
               <div>
-                <Label>Course Name</Label>
-                <Input
-                  data-ocid="courses.name.input"
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, name: e.target.value }))
-                  }
-                  placeholder="e.g. Data Structures"
+                <Label>Upload CSV</Label>
+                <input
+                  data-ocid="courses.bulk.upload_button"
+                  type="file"
+                  accept=".csv"
+                  className="block w-full text-sm mt-1"
+                  onChange={handleBulkFile}
                 />
               </div>
-              <div>
-                <Label>Course Code</Label>
-                <Input
-                  data-ocid="courses.code.input"
-                  value={form.code}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, code: e.target.value }))
-                  }
-                  placeholder="e.g. CSC301"
-                />
-              </div>
-              <div>
-                <Label>Credit Units</Label>
-                <Select
-                  value={form.credits}
-                  onValueChange={(v) => setForm((f) => ({ ...f, credits: v }))}
-                >
-                  <SelectTrigger data-ocid="courses.credits.select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["1", "2", "3", "4", "6"].map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c} unit{c !== "1" ? "s" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Department</Label>
-                <Select
-                  value={form.deptId}
-                  onValueChange={(v) => setForm((f) => ({ ...f, deptId: v }))}
-                >
-                  <SelectTrigger data-ocid="courses.dept.select">
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((d) => (
-                      <SelectItem key={String(d.id)} value={String(d.id)}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Semester</Label>
-                <Select
-                  value={form.semester}
-                  onValueChange={(v) => setForm((f) => ({ ...f, semester: v }))}
-                >
-                  <SelectTrigger data-ocid="courses.semester.select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="First">First</SelectItem>
-                    <SelectItem value="Second">Second</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {bulkRows.length > 0 && (
+                <div className="overflow-auto max-h-48 border rounded">
+                  <table className="text-xs w-full">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-1.5 text-left">Code</th>
+                        <th className="p-1.5 text-left">Name</th>
+                        <th className="p-1.5 text-left">Credits</th>
+                        <th className="p-1.5 text-left">Department</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkRows.map((r) => (
+                        <tr key={`course-${r.courseCode}`} className="border-t">
+                          <td className="p-1.5 font-mono">{r.courseCode}</td>
+                          <td className="p-1.5">{r.courseName}</td>
+                          <td className="p-1.5">{r.creditUnits}</td>
+                          <td className="p-1.5">{r.department}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button
-                data-ocid="courses.cancel_button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  setBulkOpen(false);
+                  setBulkRows([]);
+                }}
+                data-ocid="courses.bulk.cancel_button"
               >
                 Cancel
               </Button>
               <Button
-                data-ocid="courses.submit_button"
-                onClick={handleAdd}
+                onClick={handleBulkImport}
+                disabled={bulkRows.length === 0}
                 className="bg-primary text-primary-foreground"
+                data-ocid="courses.bulk.submit_button"
               >
-                Add Course
+                Import {bulkRows.length} Courses
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1002,8 +1476,26 @@ function ResultsTab() {
     amendmentRequests,
     approveAmendmentFinal,
     rejectAmendment,
+    semesterSeals,
+    sealSemester,
+    academicCalendars,
   } = useApp();
   const [filter, setFilter] = useState("all");
+
+  const activeCalendar = academicCalendars.find((c) => c.isActive);
+  const currentSession = activeCalendar?.session ?? "2024/2025";
+
+  function isSemesterSealed(semester: string) {
+    return semesterSeals.some(
+      (s) => s.semester === semester && s.session === currentSession,
+    );
+  }
+
+  function getSeal(semester: string) {
+    return semesterSeals.find(
+      (s) => s.semester === semester && s.session === currentSession,
+    );
+  }
 
   const pendingAmendments = amendmentRequests.filter(
     (a) => a.status === "pending_registrar",
@@ -1069,37 +1561,64 @@ function ResultsTab() {
             const allPublished =
               stats.deanApproved === 0 && stats.published > 0;
             const hasApproved = stats.deanApproved > 0;
+            const sealed = isSemesterSealed(semester);
+            const seal = getSeal(semester);
             return (
               <div
                 key={semester}
-                className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30"
+                className="rounded-lg border border-border bg-muted/30 p-3 space-y-2"
               >
-                <div>
-                  <p className="font-medium text-sm">{semester} Semester</p>
-                  <p className="text-xs text-muted-foreground">
-                    {stats.published} published &middot; {stats.deanApproved}{" "}
-                    awaiting publication &middot; {stats.total} total
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm">{semester} Semester</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats.published} published &middot; {stats.deanApproved}{" "}
+                      awaiting publication &middot; {stats.total} total
+                    </p>
+                  </div>
+                  {allPublished ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-success/10 text-success border border-success/20">
+                      <CheckCircle className="w-3 h-3" /> Published
+                    </span>
+                  ) : hasApproved ? (
+                    <Button
+                      data-ocid={`publication.${semester.toLowerCase()}.primary_button`}
+                      size="sm"
+                      onClick={() => publishSemester(semester)}
+                      className="bg-primary text-primary-foreground text-xs h-7"
+                    >
+                      <Globe className="w-3 h-3 mr-1" /> Publish{" "}
+                      {stats.deanApproved}
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      No results ready
+                    </span>
+                  )}
                 </div>
-                {allPublished ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-success/10 text-success border border-success/20">
-                    <CheckCircle className="w-3 h-3" /> Published
-                  </span>
-                ) : hasApproved ? (
-                  <Button
-                    data-ocid={`publication.${semester.toLowerCase()}.primary_button`}
-                    size="sm"
-                    onClick={() => publishSemester(semester)}
-                    className="bg-primary text-primary-foreground text-xs h-7"
-                  >
-                    <Globe className="w-3 h-3 mr-1" /> Publish{" "}
-                    {stats.deanApproved}
-                  </Button>
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    No results ready
-                  </span>
-                )}
+                <div>
+                  {sealed ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-success/10 text-success border border-success/20">
+                      &#10003; Verified &amp; Sealed &middot;{" "}
+                      {new Date(seal?.sealedAt ?? "").toLocaleDateString()}
+                    </span>
+                  ) : (
+                    <Button
+                      data-ocid={`publication.${semester.toLowerCase()}.seal_button`}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        sealSemester(semester, currentSession);
+                        toast.success(
+                          `${semester} semester sealed and verified`,
+                        );
+                      }}
+                      className="h-7 text-xs border-success/30 text-success hover:bg-success/10"
+                    >
+                      &#128274; Seal Semester
+                    </Button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -1110,8 +1629,6 @@ function ResultsTab() {
           )}
         </div>
       </div>
-
-      {/* Amendment Requests */}
       {pendingAmendments.length > 0 && (
         <div className="bg-card rounded-xl border border-amber-200 shadow-xs">
           <div className="p-4 bg-amber-50 border-b border-amber-200 rounded-t-xl flex items-center gap-2">
@@ -1192,8 +1709,6 @@ function ResultsTab() {
           </Table>
         </div>
       )}
-
-      {/* Results table */}
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -1270,17 +1785,30 @@ function ResultsTab() {
                       <StatusBadge status={r.status} />
                     </TableCell>
                     <TableCell>
-                      {r.status === "dean_approved" && (
-                        <Button
-                          data-ocid={`results.publish_button.${i + 1}`}
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handlePublish(r.id)}
-                          className="h-7 text-xs gap-1"
-                        >
-                          <Globe className="w-3 h-3" /> Publish
-                        </Button>
-                      )}
+                      {r.status === "dean_approved" &&
+                        (() => {
+                          const course = courses.find(
+                            (c) => c.id === r.courseId,
+                          );
+                          const sealed = course
+                            ? isSemesterSealed(course.semester)
+                            : false;
+                          return sealed ? (
+                            <span className="text-xs text-muted-foreground">
+                              Sealed
+                            </span>
+                          ) : (
+                            <Button
+                              data-ocid={`results.publish_button.${i + 1}`}
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handlePublish(r.id)}
+                              className="h-7 text-xs gap-1"
+                            >
+                              <Globe className="w-3 h-3" /> Publish
+                            </Button>
+                          );
+                        })()}
                     </TableCell>
                   </TableRow>
                 );
@@ -1786,6 +2314,63 @@ function StatisticsTab() {
     toast.success("Statistics report downloaded");
   }
 
+  function handleExportFullSemester() {
+    const header =
+      "Name,Matric,Department,Semester,Course Code,Course Name,CA,Exam,Total,Grade,Remarks,Status";
+    const rows = results.map((r) => {
+      const student = students.find((s) => s.id === r.studentId);
+      const course = courses.find((c) => c.id === r.courseId);
+      const dept = departments.find((d) => d.id === course?.departmentId);
+      return [
+        `"${student?.name ?? ""}"`,
+        student?.matricNumber ?? "",
+        `"${dept?.name ?? ""}"`,
+        course?.semester ?? "",
+        course?.code ?? "",
+        `"${course?.name ?? ""}"`,
+        r.caScore,
+        r.examScore,
+        r.totalScore,
+        r.grade,
+        `"${r.remarks}"`,
+        r.status,
+      ].join(",");
+    });
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "full_semester_report.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Full semester report downloaded");
+  }
+
+  function handleExportDeptSummary() {
+    const header =
+      "Department,Total Students,Total Results,Pass Rate,Avg Score,A Count,B Count,C Count,D Count,E Count,F Count";
+    const rows = deptSummary.map((d) => {
+      const dept = departments.find((dep) => dep.name === d.name);
+      const deptResults = results.filter((r) => {
+        const course = courses.find((c) => c.id === r.courseId);
+        return course?.departmentId === dept?.id;
+      });
+      const gradeCount = (g: string) =>
+        deptResults.filter((r) => r.grade === g).length;
+      return `"${d.name}",${d.studentCount},${deptResults.length},${d.passRate}%,${d.avgScore},${gradeCount("A")},${gradeCount("B")},${gradeCount("C")},${gradeCount("D")},${gradeCount("E")},${gradeCount("F")}`;
+    });
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "department_summary.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Department summary downloaded");
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -1795,15 +2380,35 @@ function StatisticsTab() {
             Overview of academic performance across the institution
           </p>
         </div>
-        <Button
-          data-ocid="statistics.download_button"
-          size="sm"
-          variant="outline"
-          onClick={handleDownloadStatistics}
-          className="gap-1.5"
-        >
-          <Download className="w-4 h-4" /> Download Report
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            data-ocid="statistics.download_button"
+            size="sm"
+            variant="outline"
+            onClick={handleDownloadStatistics}
+            className="gap-1.5"
+          >
+            <Download className="w-4 h-4" /> Download Report
+          </Button>
+          <Button
+            data-ocid="statistics.full_semester_export_button"
+            size="sm"
+            variant="outline"
+            onClick={handleExportFullSemester}
+            className="gap-1.5"
+          >
+            <Download className="w-4 h-4" /> Full Semester CSV
+          </Button>
+          <Button
+            data-ocid="statistics.dept_summary_export_button"
+            size="sm"
+            variant="outline"
+            onClick={handleExportDeptSummary}
+            className="gap-1.5"
+          >
+            <Download className="w-4 h-4" /> Dept Summary CSV
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -2734,6 +3339,768 @@ function AuditLogTab() {
                 </TableCell>
               </TableRow>
             ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+// ===================== FACULTIES TAB =====================
+function FacultiesTab() {
+  const { faculties, addFaculty, bulkAddFaculties } = useApp();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [bulkFacOpen, setBulkFacOpen] = useState(false);
+  const [bulkFacRows, setBulkFacRows] = useState<
+    { facultyCode: string; facultyName: string; deanName: string }[]
+  >([]);
+
+  function downloadFacTemplate() {
+    const csv =
+      "facultyCode,facultyName,deanName\nFSCI,Faculty of Sciences,Prof. Adebayo\nFENG,Faculty of Engineering,Dr. Okafor";
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "faculties_template.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function handleFacFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split("\n").filter(Boolean);
+      const rows = lines
+        .slice(1)
+        .map((line) => {
+          const [facultyCode, facultyName, deanName] = line.split(",");
+          return {
+            facultyCode: facultyCode?.trim() || "",
+            facultyName: facultyName?.trim() || "",
+            deanName: deanName?.trim() || "",
+          };
+        })
+        .filter((r) => r.facultyName);
+      setBulkFacRows(rows);
+    };
+    reader.readAsText(file);
+  }
+
+  function handleFacImport() {
+    const newFacs = bulkFacRows.map((r) => ({
+      id: BigInt(Date.now() + Math.floor(Math.random() * 1000)),
+      name: r.facultyName,
+    }));
+    bulkAddFaculties(newFacs);
+    toast.success(`${newFacs.length} faculties imported`);
+    setBulkFacOpen(false);
+    setBulkFacRows([]);
+  }
+
+  function handleAdd() {
+    if (!name.trim()) return;
+    addFaculty({ id: BigInt(Date.now()), name: name.trim() });
+    setName("");
+    setOpen(false);
+    toast.success("Faculty added");
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold">Faculties</h1>
+          <p className="text-sm text-muted-foreground">
+            {faculties.length} faculties registered
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            data-ocid="faculties.bulk_upload_button"
+            variant="outline"
+            size="sm"
+            onClick={() => setBulkFacOpen(true)}
+          >
+            <Upload className="w-4 h-4 mr-1" />
+            Bulk Upload
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button
+                data-ocid="faculties.open_modal_button"
+                size="sm"
+                className="bg-primary text-primary-foreground"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add Faculty
+              </Button>
+            </DialogTrigger>
+            <DialogContent data-ocid="faculties.dialog">
+              <DialogHeader>
+                <DialogTitle>New Faculty</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Label>Faculty Name</Label>
+                <Input
+                  data-ocid="faculties.input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Faculty of Sciences"
+                  onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  data-ocid="faculties.cancel_button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  data-ocid="faculties.submit_button"
+                  onClick={handleAdd}
+                  className="bg-primary text-primary-foreground"
+                >
+                  Add Faculty
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <Dialog open={bulkFacOpen} onOpenChange={setBulkFacOpen}>
+          <DialogContent data-ocid="faculties.bulk.dialog" className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Bulk Upload Faculties</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadFacTemplate}
+                data-ocid="faculties.bulk.download_button"
+              >
+                <Download className="w-4 h-4 mr-1" />
+                Download Template
+              </Button>
+              <div>
+                <Label>Upload CSV</Label>
+                <input
+                  data-ocid="faculties.bulk.upload_button"
+                  type="file"
+                  accept=".csv"
+                  className="block w-full text-sm mt-1"
+                  onChange={handleFacFile}
+                />
+              </div>
+              {bulkFacRows.length > 0 && (
+                <div className="overflow-auto max-h-40 border rounded">
+                  <table className="text-xs w-full">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="p-1.5 text-left">Code</th>
+                        <th className="p-1.5 text-left">Faculty Name</th>
+                        <th className="p-1.5 text-left">Dean</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkFacRows.map((r) => (
+                        <tr
+                          key={`fac-${r.facultyCode}-${r.facultyName}`}
+                          className="border-t"
+                        >
+                          <td className="p-1.5 font-mono">{r.facultyCode}</td>
+                          <td className="p-1.5">{r.facultyName}</td>
+                          <td className="p-1.5">{r.deanName}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setBulkFacOpen(false)}
+                data-ocid="faculties.bulk.cancel_button"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleFacImport}
+                disabled={bulkFacRows.length === 0}
+                className="bg-primary text-primary-foreground"
+                data-ocid="faculties.bulk.submit_button"
+              >
+                Import {bulkFacRows.length} Faculties
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+      <div className="bg-card rounded-xl border border-border shadow-xs">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Faculty Name</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {faculties.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={2}
+                  className="text-center py-8 text-muted-foreground"
+                  data-ocid="faculties.empty_state"
+                >
+                  No faculties found. Add one to get started.
+                </TableCell>
+              </TableRow>
+            )}
+            {faculties.map((f: Faculty, i: number) => (
+              <TableRow
+                key={String(f.id)}
+                data-ocid={`faculties.item.${i + 1}`}
+                className="hover:bg-muted/30"
+              >
+                <TableCell className="text-muted-foreground text-sm font-mono">
+                  {String(f.id)}
+                </TableCell>
+                <TableCell className="font-medium">{f.name}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+// ===================== GRADUATION CLEARANCE TAB =====================
+function GraduationClearanceTab() {
+  const { graduationApplications, updateGraduationStatus } = useApp();
+  const [filter, setFilter] = useState<"all" | GraduationApplication["status"]>(
+    "all",
+  );
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<GraduationApplication | null>(
+    null,
+  );
+  const [note, setNote] = useState("");
+  const [actionType, setActionType] = useState<"approve" | "reject">("approve");
+  const [certApp, setCertApp] = useState<GraduationApplication | null>(null);
+  const [certOpen, setCertOpen] = useState(false);
+
+  const filtered =
+    filter === "all"
+      ? graduationApplications
+      : graduationApplications.filter((a) => a.status === filter);
+
+  function openAction(app: GraduationApplication, type: "approve" | "reject") {
+    setSelectedApp(app);
+    setActionType(type);
+    setNote("");
+    setNoteOpen(true);
+  }
+
+  function confirmAction() {
+    if (!selectedApp) return;
+    const newStatus: GraduationApplication["status"] =
+      actionType === "approve" ? "approved" : "rejected";
+    updateGraduationStatus(
+      selectedApp.id,
+      newStatus,
+      note || undefined,
+      "registrarNote",
+    );
+    setNoteOpen(false);
+    toast.success(
+      actionType === "approve" ? "Graduation approved" : "Application rejected",
+    );
+  }
+
+  function statusBadge(status: string) {
+    const map: Record<string, string> = {
+      pending_hod: "bg-yellow-100 text-yellow-700",
+      pending_dean: "bg-blue-100 text-blue-700",
+      pending_registrar: "bg-purple-100 text-purple-700",
+      approved: "bg-green-100 text-green-700",
+      rejected: "bg-red-100 text-red-700",
+    };
+    return map[status] ?? "bg-muted text-muted-foreground";
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold">Graduation Clearance</h1>
+          <p className="text-sm text-muted-foreground">
+            {graduated(graduationApplications)} approved,{" "}
+            {
+              graduationApplications.filter(
+                (a) => a.status === "pending_registrar",
+              ).length
+            }{" "}
+            pending your review
+          </p>
+        </div>
+        <Select
+          value={filter}
+          onValueChange={(v) => setFilter(v as typeof filter)}
+        >
+          <SelectTrigger
+            data-ocid="graduation.filter.select"
+            className="w-48 h-8 text-sm"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Applications</SelectItem>
+            <SelectItem value="pending_hod">Pending HOD</SelectItem>
+            <SelectItem value="pending_dean">Pending Dean</SelectItem>
+            <SelectItem value="pending_registrar">Pending Registrar</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="bg-card rounded-xl border border-border shadow-xs">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Student</TableHead>
+              <TableHead>Matric</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Session</TableHead>
+              <TableHead>Checks</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="text-center py-8 text-muted-foreground"
+                  data-ocid="graduation.empty_state"
+                >
+                  No applications found
+                </TableCell>
+              </TableRow>
+            )}
+            {filtered.map((app, i) => (
+              <TableRow
+                key={String(app.id)}
+                data-ocid={`graduation.item.${i + 1}`}
+                className="hover:bg-muted/30"
+              >
+                <TableCell className="font-medium">{app.studentName}</TableCell>
+                <TableCell className="font-mono text-sm">
+                  {app.matric}
+                </TableCell>
+                <TableCell className="text-sm">{app.department}</TableCell>
+                <TableCell className="text-sm">{app.session}</TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded ${app.creditCheck ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                    >
+                      Credits {app.creditCheck ? "✓" : "✗"}
+                    </span>
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded ${app.carryoverCheck ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                    >
+                      No F {app.carryoverCheck ? "✓" : "✗"}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge(app.status)}`}
+                  >
+                    {app.status.replace(/_/g, " ")}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1 flex-wrap">
+                    {app.status === "pending_registrar" && (
+                      <>
+                        <Button
+                          data-ocid={`graduation.confirm_button.${i + 1}`}
+                          size="sm"
+                          onClick={() => openAction(app, "approve")}
+                          className="h-7 text-xs bg-success text-success-foreground hover:bg-success/90"
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          data-ocid={`graduation.delete_button.${i + 1}`}
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => openAction(app, "reject")}
+                          className="h-7 text-xs"
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                    {app.status === "approved" && (
+                      <Button
+                        data-ocid={`graduation.print_button.${i + 1}`}
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          setCertApp(app);
+                          setCertOpen(true);
+                        }}
+                      >
+                        🎓 Print Certificate
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {certApp && (
+        <ClearanceCertificateModal
+          app={certApp}
+          open={certOpen}
+          onClose={() => setCertOpen(false)}
+        />
+      )}
+
+      <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
+        <DialogContent data-ocid="graduation.dialog">
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === "approve"
+                ? "Approve Graduation"
+                : "Reject Application"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Student: <strong>{selectedApp?.studentName}</strong>
+            </p>
+            <Label>Note (optional)</Label>
+            <Textarea
+              data-ocid="graduation.textarea"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add a note..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              data-ocid="graduation.cancel_button"
+              variant="outline"
+              onClick={() => setNoteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              data-ocid="graduation.confirm_button.1"
+              onClick={confirmAction}
+              className={
+                actionType === "approve"
+                  ? "bg-success text-success-foreground"
+                  : "bg-destructive text-destructive-foreground"
+              }
+            >
+              {actionType === "approve"
+                ? "Confirm Approval"
+                : "Confirm Rejection"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function graduated(apps: GraduationApplication[]) {
+  return apps.filter((a) => a.status === "approved").length;
+}
+
+// ===================== TIMETABLE BUILDER TAB =====================
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
+
+function TimetableBuilderTab() {
+  const { timetableEntries, addTimetableEntry, removeTimetableEntry, courses } =
+    useApp();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<{
+    courseId: string;
+    day: string;
+    startTime: string;
+    endTime: string;
+    venue: string;
+    semester: string;
+  }>({
+    courseId: "",
+    day: "Monday",
+    startTime: "08:00",
+    endTime: "10:00",
+    venue: "",
+    semester: "First",
+  });
+
+  function handleAdd() {
+    if (!form.courseId || !form.venue) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+    const entry: TimetableEntry = {
+      id: BigInt(Date.now()),
+      courseId: BigInt(form.courseId),
+      day: form.day as TimetableEntry["day"],
+      startTime: form.startTime,
+      endTime: form.endTime,
+      venue: form.venue.trim(),
+      semester: form.semester,
+    };
+    addTimetableEntry(entry);
+    setOpen(false);
+    setForm({
+      courseId: "",
+      day: "Monday",
+      startTime: "08:00",
+      endTime: "10:00",
+      venue: "",
+      semester: "First",
+    });
+    toast.success("Timetable entry added");
+  }
+
+  const sorted = [...timetableEntries].sort((a, b) => {
+    const di =
+      DAYS.indexOf(a.day as (typeof DAYS)[number]) -
+      DAYS.indexOf(b.day as (typeof DAYS)[number]);
+    if (di !== 0) return di;
+    return a.startTime.localeCompare(b.startTime);
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold">Course Timetable</h1>
+          <p className="text-sm text-muted-foreground">
+            {timetableEntries.length} scheduled classes
+          </p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button
+              data-ocid="timetable.open_modal_button"
+              size="sm"
+              className="bg-primary text-primary-foreground"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Add Entry
+            </Button>
+          </DialogTrigger>
+          <DialogContent data-ocid="timetable.dialog">
+            <DialogHeader>
+              <DialogTitle>New Timetable Entry</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Course</Label>
+                <Select
+                  value={form.courseId}
+                  onValueChange={(v) => setForm((p) => ({ ...p, courseId: v }))}
+                >
+                  <SelectTrigger
+                    data-ocid="timetable.course.select"
+                    className="mt-1"
+                  >
+                    <SelectValue placeholder="Select course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.map((c) => (
+                      <SelectItem key={String(c.id)} value={String(c.id)}>
+                        {c.code} – {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Day</Label>
+                  <Select
+                    value={form.day}
+                    onValueChange={(v) => setForm((p) => ({ ...p, day: v }))}
+                  >
+                    <SelectTrigger
+                      data-ocid="timetable.day.select"
+                      className="mt-1"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAYS.map((d) => (
+                        <SelectItem key={d} value={d}>
+                          {d}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Semester</Label>
+                  <Select
+                    value={form.semester}
+                    onValueChange={(v) =>
+                      setForm((p) => ({ ...p, semester: v }))
+                    }
+                  >
+                    <SelectTrigger
+                      data-ocid="timetable.semester.select"
+                      className="mt-1"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="First">First</SelectItem>
+                      <SelectItem value="Second">Second</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Start Time</Label>
+                  <Input
+                    data-ocid="timetable.start_time.input"
+                    type="time"
+                    className="mt-1"
+                    value={form.startTime}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, startTime: e.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>End Time</Label>
+                  <Input
+                    data-ocid="timetable.end_time.input"
+                    type="time"
+                    className="mt-1"
+                    value={form.endTime}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, endTime: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Venue</Label>
+                <Input
+                  data-ocid="timetable.venue.input"
+                  className="mt-1"
+                  value={form.venue}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, venue: e.target.value }))
+                  }
+                  placeholder="e.g. Room 101"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                data-ocid="timetable.cancel_button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                data-ocid="timetable.submit_button"
+                onClick={handleAdd}
+                className="bg-primary text-primary-foreground"
+              >
+                Add Entry
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="bg-card rounded-xl border border-border shadow-xs">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Day</TableHead>
+              <TableHead>Time</TableHead>
+              <TableHead>Course</TableHead>
+              <TableHead>Venue</TableHead>
+              <TableHead>Semester</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-8 text-muted-foreground"
+                  data-ocid="timetable.empty_state"
+                >
+                  No timetable entries. Add one to get started.
+                </TableCell>
+              </TableRow>
+            )}
+            {sorted.map((entry, i) => {
+              const course = courses.find((c) => c.id === entry.courseId);
+              return (
+                <TableRow
+                  key={String(entry.id)}
+                  data-ocid={`timetable.item.${i + 1}`}
+                  className="hover:bg-muted/30"
+                >
+                  <TableCell className="font-medium">{entry.day}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {entry.startTime} – {entry.endTime}
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-medium">{course?.code ?? "?"}</span>
+                    <span className="text-muted-foreground text-sm ml-1">
+                      – {course?.name ?? "Unknown"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-sm">{entry.venue}</TableCell>
+                  <TableCell className="text-sm">{entry.semester}</TableCell>
+                  <TableCell>
+                    <Button
+                      data-ocid={`timetable.delete_button.${i + 1}`}
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        removeTimetableEntry(entry.id);
+                        toast.success("Entry removed");
+                      }}
+                      className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
