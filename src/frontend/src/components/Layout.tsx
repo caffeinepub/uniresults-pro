@@ -57,6 +57,11 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "advisors", label: "Advisors", icon: Users },
     { id: "notices_mgmt", label: "Notice Board", icon: Megaphone },
     { id: "transfers", label: "Transfers", icon: ChevronRight },
+    {
+      id: "pending_registrations",
+      label: "Pending Registrations",
+      icon: Users,
+    },
   ],
   Registrar: [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -81,6 +86,11 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "advisors", label: "Advisors", icon: Users },
     { id: "notices_mgmt", label: "Notice Board", icon: Megaphone },
     { id: "transfers", label: "Transfers", icon: ChevronRight },
+    {
+      id: "pending_registrations",
+      label: "Pending Registrations",
+      icon: Users,
+    },
   ],
   HOD: [
     { id: "overview", label: "Overview", icon: LayoutDashboard },

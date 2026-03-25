@@ -5,11 +5,34 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Briefcase, GraduationCap, Printer, User } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertCircle,
+  Briefcase,
+  Camera,
+  GraduationCap,
+  Printer,
+  Upload,
+  User,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ExternalBlob } from "../../blob-storage/ExternalBlob";
+import { useCamera } from "../../camera/useCamera";
 import type {
   InstitutionSettings,
   StaffMember,
 } from "../../context/AppContext";
+
+const PHOTO_STORAGE_PREFIX = "staff_photo_url_";
+
+function getStaffPhotoUrl(staffId: string): string | null {
+  return localStorage.getItem(PHOTO_STORAGE_PREFIX + staffId);
+}
+
+function setStaffPhotoUrl(staffId: string, url: string) {
+  localStorage.setItem(PHOTO_STORAGE_PREFIX + staffId, url);
+}
 
 interface Props {
   staff: StaffMember;
@@ -42,10 +65,64 @@ export default function StaffIDCardModal({
   onClose,
 }: Props) {
   const settings = getSettings();
+  const [photoUrl, setPhotoUrl] = useState<string | null>(() =>
+    getStaffPhotoUrl(staff.staffId),
+  );
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [photoTab, setPhotoTab] = useState<"upload" | "camera">("upload");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    isActive,
+    isSupported,
+    error: camError,
+    isLoading: camLoading,
+    startCamera,
+    stopCamera,
+    capturePhoto,
+    videoRef,
+    canvasRef,
+  } = useCamera({ facingMode: "user", width: 400, height: 300 });
+
+  useEffect(() => {
+    if (!open) stopCamera();
+  }, [open, stopCamera]);
+
+  useEffect(() => {
+    if (photoTab !== "camera") stopCamera();
+  }, [photoTab, stopCamera]);
+
+  async function uploadFileBytes(file: File) {
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    setUploadProgress(0);
+    const blob = ExternalBlob.fromBytes(bytes).withUploadProgress((pct) =>
+      setUploadProgress(pct),
+    );
+    const url = blob.getDirectURL();
+    setStaffPhotoUrl(staff.staffId, url);
+    setPhotoUrl(url);
+    setUploadProgress(null);
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFileBytes(file);
+  }
+
+  async function handleCapture() {
+    const file = await capturePhoto();
+    if (!file) return;
+    await uploadFileBytes(file);
+    setPhotoTab("upload");
+  }
+
+  const qrCode = `UNIPRO:STAFF:${staff.staffId}`;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm" data-ocid="staff_id_card.dialog">
+      <DialogContent className="sm:max-w-md" data-ocid="staff_id_card.dialog">
         <DialogHeader>
           <DialogTitle>Staff ID Card</DialogTitle>
         </DialogHeader>
@@ -123,7 +200,7 @@ export default function StaffIDCardModal({
               alignItems: "center",
             }}
           >
-            {/* Photo placeholder */}
+            {/* Photo */}
             <div
               style={{
                 width: 64,
@@ -135,9 +212,18 @@ export default function StaffIDCardModal({
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
+                overflow: "hidden",
               }}
             >
-              <User size={28} color="#9ca3af" />
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt="Staff portrait"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                <User size={28} color="#9ca3af" />
+              )}
             </div>
 
             {/* Info */}
@@ -175,6 +261,22 @@ export default function StaffIDCardModal({
                 {facultyName && <Field label="FACULTY" value={facultyName} />}
               </div>
             </div>
+
+            {/* QR code text */}
+            <div
+              style={{
+                fontSize: 6,
+                color: "#9ca3af",
+                writingMode: "vertical-rl",
+                transform: "rotate(180deg)",
+                letterSpacing: "0.03em",
+                flexShrink: 0,
+                alignSelf: "flex-end",
+                paddingBottom: 4,
+              }}
+            >
+              {qrCode}
+            </div>
           </div>
 
           {/* Footer strip */}
@@ -185,6 +287,171 @@ export default function StaffIDCardModal({
               flexShrink: 0,
             }}
           />
+        </div>
+
+        {/* Photo upload / camera */}
+        <div>
+          <Tabs
+            value={photoTab}
+            onValueChange={(v) => setPhotoTab(v as "upload" | "camera")}
+          >
+            <TabsList className="w-full">
+              <TabsTrigger
+                value="upload"
+                className="flex-1"
+                data-ocid="staff_id_card.upload_button"
+              >
+                <Upload className="w-3.5 h-3.5 mr-1.5" />
+                Upload Photo
+              </TabsTrigger>
+              <TabsTrigger
+                value="camera"
+                className="flex-1"
+                data-ocid="staff_id_card.toggle"
+              >
+                <Camera className="w-3.5 h-3.5 mr-1.5" />
+                Take Photo
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="upload" className="space-y-2 mt-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                data-ocid="staff_id_card.dropzone"
+                onChange={handleFileChange}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadProgress !== null}
+                data-ocid="staff_id_card.secondary_button"
+              >
+                <Upload className="w-3.5 h-3.5 mr-1.5" />
+                {photoUrl ? "Replace Photo" : "Choose Photo"}
+              </Button>
+              {uploadProgress !== null && (
+                <div data-ocid="staff_id_card.loading_state">
+                  <Progress value={uploadProgress} className="h-1.5" />
+                  <p className="text-xs text-muted-foreground text-center mt-1">
+                    Uploading... {uploadProgress}%
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="camera" className="space-y-2 mt-2">
+              {isSupported === false ? (
+                <div
+                  className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10"
+                  data-ocid="staff_id_card.error_state"
+                >
+                  <AlertCircle className="w-4 h-4 text-destructive" />
+                  <p className="text-sm text-destructive">
+                    Camera not supported in this browser.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="rounded-xl overflow-hidden bg-black"
+                    style={{ minHeight: 180 }}
+                  >
+                    <video
+                      ref={videoRef}
+                      style={{
+                        width: "100%",
+                        height: 180,
+                        objectFit: "cover",
+                        display: isActive ? "block" : "none",
+                      }}
+                      playsInline
+                      muted
+                    />
+                    <canvas ref={canvasRef} style={{ display: "none" }} />
+                    {!isActive && !camLoading && (
+                      <div
+                        className="flex items-center justify-center text-white/40"
+                        style={{ height: 180 }}
+                      >
+                        <Camera className="w-8 h-8" />
+                      </div>
+                    )}
+                    {camLoading && (
+                      <div
+                        className="flex items-center justify-center"
+                        style={{ height: 180 }}
+                        data-ocid="staff_id_card.loading_state"
+                      >
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
+                      </div>
+                    )}
+                  </div>
+
+                  {camError && (
+                    <div
+                      className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10"
+                      data-ocid="staff_id_card.error_state"
+                    >
+                      <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                      <p className="text-xs text-destructive">
+                        {camError.message}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    {!isActive ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={startCamera}
+                        disabled={camLoading}
+                      >
+                        <Camera className="w-3.5 h-3.5 mr-1.5" />
+                        Start Camera
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          className="flex-1"
+                          onClick={handleCapture}
+                          disabled={camLoading || uploadProgress !== null}
+                          data-ocid="staff_id_card.primary_button"
+                        >
+                          <Camera className="w-3.5 h-3.5 mr-1.5" />
+                          Capture
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={stopCamera}
+                          disabled={camLoading}
+                        >
+                          Stop
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  {uploadProgress !== null && (
+                    <div data-ocid="staff_id_card.loading_state">
+                      <Progress value={uploadProgress} className="h-1.5" />
+                      <p className="text-xs text-muted-foreground text-center mt-1">
+                        Uploading... {uploadProgress}%
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="flex justify-end gap-2">

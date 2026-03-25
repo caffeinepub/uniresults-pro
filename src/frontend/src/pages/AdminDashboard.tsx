@@ -49,6 +49,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import { QrCode, UserCheck } from "lucide-react";
 import type React from "react";
 import { useContext, useMemo, useRef, useState } from "react";
 import {
@@ -75,6 +76,8 @@ import {
   getAcademicStanding,
   useApp,
 } from "../context/AppContext";
+import { getPendingRegistrations, savePendingRegistrations } from "./LoginPage";
+import type { PendingRegistration } from "./LoginPage";
 import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
@@ -85,6 +88,7 @@ import FeeManagementTab from "./tabs/FeeManagementTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import NoticeManagementTab from "./tabs/NoticeManagementTab";
+import QRScannerModal from "./tabs/QRScannerModal";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
 import StaffTab from "./tabs/StaffTab";
@@ -93,6 +97,11 @@ import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
 export default function AdminDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
   const { currentUser: adminUser } = useApp();
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+
+  const pendingCount = getPendingRegistrations().filter(
+    (r) => r.status === "pending",
+  ).length;
 
   const quickActions = [
     { label: "Add Student", tab: "students", icon: Users },
@@ -131,10 +140,16 @@ export default function AdminDashboard() {
   else if (activeTab === "transfers") view = <AdminTransferTab />;
   else if (activeTab === "senate_report")
     view = <SenateReportTab userRole="Registrar" />;
+  else if (activeTab === "pending_registrations")
+    view = <PendingRegistrationsTab />;
   else view = <OverviewTab />;
 
   return (
     <>
+      <QRScannerModal
+        open={qrScannerOpen}
+        onClose={() => setQrScannerOpen(false)}
+      />
       <NoticeBoardPanel userRole={adminUser?.role ?? "SuperAdmin"} />
       <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
@@ -149,6 +164,29 @@ export default function AdminDashboard() {
             {a.label}
           </button>
         ))}
+        <button
+          type="button"
+          data-ocid="admin_quick.scan_id.button"
+          onClick={() => setQrScannerOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <QrCode className="w-3 h-3" />
+          Scan ID
+        </button>
+        <button
+          type="button"
+          data-ocid="admin_quick.pending_registrations.button"
+          onClick={() => setActiveTab("pending_registrations")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === "pending_registrations" ? "bg-primary/10 text-primary border-primary/30" : ""}`}
+        >
+          <UserCheck className="w-3 h-3" />
+          Pending Registrations
+          {pendingCount > 0 && (
+            <span className="ml-1 bg-destructive text-destructive-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+              {pendingCount}
+            </span>
+          )}
+        </button>
       </div>
       {view}
     </>
@@ -4169,6 +4207,186 @@ function TimetableBuilderTab() {
           </TableBody>
         </Table>
       </div>
+    </div>
+  );
+}
+
+function PendingRegistrationsTab() {
+  const { students, addStudent } = useApp();
+  const [registrations, setRegistrations] = useState<PendingRegistration[]>(
+    () => getPendingRegistrations(),
+  );
+
+  function refresh() {
+    setRegistrations(getPendingRegistrations());
+  }
+
+  function handleApprove(reg: PendingRegistration) {
+    // Create a new user account in the students/users structure
+    const existing = getPendingRegistrations();
+    const updated = existing.map((r) =>
+      r.id === reg.id ? { ...r, status: "approved" as const } : r,
+    );
+    savePendingRegistrations(updated);
+
+    // If student role, create a student record
+    if (reg.roleRequested === "Student") {
+      const newId = BigInt(Date.now());
+      const matricNum = `STU/${new Date().getFullYear()}/${String(students.length + 1).padStart(3, "0")}`;
+      addStudent({
+        id: newId,
+        name: reg.name,
+        matricNumber: matricNum,
+        departmentId: BigInt(1),
+        level: 100,
+        session: `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+        status: "active",
+        email: reg.email,
+        phone: "",
+        admissionDate: new Date().toISOString().slice(0, 10),
+        academicStanding: "good_standing",
+        advisorId: undefined,
+      } as any);
+    }
+
+    toast.success(`${reg.name}'s request has been approved.`);
+    refresh();
+  }
+
+  function handleReject(reg: PendingRegistration) {
+    const existing = getPendingRegistrations();
+    const updated = existing.filter((r) => r.id !== reg.id);
+    savePendingRegistrations(updated);
+    toast.success(`${reg.name}'s request has been rejected.`);
+    refresh();
+  }
+
+  const pending = registrations.filter((r) => r.status === "pending");
+  const processed = registrations.filter((r) => r.status !== "pending");
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold text-foreground">
+          Pending Registrations
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Review and approve user access requests submitted via the login page.
+        </p>
+      </div>
+
+      {pending.length === 0 ? (
+        <div
+          className="flex flex-col items-center justify-center py-16 text-center"
+          data-ocid="pending_reg.empty_state"
+        >
+          <UserCheck className="w-12 h-12 text-muted-foreground/30 mb-4" />
+          <p className="text-muted-foreground text-sm font-medium">
+            No pending registrations
+          </p>
+          <p className="text-muted-foreground/60 text-xs mt-1">
+            New access requests will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3" data-ocid="pending_reg.list">
+          {pending.map((reg, idx) => (
+            <div
+              key={reg.id}
+              className="flex items-start gap-4 p-4 rounded-xl border border-border bg-card"
+              data-ocid={`pending_reg.item.${idx + 1}`}
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <span className="text-primary font-bold text-sm">
+                  {reg.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-sm text-foreground">
+                    {reg.name}
+                  </p>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-medium">
+                    {reg.roleRequested}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {reg.email}
+                </p>
+                {reg.department && (
+                  <p className="text-xs text-muted-foreground">
+                    Department: {reg.department}
+                  </p>
+                )}
+                {reg.message && (
+                  <p className="text-xs text-muted-foreground mt-1 italic">
+                    &ldquo;{reg.message}&rdquo;
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground/60 mt-1">
+                  Submitted: {new Date(reg.submittedAt).toLocaleString("en-NG")}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-900 dark:hover:bg-green-900/20 text-xs h-8"
+                  onClick={() => handleApprove(reg)}
+                  data-ocid={`pending_reg.confirm_button.${idx + 1}`}
+                >
+                  <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive border-destructive/20 hover:bg-destructive/10 text-xs h-8"
+                  onClick={() => handleReject(reg)}
+                  data-ocid={`pending_reg.delete_button.${idx + 1}`}
+                >
+                  <XCircle className="w-3.5 h-3.5 mr-1" />
+                  Reject
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {processed.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-sm font-semibold text-foreground mb-3">
+            Recently Processed
+          </h3>
+          <div className="space-y-2">
+            {processed.slice(0, 10).map((reg) => (
+              <div
+                key={reg.id}
+                className="flex items-center justify-between px-4 py-2.5 rounded-lg border border-border/50 bg-muted/20"
+              >
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {reg.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {reg.email} · {reg.roleRequested}
+                  </p>
+                </div>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    reg.status === "approved"
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  }`}
+                >
+                  {reg.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,45 +1,36 @@
 # UniResults Pro
 
 ## Current State
-Version 13 is live with 6 dashboards (SuperAdmin, Registrar, HOD, Dean, Lecturer, Student), full approval chain, analytics, results processing, transcripts, academic calendar, grade appeals, notifications, audit log, graduation clearance, timetable, fee tracking, staff management, search, attendance tracking, student progress, documents, deferral, course assignments, benchmarking, and mobile responsiveness.
-
-Bulk CSV upload exists for: student registration (Registrar), result upload (Lecturer).
-Faculty and Department management exists in Registrar dashboard but without bulk upload.
-Course management exists but without bulk upload.
+UniResults Pro V20 is a comprehensive university academic management system with:
+- 6 role dashboards: SuperAdmin, Registrar, HOD, Dean, Lecturer, Student
+- All data stored in localStorage (rich frontend state management)
+- Minimal Motoko backend (basic CRUD for departments, courses, students, results)
+- Authorization component already integrated (role-based access)
+- Features: student/course registration, result entry, approval workflow, GPA/CGPA, bulk CSV, analytics, transcripts, timetables, exam scheduling, fee tracking, staff management, ID cards, Senate report, dark mode, etc.
 
 ## Requested Changes (Diff)
 
 ### Add
-1. **Exam Scheduling & Invigilation** -- Registrar creates exam timetable (date, time, venue, invigilator); students and lecturers see their exam schedule in a dedicated tab
-2. **Student Clearance Certificate** -- Printable certificate generated after graduation clearance is fully approved; includes student details, clearance date, HOD/Dean/Registrar signatures
-3. **Course Evaluation / Feedback** -- Students rate courses (1-5 stars) and submit comments at end of semester; HOD/Dean view aggregated ratings and comments per course
-4. **Lecturer Performance Report** -- HOD generates per-lecturer report: courses taught, average student scores, pass rates, feedback ratings; exportable as CSV
-5. **Carry-Over Registration Automation** -- On semester change, students with failed courses are auto-prompted to re-register; carry-overs appear in a dedicated section in Student portal
-6. **Bulk Upload for Courses** -- CSV template download + upload for batch course creation (course code, name, credit units, department, level)
-7. **Bulk Upload for Faculties** -- CSV template download + upload for batch faculty creation (faculty name, dean name, faculty code)
-8. **Bulk Upload for Departments** -- CSV template download + upload for batch department creation (dept name, dept code, faculty, HOD name)
+- **blob-storage**: Store student and staff profile photos uploaded for ID cards; photos persist on-chain rather than in localStorage
+- **camera**: Capture live photo from webcam when generating student/staff ID cards ("Take Photo" button next to upload option)
+- **qr-code**: QR code scanner to verify student/staff identity -- scan QR code on printed ID card to display student/staff record
+- **user-approval**: New user registration flow where new accounts (student/staff self-registration) require admin approval before gaining access
 
 ### Modify
-- Registrar dashboard: add Exam Schedule tab, enhance Faculty/Department management with bulk upload buttons
-- HOD dashboard: add Lecturer Performance Report tab, Course Feedback view
-- Dean dashboard: add Course Feedback aggregated view
-- Student dashboard: add Exam Schedule tab, Carry-Over auto-registration prompt, Course Evaluation tab
-- Lecturer dashboard: add Exam Schedule tab
-- Graduation clearance: add Print Certificate button when status is fully approved
+- Student ID Card modal: add "Take Photo" (camera) and "Upload Photo" (blob-storage) options; store photo reference
+- Staff ID Card modal: same camera + blob-storage photo options
+- Login page: add "Request Access" / self-registration form for new users; submitted requests go to admin approval queue
+- AdminDashboard: add "Pending Registrations" tab showing user-approval queue with approve/reject actions
+- Add a QR code scanner button (in Registrar or SuperAdmin dashboard) that opens a camera QR scan modal to look up a student/staff by their ID card QR
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
-1. Add examSchedule data model to AppContext (list of exam entries with course, date, time, venue, invigilator)
-2. Add courseFeedback data model (studentId, courseCode, rating, comment, session, semester)
-3. Add lecturerPerformance derived data (computed from results + feedback)
-4. Add ExamScheduleTab component for Registrar (CRUD), and read-only views for Lecturer and Student
-5. Add CourseEvaluationTab for Student dashboard (submit rating + comment per registered course)
-6. Add CourseFeedbackTab for HOD/Dean dashboards (aggregated ratings, comments, per course)
-7. Add LecturerPerformanceTab for HOD dashboard (per-lecturer stats table, CSV export)
-8. Add clearance certificate print section in graduation clearance when approved
-9. Add carry-over auto-prompt logic in Student dashboard when active semester changes and student has failed courses
-10. Add bulk upload (CSV download template + upload + preview + import) to Course Management in Registrar
-11. Add bulk upload to Faculty Management in Registrar
-12. Add bulk upload to Department Management in Registrar
+1. Select components: blob-storage, camera, qr-code, user-approval
+2. Wire blob-storage into StudentIDCardModal and StaffIDCardModal for photo upload/display
+3. Wire camera component into StudentIDCardModal and StaffIDCardModal for "Take Photo" capture
+4. Add QR scanner button in Admin/Registrar dashboard that opens a modal with the qr-code camera scanner, looks up student/staff by matric or ID
+5. Add self-registration form to LoginPage; wire user-approval component for pending registrations
+6. Add "Pending Registrations" section to AdminDashboard wired to user-approval approval/rejection
+7. Validate, build, and deploy
