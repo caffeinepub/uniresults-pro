@@ -24,9 +24,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CalendarDays, Plus, Users } from "lucide-react";
-import { useState } from "react";
+import { CalendarDays, Camera, CameraOff, Plus, Users } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { useCamera } from "../../camera/useCamera";
 import type { AttendanceSession } from "../../context/AppContext";
 import { useApp } from "../../context/AppContext";
 
@@ -56,6 +57,12 @@ export default function AttendanceTab() {
   );
   const [presentMap, setPresentMap] = useState<Record<string, boolean>>({});
 
+  const camera = useCamera({ facingMode: "user", width: 640, height: 480 });
+  const [activeCaptureId, setActiveCaptureId] = useState<string | null>(null);
+  const [biometricPhotos, setBiometricPhotos] = useState<
+    Record<string, string>
+  >({});
+
   const courseId = selectedCourseId ? BigInt(selectedCourseId) : null;
   const course = myCourses.find((c) => c.id === courseId);
   const registeredStudents = courseId
@@ -84,6 +91,50 @@ export default function AttendanceTab() {
       setPresentMap(map);
     }
     setMarkOpen(true);
+  }
+
+  async function handleCapture(studentId: string) {
+    if (activeCaptureId === studentId) {
+      // Stop camera
+      await camera.stopCamera();
+      setActiveCaptureId(null);
+    } else {
+      setActiveCaptureId(studentId);
+      await camera.startCamera();
+    }
+  }
+
+  async function capturePhoto(studentId: string) {
+    const file = await camera.capturePhoto();
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setBiometricPhotos((prev) => ({ ...prev, [studentId]: dataUrl }));
+      const sessionId = editSession
+        ? String(editSession.id)
+        : `pending_${Date.now()}`;
+      const student = registeredStudents.find(
+        (s) => String(s.id) === studentId,
+      );
+      const courseObj = course;
+      localStorage.setItem(
+        `biometric_${sessionId}_${studentId}`,
+        JSON.stringify({
+          studentName: student?.name ?? "Unknown",
+          matricNumber: student?.matricNumber ?? "-",
+          courseName: courseObj ? `${courseObj.code} - ${courseObj.name}` : "-",
+          date: attendDate,
+          timestamp: new Date().toISOString(),
+          photoDataUrl: dataUrl,
+          present: presentMap[studentId] ?? true,
+        }),
+      );
+      toast.success(`Photo captured for ${student?.name ?? "student"}`);
+    };
+    reader.readAsDataURL(file);
+    await camera.stopCamera();
+    setActiveCaptureId(null);
   }
 
   function saveSession() {
@@ -364,36 +415,92 @@ export default function AttendanceTab() {
               ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto border border-border rounded-lg p-3">
                   {registeredStudents.map((s) => (
-                    <div key={String(s.id)} className="flex items-center gap-3">
-                      <Checkbox
-                        id={`attend-${String(s.id)}`}
-                        checked={presentMap[String(s.id)] ?? false}
-                        onCheckedChange={(checked) =>
-                          setPresentMap((prev) => ({
-                            ...prev,
-                            [String(s.id)]: !!checked,
-                          }))
-                        }
-                      />
-                      <label
-                        htmlFor={`attend-${String(s.id)}`}
-                        className="text-sm flex-1 cursor-pointer"
-                      >
-                        {s.name}
-                        <span className="text-xs text-muted-foreground ml-1.5">
-                          {s.matricNumber}
-                        </span>
-                      </label>
-                      <Badge
-                        variant="outline"
-                        className={
-                          presentMap[String(s.id)]
-                            ? "border-success text-success text-xs"
-                            : "border-destructive text-destructive text-xs"
-                        }
-                      >
-                        {presentMap[String(s.id)] ? "Present" : "Absent"}
-                      </Badge>
+                    <div key={String(s.id)} className="space-y-1">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id={`attend-${String(s.id)}`}
+                          checked={presentMap[String(s.id)] ?? false}
+                          onCheckedChange={(checked) =>
+                            setPresentMap((prev) => ({
+                              ...prev,
+                              [String(s.id)]: !!checked,
+                            }))
+                          }
+                        />
+                        <label
+                          htmlFor={`attend-${String(s.id)}`}
+                          className="text-sm flex-1 cursor-pointer"
+                        >
+                          {s.name}
+                          <span className="text-xs text-muted-foreground ml-1.5">
+                            {s.matricNumber}
+                          </span>
+                        </label>
+                        {biometricPhotos[String(s.id)] && (
+                          <Badge
+                            variant="outline"
+                            className="border-green-500 text-green-600 text-[10px] px-1 gap-0.5"
+                          >
+                            <Camera className="w-2.5 h-2.5" /> Photo
+                          </Badge>
+                        )}
+                        <Badge
+                          variant="outline"
+                          className={
+                            presentMap[String(s.id)]
+                              ? "border-success text-success text-xs"
+                              : "border-destructive text-destructive text-xs"
+                          }
+                        >
+                          {presentMap[String(s.id)] ? "Present" : "Absent"}
+                        </Badge>
+                        <button
+                          type="button"
+                          title={
+                            activeCaptureId === String(s.id)
+                              ? "Stop camera"
+                              : "Capture biometric photo"
+                          }
+                          onClick={() => handleCapture(String(s.id))}
+                          className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+                        >
+                          {activeCaptureId === String(s.id) ? (
+                            <CameraOff className="w-3.5 h-3.5" />
+                          ) : (
+                            <Camera className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                      {activeCaptureId === String(s.id) && (
+                        <div className="ml-6 space-y-1">
+                          <div
+                            className="relative rounded overflow-hidden bg-muted border border-border"
+                            style={{ width: 180, aspectRatio: "4/3" }}
+                          >
+                            <video
+                              ref={camera.videoRef}
+                              autoPlay
+                              playsInline
+                              muted
+                              className="w-full h-full object-cover"
+                            />
+                            <canvas ref={camera.canvasRef} className="hidden" />
+                          </div>
+                          {camera.error && (
+                            <p className="text-xs text-destructive">
+                              {camera.error.message}
+                            </p>
+                          )}
+                          <Button
+                            size="sm"
+                            className="h-6 text-xs"
+                            onClick={() => capturePhoto(String(s.id))}
+                            disabled={!camera.isActive}
+                          >
+                            <Camera className="w-3 h-3 mr-1" /> Capture
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

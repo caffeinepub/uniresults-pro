@@ -4,6 +4,7 @@ import {
   BookOpen,
   Building2,
   CalendarDays,
+  Camera,
   ChevronRight,
   ClipboardList,
   DollarSign,
@@ -19,6 +20,7 @@ import {
   ScrollText,
   Search,
   Settings,
+  Shield,
   Sun,
   Users,
 } from "lucide-react";
@@ -57,6 +59,9 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "advisors", label: "Advisors", icon: Users },
     { id: "notices_mgmt", label: "Notice Board", icon: Megaphone },
     { id: "transfers", label: "Transfers", icon: ChevronRight },
+    { id: "biometric", label: "Biometric", icon: Camera },
+    { id: "cam_security", label: "Cam Security", icon: Shield },
+    { id: "report_monitor", label: "Report Monitor", icon: ClipboardList },
     {
       id: "pending_registrations",
       label: "Pending Registrations",
@@ -86,6 +91,9 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "advisors", label: "Advisors", icon: Users },
     { id: "notices_mgmt", label: "Notice Board", icon: Megaphone },
     { id: "transfers", label: "Transfers", icon: ChevronRight },
+    { id: "biometric", label: "Biometric", icon: Camera },
+    { id: "cam_security", label: "Cam Security", icon: Shield },
+    { id: "report_monitor", label: "Report Monitor", icon: ClipboardList },
     {
       id: "pending_registrations",
       label: "Pending Registrations",
@@ -104,6 +112,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "graduation", label: "Graduation", icon: GraduationCap },
     { id: "course_assignments", label: "Course Assignments", icon: BookOpen },
     { id: "hod_transfers", label: "Transfers", icon: ChevronRight },
+    { id: "biometric", label: "Biometric", icon: Camera },
   ],
   Lecturer: [
     { id: "overview", label: "My Courses", icon: BookOpen },
@@ -112,6 +121,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "appeals", label: "Grade Appeals", icon: MessageSquare },
     { id: "schedule", label: "Schedule", icon: CalendarDays },
     { id: "attendance", label: "Attendance", icon: ClipboardList },
+    { id: "biometric", label: "Biometric", icon: Camera },
   ],
   Student: [
     { id: "overview", label: "Dashboard", icon: LayoutDashboard },
@@ -138,6 +148,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "results", label: "All Results", icon: ClipboardList },
     { id: "graduation", label: "Graduation", icon: GraduationCap },
     { id: "faculty_report", label: "Faculty Report", icon: FileText },
+    { id: "biometric", label: "Biometric", icon: Camera },
   ],
 };
 

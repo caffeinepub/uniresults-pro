@@ -49,6 +49,7 @@ import type {
   GradeAppeal,
 } from "../context/AppContext";
 import AttendanceTab from "./tabs/AttendanceTab";
+import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 
@@ -86,6 +87,8 @@ export default function LecturerDashboard() {
         <TeachingScheduleTab />
       ) : activeTab === "attendance" ? (
         <AttendanceTab />
+      ) : activeTab === "biometric" ? (
+        <BiometricAttendanceTab />
       ) : activeTab === "exam_schedule" ? (
         <LecturerExamScheduleTab />
       ) : (

@@ -49,10 +49,12 @@ import StatusBadge from "../components/StatusBadge";
 import { calcGradePoint, useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
 import type { ExtendedResult, GradeAppeal } from "../context/AppContext";
+import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import { HODTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptReportTab from "./tabs/DeptReportTab";
+import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import GPATrendChart from "./tabs/GPATrendChart";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
@@ -68,6 +70,7 @@ export default function HODDashboard() {
     { label: "View Analytics", tab: "analytics", icon: BarChart2 },
     { label: "Dept Report", tab: "dept_report", icon: ClipboardList },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
+    { label: "Dept. Results", tab: "dept_results", icon: ClipboardList },
   ];
 
   let content: React.ReactNode;
@@ -86,6 +89,7 @@ export default function HODDashboard() {
   else if (activeTab === "lecturer_performance")
     content = <LecturerPerformanceTab />;
   else if (activeTab === "hod_transfers") content = <HODTransferTab />;
+  else if (activeTab === "biometric") content = <BiometricAttendanceTab />;
   else if (activeTab === "senate_report")
     content = (
       <SenateReportTab
@@ -93,6 +97,8 @@ export default function HODDashboard() {
         hodDepartmentId={(hodUser as any)?.departmentId}
       />
     );
+  else if (activeTab === "dept_results")
+    content = <DeptResultsTab userRole="HOD" />;
   else content = <OverviewTab />;
 
   return (

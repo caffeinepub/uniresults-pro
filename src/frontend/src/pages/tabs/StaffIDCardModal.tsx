@@ -48,7 +48,7 @@ function getSettings(): InstitutionSettings {
     if (s) return JSON.parse(s);
   } catch {}
   return {
-    name: "Federal University",
+    name: "Federal University of Education Kontagora, Niger State",
     address: "University Road, Nigeria",
     phone: "+234 800 000 0000",
     email: "info@university.edu.ng",

@@ -80,15 +80,19 @@ import { getPendingRegistrations, savePendingRegistrations } from "./LoginPage";
 import type { PendingRegistration } from "./LoginPage";
 import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
+import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
+import CameraSecurityTab from "./tabs/CameraSecurityTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
 import DeferralsTab from "./tabs/DefferralsTab";
 import { AdminTransferTab } from "./tabs/DepartmentTransferTab";
+import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import NoticeManagementTab from "./tabs/NoticeManagementTab";
 import QRScannerModal from "./tabs/QRScannerModal";
+import ReportMonitorTab from "./tabs/ReportMonitorTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
 import StaffTab from "./tabs/StaffTab";
@@ -110,6 +114,7 @@ export default function AdminDashboard() {
     { label: "Add Course", tab: "courses", icon: BookOpen },
     { label: "Settings", tab: "settings", icon: Settings2 },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
+    { label: "Dept. Results", tab: "dept_results", icon: BarChart3 },
   ];
 
   let view: React.ReactNode;
@@ -140,8 +145,13 @@ export default function AdminDashboard() {
   else if (activeTab === "transfers") view = <AdminTransferTab />;
   else if (activeTab === "senate_report")
     view = <SenateReportTab userRole="Registrar" />;
+  else if (activeTab === "dept_results")
+    view = <DeptResultsTab userRole="Registrar" />;
   else if (activeTab === "pending_registrations")
     view = <PendingRegistrationsTab />;
+  else if (activeTab === "biometric") view = <BiometricAttendanceTab />;
+  else if (activeTab === "cam_security") view = <CameraSecurityTab />;
+  else if (activeTab === "report_monitor") view = <ReportMonitorTab />;
   else view = <OverviewTab />;
 
   return (

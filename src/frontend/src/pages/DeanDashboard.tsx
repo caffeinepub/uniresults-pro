@@ -44,7 +44,9 @@ import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
+import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
+import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FacultyReportTab from "./tabs/FacultyReportTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
@@ -57,6 +59,7 @@ export default function DeanDashboard() {
     { label: "Faculty Report", tab: "faculty_report", icon: FileText },
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
+    { label: "Dept. Results", tab: "dept_results", icon: FileText },
   ];
 
   let view: React.ReactNode;
@@ -67,8 +70,11 @@ export default function DeanDashboard() {
   else if (activeTab === "faculty_report") view = <FacultyReportTab />;
   else if (activeTab === "exam_schedule") view = <DeanExamScheduleTab />;
   else if (activeTab === "course_feedback") view = <DeanCourseFeedbackTab />;
+  else if (activeTab === "biometric") view = <BiometricAttendanceTab />;
   else if (activeTab === "senate_report")
     view = <SenateReportTab userRole="Dean" />;
+  else if (activeTab === "dept_results")
+    view = <DeptResultsTab userRole="Dean" />;
   else view = <OverviewTab />;
 
   return (

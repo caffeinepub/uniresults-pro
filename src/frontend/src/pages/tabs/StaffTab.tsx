@@ -24,9 +24,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pencil, Plus, Printer, Trash2, Users } from "lucide-react";
+import { Camera, Pencil, Plus, Printer, Trash2, Users } from "lucide-react";
+import type React from "react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useCamera } from "../../camera/useCamera";
 import type { StaffMember } from "../../context/AppContext";
 import { useApp } from "../../context/AppContext";
 import StaffIDCardModal from "./StaffIDCardModal";
@@ -58,6 +60,64 @@ export default function StaffTab() {
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<StaffMember | null>(null);
   const [idCardMember, setIdCardMember] = useState<StaffMember | null>(null);
+  const [photoModalMember, setPhotoModalMember] = useState<StaffMember | null>(
+    null,
+  );
+  const [photoModalMode, setPhotoModalMode] = useState<"idle" | "camera">(
+    "idle",
+  );
+  const [staffPhotos, setStaffPhotos] = useState<Record<string, string>>(() => {
+    const photos: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("staff_photo_url_")) {
+        photos[key.replace("staff_photo_url_", "")] =
+          localStorage.getItem(key) || "";
+      }
+    }
+    return photos;
+  });
+  const staffCamera = useCamera({
+    facingMode: "user",
+    width: 640,
+    height: 480,
+  });
+
+  function openPhotoModal(m: StaffMember) {
+    setPhotoModalMember(m);
+    setPhotoModalMode("idle");
+  }
+
+  function handleFileUpload(
+    staffId: string,
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const url = ev.target?.result as string;
+      localStorage.setItem(`staff_photo_url_${staffId}`, url);
+      setStaffPhotos((prev) => ({ ...prev, [staffId]: url }));
+      toast.success("Staff photo saved.");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function captureStaffPhoto(staffId: string) {
+    const file = await staffCamera.capturePhoto();
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const url = ev.target?.result as string;
+      localStorage.setItem(`staff_photo_url_${staffId}`, url);
+      setStaffPhotos((prev) => ({ ...prev, [staffId]: url }));
+      toast.success("Staff photo captured.");
+      staffCamera.stopCamera();
+      setPhotoModalMode("idle");
+    };
+    reader.readAsDataURL(file);
+  }
 
   const emptyForm = {
     name: "",
@@ -206,6 +266,7 @@ export default function StaffTab() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
+              <TableHead className="w-10">Photo</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Staff ID</TableHead>
               <TableHead>Designation</TableHead>
@@ -221,7 +282,7 @@ export default function StaffTab() {
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="text-center py-8 text-muted-foreground"
                   data-ocid="staff.empty_state"
                 >
@@ -240,6 +301,24 @@ export default function StaffTab() {
                     key={String(m.id)}
                     data-ocid={`staff.item.${i + 1}`}
                   >
+                    <TableCell>
+                      <button
+                        type="button"
+                        title="Add/Edit Photo"
+                        onClick={() => openPhotoModal(m)}
+                        className="w-8 h-8 rounded-full overflow-hidden border border-border bg-muted flex items-center justify-center hover:ring-2 hover:ring-primary transition-all"
+                      >
+                        {staffPhotos[String(m.id)] ? (
+                          <img
+                            src={staffPhotos[String(m.id)]}
+                            alt={m.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Camera className="w-3.5 h-3.5 text-muted-foreground" />
+                        )}
+                      </button>
+                    </TableCell>
                     <TableCell className="font-medium">{m.name}</TableCell>
                     <TableCell className="text-sm font-mono text-muted-foreground">
                       {m.staffId}
@@ -463,6 +542,118 @@ export default function StaffTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Staff Photo Modal */}
+      {photoModalMember && (
+        <Dialog
+          open={!!photoModalMember}
+          onOpenChange={(open) => {
+            if (!open) {
+              staffCamera.stopCamera();
+              setPhotoModalMember(null);
+              setPhotoModalMode("idle");
+            }
+          }}
+        >
+          <DialogContent data-ocid="staff.photo.dialog" className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Staff Photo — {photoModalMember.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {staffPhotos[String(photoModalMember.id)] && (
+                <div className="flex justify-center">
+                  <img
+                    src={staffPhotos[String(photoModalMember.id)]}
+                    alt={photoModalMember.name}
+                    className="w-24 h-24 rounded-full object-cover border-2 border-border"
+                  />
+                </div>
+              )}
+              {photoModalMode === "camera" ? (
+                <div className="space-y-2">
+                  <div
+                    className="rounded-lg overflow-hidden bg-muted border border-border"
+                    style={{ aspectRatio: "4/3" }}
+                  >
+                    <video
+                      ref={staffCamera.videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                    <canvas ref={staffCamera.canvasRef} className="hidden" />
+                  </div>
+                  {staffCamera.error && (
+                    <p className="text-xs text-destructive">
+                      {staffCamera.error.message}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        captureStaffPhoto(String(photoModalMember.id))
+                      }
+                      disabled={!staffCamera.isActive}
+                    >
+                      <Camera className="w-3.5 h-3.5 mr-1" /> Capture
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        staffCamera.stopCamera();
+                        setPhotoModalMode("idle");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setPhotoModalMode("camera");
+                      staffCamera.startCamera();
+                    }}
+                  >
+                    <Camera className="w-3.5 h-3.5 mr-1" /> Use Webcam
+                  </Button>
+                  <Label className="cursor-pointer">
+                    <Button size="sm" variant="outline" asChild>
+                      <span>Upload Photo</span>
+                    </Button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        handleFileUpload(String(photoModalMember.id), e)
+                      }
+                    />
+                  </Label>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                data-ocid="staff.photo.close_button"
+                onClick={() => {
+                  staffCamera.stopCamera();
+                  setPhotoModalMember(null);
+                }}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {idCardMember && (
         <StaffIDCardModal

@@ -12,6 +12,7 @@ import { Download, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { ExtendedDepartment, Faculty } from "../../context/AppContext";
 import { useApp } from "../../context/AppContext";
+import { logReportActivity } from "../../utils/institutionHelpers";
 
 interface Props {
   userRole: "Registrar" | "HOD" | "Dean";
@@ -211,6 +212,7 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
             sno: idx + 1,
             matricNumber: student.matricNumber,
             name: student.name,
+            level: Number(student.level),
             prefixScores,
             cgpa,
             outstanding: outstanding || "None",
@@ -229,13 +231,26 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
 
   const institutionName = useMemo(() => {
     try {
-      const s = localStorage.getItem("institution_settings");
+      const s = localStorage.getItem("unires_institutionSettings");
       if (s) return JSON.parse(s).name || "University";
     } catch {}
-    return "University";
+    return "Federal University of Education Kontagora, Niger State";
   }, []);
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    window.print();
+    const deptNames =
+      reportData
+        .flatMap((d) => d.depts.map((dept) => dept.dept.name))
+        .join(", ") || "All";
+    logReportActivity(
+      "Senate",
+      deptNames.slice(0, 60),
+      sessionFilter !== "all" ? sessionFilter : "All Sessions",
+      "System",
+      "Print",
+    );
+  };
 
   const handleExportCSV = () => {
     const rows: string[] = [];
@@ -282,6 +297,17 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
     a.download = `senate_report_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    const deptNames =
+      reportData
+        .flatMap((d) => d.depts.map((dept) => dept.dept.name))
+        .join(", ") || "All";
+    logReportActivity(
+      "Senate",
+      deptNames.slice(0, 60),
+      sessionFilter !== "all" ? sessionFilter : "All Sessions",
+      "System",
+      "CSV",
+    );
   };
 
   return (
@@ -415,243 +441,274 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
               </div>
             </div>
 
-            {depts.map(({ dept, prefixes, rows, isEd }) => (
-              <div
-                key={String(dept.id)}
-                className="senate-dept-section mb-8"
-                style={{ pageBreakInside: "avoid" }}
-              >
-                {/* Department subheader */}
-                <div className="dept-header bg-muted/40 rounded-t-md border border-border px-4 py-2 mb-0">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                        Department
-                      </p>
-                      <h3 className="text-base font-bold text-foreground">
-                        {dept.name}
-                      </h3>
+            {depts.map(({ dept, prefixes, rows, isEd }) => {
+              // Group rows by level
+              const levelGroups: Record<number, typeof rows> = {};
+              for (const row of rows) {
+                const lvl = row.level ?? 100;
+                if (!levelGroups[lvl]) levelGroups[lvl] = [];
+                levelGroups[lvl].push(row);
+              }
+              const sortedLevels = Object.keys(levelGroups).map(Number).sort();
+              return (
+                <div key={String(dept.id)} className="senate-dept-section mb-8">
+                  {sortedLevels.length === 0 && (
+                    <div className="text-center py-6 text-muted-foreground italic text-xs border border-border rounded-md">
+                      No students in this department
                     </div>
-                    <div className="text-right text-xs text-muted-foreground">
-                      <p>{institutionName}</p>
-                      <p>{new Date().toLocaleDateString("en-GB")}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Table */}
-                <div className="overflow-x-auto border border-t-0 border-border rounded-b-md">
-                  <table className="w-full text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-primary text-primary-foreground">
-                        <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20 w-8">
-                          S/No
-                        </th>
-                        <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20 whitespace-nowrap">
-                          Matric No
-                        </th>
-                        <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20">
-                          Student Name
-                        </th>
-                        {prefixes.map((p) => (
-                          <th
-                            key={p}
-                            className="px-2 py-2 text-center font-semibold border-r border-primary-foreground/20 whitespace-nowrap"
-                          >
-                            {p}
-                          </th>
-                        ))}
-                        <th className="px-2 py-2 text-center font-semibold border-r border-primary-foreground/20">
-                          CGPA
-                        </th>
-                        <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20">
-                          Outstanding Courses
-                        </th>
-                        <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20">
-                          Remarks
-                        </th>
-                        <th className="px-2 py-2 text-center font-semibold whitespace-nowrap">
-                          Graduating Year
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={5 + prefixes.length}
-                            className="px-4 py-6 text-center text-muted-foreground italic"
-                          >
-                            No students in this department
-                          </td>
-                        </tr>
-                      ) : (
-                        rows.map((row, ri) => (
-                          <tr
-                            key={row.matricNumber}
-                            data-ocid={`senate.item.${ri + 1}`}
-                            className={`border-b border-border/50 ${
-                              ri % 2 === 0 ? "bg-background" : "bg-muted/20"
-                            } hover:bg-primary/5 transition-colors`}
-                          >
-                            <td className="px-2 py-1.5 text-center text-muted-foreground border-r border-border/30">
-                              {row.sno}
-                            </td>
-                            <td className="px-2 py-1.5 font-mono border-r border-border/30 whitespace-nowrap">
-                              {row.matricNumber}
-                            </td>
-                            <td className="px-2 py-1.5 font-medium border-r border-border/30">
-                              {row.name}
-                            </td>
-                            {prefixes.map((p) => {
-                              const raw = row.prefixScores[p] ?? "-";
-                              if (!isEd) {
-                                return (
-                                  <td
-                                    key={p}
-                                    className="px-2 py-1.5 text-center border-r border-border/30"
-                                  >
-                                    {raw}
-                                  </td>
-                                );
-                              }
-                              const label = scoreToGradeLabel(raw);
-                              const cls =
-                                label === "Distinction"
-                                  ? "bg-green-50 text-green-700 font-semibold"
-                                  : label === "Credit"
-                                    ? "bg-blue-50 text-blue-700 font-semibold"
-                                    : label === "Merit"
-                                      ? "bg-amber-50 text-amber-700 font-semibold"
-                                      : label === "Pass"
-                                        ? "bg-gray-50 text-gray-600 font-semibold"
-                                        : label === "Fail"
-                                          ? "bg-red-50 text-red-600 font-semibold"
-                                          : "";
-                              return (
-                                <td
-                                  key={p}
-                                  className={`px-2 py-1.5 text-center border-r border-border/30 ${cls}`}
-                                >
-                                  {label}
-                                </td>
-                              );
-                            })}
-                            <td
-                              className={`px-2 py-1.5 text-center font-bold border-r border-border/30 ${
-                                row.cgpa !== null && row.cgpa >= 4.5
-                                  ? "text-green-600"
-                                  : row.cgpa !== null && row.cgpa >= 3.5
-                                    ? "text-blue-600"
-                                    : row.cgpa !== null && row.cgpa < 1.5
-                                      ? "text-red-500"
-                                      : ""
-                              }`}
-                            >
-                              {row.cgpa !== null ? row.cgpa.toFixed(2) : "-"}
-                            </td>
-                            <td
-                              className={`px-2 py-1.5 border-r border-border/30 ${
-                                row.outstanding !== "None"
-                                  ? "text-red-600 font-medium"
-                                  : "text-muted-foreground"
-                              }`}
-                            >
-                              {row.outstanding}
-                            </td>
-                            {(() => {
-                              const displayRemark = isEd
-                                ? getEdRemarks(row.cgpa)
-                                : row.remarks;
-                              const remarkCls = isEd
-                                ? displayRemark === "Distinction"
-                                  ? "text-green-700"
-                                  : displayRemark === "Credit"
-                                    ? "text-blue-700"
-                                    : displayRemark === "Merit"
-                                      ? "text-amber-700"
-                                      : displayRemark === "Pass"
-                                        ? "text-gray-600"
-                                        : "text-red-600"
-                                : row.remarks === "First Class Hons"
-                                  ? "text-green-700"
-                                  : row.remarks === "Second Class Upper"
-                                    ? "text-blue-700"
-                                    : row.remarks.includes("Fail")
-                                      ? "text-red-600"
-                                      : "";
-                              return (
-                                <td
-                                  className={`px-2 py-1.5 border-r border-border/30 whitespace-nowrap font-medium ${remarkCls}`}
-                                >
-                                  {displayRemark}
-                                </td>
-                              );
-                            })()}
-                            <td className="px-2 py-1.5 text-center">
-                              {row.graduatingYear}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Dept footer */}
-                <div className="text-xs text-muted-foreground mt-1 px-1 flex justify-between">
-                  <span>Total Students: {rows.length}</span>
-                  {isEd ? (
-                    <span>
-                      Distinction:{" "}
-                      {
-                        rows.filter(
-                          (r) => getEdRemarks(r.cgpa) === "Distinction",
-                        ).length
-                      }{" "}
-                      | Credit:{" "}
-                      {
-                        rows.filter((r) => getEdRemarks(r.cgpa) === "Credit")
-                          .length
-                      }{" "}
-                      | Merit:{" "}
-                      {
-                        rows.filter((r) => getEdRemarks(r.cgpa) === "Merit")
-                          .length
-                      }{" "}
-                      | Pass:{" "}
-                      {
-                        rows.filter((r) => getEdRemarks(r.cgpa) === "Pass")
-                          .length
-                      }{" "}
-                      | Fail:{" "}
-                      {
-                        rows.filter((r) => getEdRemarks(r.cgpa) === "Fail")
-                          .length
-                      }
-                    </span>
-                  ) : (
-                    <span>
-                      First Class:{" "}
-                      {
-                        rows.filter((r) => r.remarks === "First Class Hons")
-                          .length
-                      }{" "}
-                      | 2nd Upper:{" "}
-                      {
-                        rows.filter((r) => r.remarks === "Second Class Upper")
-                          .length
-                      }{" "}
-                      | 2nd Lower:{" "}
-                      {
-                        rows.filter((r) => r.remarks === "Second Class Lower")
-                          .length
-                      }
-                    </span>
                   )}
+                  {sortedLevels.map((lvl) => {
+                    const lvlRows = levelGroups[lvl];
+                    return (
+                      <div
+                        key={lvl}
+                        className="mb-6"
+                        style={{ pageBreakInside: "avoid" }}
+                      >
+                        {/* Institution / Faculty / Dept / Level Heading */}
+                        <div className="level-heading text-center py-3 mb-0">
+                          <p className="text-xs font-bold uppercase tracking-widest">
+                            {institutionName}
+                          </p>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase">
+                            Faculty of{" "}
+                            {faculty?.name?.toUpperCase() ?? "Unknown Faculty"}
+                          </p>
+                          <p className="text-xs font-semibold uppercase">
+                            Department of {dept.name}
+                          </p>
+                          <p className="text-sm font-bold uppercase mt-1">
+                            Level {lvl} Students —{" "}
+                            {sessionFilter !== "all"
+                              ? sessionFilter
+                              : "All Sessions"}{" "}
+                            {semesterFilter !== "all" ? semesterFilter : ""}{" "}
+                            Semester
+                          </p>
+                          <hr className="mt-2 border-foreground/30" />
+                        </div>
+
+                        {/* Table */}
+                        <div className="overflow-x-auto border border-t-0 border-border rounded-b-md">
+                          <table className="w-full text-xs border-collapse">
+                            <thead>
+                              <tr className="bg-primary text-primary-foreground">
+                                <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20 w-8">
+                                  S/No
+                                </th>
+                                <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20 whitespace-nowrap">
+                                  Matric No
+                                </th>
+                                <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20">
+                                  Student Name
+                                </th>
+                                {prefixes.map((p) => (
+                                  <th
+                                    key={p}
+                                    className="px-2 py-2 text-center font-semibold border-r border-primary-foreground/20 whitespace-nowrap"
+                                  >
+                                    {p}
+                                  </th>
+                                ))}
+                                <th className="px-2 py-2 text-center font-semibold border-r border-primary-foreground/20">
+                                  CGPA
+                                </th>
+                                <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20">
+                                  Outstanding Courses
+                                </th>
+                                <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20">
+                                  Remarks
+                                </th>
+                                <th className="px-2 py-2 text-center font-semibold whitespace-nowrap">
+                                  Graduating Year
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {lvlRows.map((row, ri) => {
+                                return (
+                                  <tr
+                                    key={row.matricNumber}
+                                    data-ocid={`senate.item.${ri + 1}`}
+                                    className={`border-b border-border/50 ${
+                                      ri % 2 === 0
+                                        ? "bg-background"
+                                        : "bg-muted/20"
+                                    } hover:bg-primary/5 transition-colors`}
+                                  >
+                                    <td className="px-2 py-1.5 text-center text-muted-foreground border-r border-border/30">
+                                      {row.sno}
+                                    </td>
+                                    <td className="px-2 py-1.5 font-mono border-r border-border/30 whitespace-nowrap">
+                                      {row.matricNumber}
+                                    </td>
+                                    <td className="px-2 py-1.5 font-medium border-r border-border/30">
+                                      {row.name}
+                                    </td>
+                                    {prefixes.map((p) => {
+                                      const raw = row.prefixScores[p] ?? "-";
+                                      if (!isEd) {
+                                        return (
+                                          <td
+                                            key={p}
+                                            className="px-2 py-1.5 text-center border-r border-border/30"
+                                          >
+                                            {raw}
+                                          </td>
+                                        );
+                                      }
+                                      const label = scoreToGradeLabel(raw);
+                                      const cls =
+                                        label === "Distinction"
+                                          ? "bg-green-50 text-green-700 font-semibold"
+                                          : label === "Credit"
+                                            ? "bg-blue-50 text-blue-700 font-semibold"
+                                            : label === "Merit"
+                                              ? "bg-amber-50 text-amber-700 font-semibold"
+                                              : label === "Pass"
+                                                ? "bg-gray-50 text-gray-600 font-semibold"
+                                                : label === "Fail"
+                                                  ? "bg-red-50 text-red-600 font-semibold"
+                                                  : "";
+                                      return (
+                                        <td
+                                          key={p}
+                                          className={`px-2 py-1.5 text-center border-r border-border/30 ${cls}`}
+                                        >
+                                          {label}
+                                        </td>
+                                      );
+                                    })}
+                                    <td
+                                      className={`px-2 py-1.5 text-center font-bold border-r border-border/30 ${
+                                        row.cgpa !== null && row.cgpa >= 4.5
+                                          ? "text-green-600"
+                                          : row.cgpa !== null && row.cgpa >= 3.5
+                                            ? "text-blue-600"
+                                            : row.cgpa !== null &&
+                                                row.cgpa < 1.5
+                                              ? "text-red-500"
+                                              : ""
+                                      }`}
+                                    >
+                                      {row.cgpa !== null
+                                        ? row.cgpa.toFixed(2)
+                                        : "-"}
+                                    </td>
+                                    <td
+                                      className={`px-2 py-1.5 border-r border-border/30 ${
+                                        row.outstanding !== "None"
+                                          ? "text-red-600 font-medium"
+                                          : "text-muted-foreground"
+                                      }`}
+                                    >
+                                      {row.outstanding}
+                                    </td>
+                                    {(() => {
+                                      const displayRemark = isEd
+                                        ? getEdRemarks(row.cgpa)
+                                        : row.remarks;
+                                      const remarkCls = isEd
+                                        ? displayRemark === "Distinction"
+                                          ? "text-green-700"
+                                          : displayRemark === "Credit"
+                                            ? "text-blue-700"
+                                            : displayRemark === "Merit"
+                                              ? "text-amber-700"
+                                              : displayRemark === "Pass"
+                                                ? "text-gray-600"
+                                                : "text-red-600"
+                                        : row.remarks === "First Class Hons"
+                                          ? "text-green-700"
+                                          : row.remarks === "Second Class Upper"
+                                            ? "text-blue-700"
+                                            : row.remarks.includes("Fail")
+                                              ? "text-red-600"
+                                              : "";
+                                      return (
+                                        <td
+                                          className={`px-2 py-1.5 border-r border-border/30 whitespace-nowrap font-medium ${remarkCls}`}
+                                        >
+                                          {displayRemark}
+                                        </td>
+                                      );
+                                    })()}
+                                    <td className="px-2 py-1.5 text-center">
+                                      {row.graduatingYear}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        {/* Level footer */}
+                        <div className="text-xs text-muted-foreground mt-1 px-1 flex justify-between">
+                          <span>
+                            Level {lvl} — Total: {lvlRows.length}
+                          </span>
+                          {isEd ? (
+                            <span>
+                              Distinction:{" "}
+                              {
+                                lvlRows.filter(
+                                  (r) => getEdRemarks(r.cgpa) === "Distinction",
+                                ).length
+                              }{" "}
+                              | Credit:{" "}
+                              {
+                                lvlRows.filter(
+                                  (r) => getEdRemarks(r.cgpa) === "Credit",
+                                ).length
+                              }{" "}
+                              | Merit:{" "}
+                              {
+                                lvlRows.filter(
+                                  (r) => getEdRemarks(r.cgpa) === "Merit",
+                                ).length
+                              }{" "}
+                              | Pass:{" "}
+                              {
+                                lvlRows.filter(
+                                  (r) => getEdRemarks(r.cgpa) === "Pass",
+                                ).length
+                              }{" "}
+                              | Fail:{" "}
+                              {
+                                lvlRows.filter(
+                                  (r) => getEdRemarks(r.cgpa) === "Fail",
+                                ).length
+                              }
+                            </span>
+                          ) : (
+                            <span>
+                              First Class:{" "}
+                              {
+                                lvlRows.filter(
+                                  (r) => r.remarks === "First Class Hons",
+                                ).length
+                              }{" "}
+                              | 2nd Upper:{" "}
+                              {
+                                lvlRows.filter(
+                                  (r) => r.remarks === "Second Class Upper",
+                                ).length
+                              }{" "}
+                              | 2nd Lower:{" "}
+                              {
+                                lvlRows.filter(
+                                  (r) => r.remarks === "Second Class Lower",
+                                ).length
+                              }
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ))}
       </div>

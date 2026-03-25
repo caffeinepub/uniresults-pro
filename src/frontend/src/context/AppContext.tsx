@@ -2844,12 +2844,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [seeded] = useState(true);
 
   const DEFAULT_INSTITUTION: InstitutionSettings = {
-    name: "Federal University of Technology",
-    address: "P.M.B. 65, University Road",
+    name: "Federal University of Education Kontagora, Niger State",
+    address: "P.M.B. 39, Kontagora, Niger State",
     phone: "+234 801 234 5678",
-    email: "registry@fut.edu.ng",
-    website: "www.fut.edu.ng",
-    logoText: "FUT",
+    email: "registry@fuekos.edu.ng",
+    website: "www.fuekos.edu.ng",
+    logoText: "FUEK",
   };
 
   const [institutionSettings, setInstitutionSettings] =
