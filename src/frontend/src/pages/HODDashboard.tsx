@@ -59,6 +59,7 @@ import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import GPATrendChart from "./tabs/GPATrendChart";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 
 export default function HODDashboard() {
@@ -67,6 +68,7 @@ export default function HODDashboard() {
 
   const quickActions = [
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
+    { label: "Score Sheet", tab: "score_sheet", icon: ClipboardList },
     { label: "View Analytics", tab: "analytics", icon: BarChart2 },
     { label: "Dept Report", tab: "dept_report", icon: ClipboardList },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
@@ -99,6 +101,7 @@ export default function HODDashboard() {
     );
   else if (activeTab === "dept_results")
     content = <DeptResultsTab userRole="HOD" />;
+  else if (activeTab === "score_sheet") content = <ScoreEntrySheetTab />;
   else content = <OverviewTab />;
 
   return (

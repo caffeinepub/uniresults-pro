@@ -1,5 +1,14 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -9,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Download, Printer } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { ExtendedDepartment, Faculty } from "../../context/AppContext";
 import { useApp } from "../../context/AppContext";
 import { logReportActivity } from "../../utils/institutionHelpers";
@@ -19,62 +28,93 @@ interface Props {
   hodDepartmentId?: bigint;
 }
 
+type AppResults = ReturnType<typeof useApp>["results"];
+type AppCourses = ReturnType<typeof useApp>["courses"];
+
 function getCodePrefix(code: string): string {
   const m = code.match(/^([A-Za-z]+)/);
   return m ? m[1].toUpperCase() : code;
-}
-
-function calcCGPA(
-  studentId: bigint,
-  results: ReturnType<typeof useApp>["results"] extends never
-    ? never
-    : ReturnType<typeof useApp>["results"],
-  courses: ReturnType<typeof useApp>["courses"],
-): number | null {
-  const approved = results.filter(
-    (r) =>
-      r.studentId === studentId &&
-      (r.status === "approved" || r.status === "published"),
-  );
-  if (approved.length === 0) return null;
-  let totalGP = 0;
-  let totalCU = 0;
-  for (const r of approved) {
-    const course = courses.find((c) => c.id === r.courseId);
-    const cu = course ? Number(course.creditUnits) : 1;
-    totalGP += r.gradePoint * cu;
-    totalCU += cu;
-  }
-  if (totalCU === 0) return null;
-  return Math.round((totalGP / totalCU) * 100) / 100;
-}
-
-function getRemarks(cgpa: number | null): string {
-  if (cgpa === null) return "Fail / Incomplete";
-  if (cgpa >= 4.5) return "First Class Hons";
-  if (cgpa >= 3.5) return "Second Class Upper";
-  if (cgpa >= 2.4) return "Second Class Lower";
-  if (cgpa >= 1.5) return "Third Class";
-  if (cgpa >= 1.0) return "Pass";
-  return "Fail / Incomplete";
-}
-
-function scoreToGradeLabel(score: string): string {
-  if (score === "-") return "-";
-  const n = Number.parseFloat(score);
-  if (Number.isNaN(n)) return score;
-  if (n >= 70) return "Distinction";
-  if (n >= 60) return "Credit";
-  if (n >= 50) return "Merit";
-  if (n >= 40) return "Pass";
-  return "Fail";
 }
 
 function isEducationDept(deptName: string): boolean {
   return deptName.toLowerCase().includes("education");
 }
 
-function getEdRemarks(cgpa: number | null): string {
+function isFinalYear(level: number): boolean {
+  return level >= 400;
+}
+
+function calcSubjectAreaStats(
+  studentId: bigint,
+  prefix: string,
+  results: AppResults,
+  courses: AppCourses,
+): { tco: number; tcp: number; tgp: number; cgpa: number | null } {
+  const approved = results.filter(
+    (r) =>
+      r.studentId === studentId &&
+      (r.status === "approved" || r.status === "published"),
+  );
+  const matching = approved.filter((r) => {
+    const c = courses.find((co) => co.id === r.courseId);
+    return c && getCodePrefix(c.code) === prefix;
+  });
+  if (matching.length === 0) return { tco: 0, tcp: 0, tgp: 0, cgpa: null };
+  let tco = 0;
+  let tcp = 0;
+  let tgp = 0;
+  for (const r of matching) {
+    const c = courses.find((co) => co.id === r.courseId);
+    const cu = c ? Number(c.creditUnits) : 1;
+    tco += cu;
+    if (r.grade !== "F") tcp += cu;
+    tgp += r.gradePoint * cu;
+  }
+  const cgpa = tco > 0 ? Math.round((tgp / tco) * 100) / 100 : null;
+  return { tco, tcp, tgp, cgpa };
+}
+
+function calcGCGPA(
+  studentId: bigint,
+  prefixes: string[],
+  results: AppResults,
+  courses: AppCourses,
+): number | null {
+  const approved = results.filter(
+    (r) =>
+      r.studentId === studentId &&
+      (r.status === "approved" || r.status === "published"),
+  );
+  let totalTGP = 0;
+  let totalTCO = 0;
+  for (const prefix of prefixes) {
+    const matching = approved.filter((r) => {
+      const c = courses.find((co) => co.id === r.courseId);
+      return c && getCodePrefix(c.code) === prefix;
+    });
+    for (const r of matching) {
+      const c = courses.find((co) => co.id === r.courseId);
+      const cu = c ? Number(c.creditUnits) : 1;
+      totalTCO += cu;
+      totalTGP += r.gradePoint * cu;
+    }
+  }
+  if (totalTCO === 0) return null;
+  return Math.round((totalTGP / totalTCO) * 100) / 100;
+}
+
+function getProgressRemarks(gcgpa: number | null, level: number): string {
+  if (isFinalYear(level)) {
+    const yr = new Date().getFullYear();
+    return `March, ${yr}`;
+  }
+  if (gcgpa === null) return "Withdrawn";
+  if (gcgpa >= 1.5) return "Promoted";
+  if (gcgpa >= 1.0) return "Probation";
+  return "Withdrawn";
+}
+
+function cgpaToGradeLabel(cgpa: number | null): string {
   if (cgpa === null) return "Fail";
   if (cgpa >= 4.5) return "Distinction";
   if (cgpa >= 3.5) return "Credit";
@@ -96,6 +136,22 @@ function getGraduatingYear(
   return new Date().getFullYear();
 }
 
+function remarkColor(remark: string): string {
+  if (remark === "Promoted") return "text-green-700 font-semibold";
+  if (remark === "Probation") return "text-amber-700 font-semibold";
+  if (remark === "Withdrawn") return "text-red-600 font-semibold";
+  return "text-blue-700 font-semibold";
+}
+
+function gradeLabelColor(label: string): string {
+  if (label === "Distinction") return "text-green-700 font-semibold";
+  if (label === "Credit") return "text-blue-700 font-semibold";
+  if (label === "Merit") return "text-amber-700 font-semibold";
+  if (label === "Pass") return "text-gray-600 font-semibold";
+  if (label === "Fail") return "text-red-600 font-semibold";
+  return "";
+}
+
 export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
   const {
     students,
@@ -107,6 +163,10 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
   } = useApp();
 
   const [sessionFilter, setSessionFilter] = useState("all");
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [pendingExportFn, setPendingExportFn] = useState<(() => void) | null>(
+    null,
+  );
   const [semesterFilter, setSemesterFilter] = useState("all");
   const [deptFilter, setDeptFilter] = useState<string>(
     userRole === "HOD" && hodDepartmentId !== undefined
@@ -114,7 +174,6 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
       : "all",
   );
 
-  // Unique sessions from results
   const sessions = useMemo(() => {
     const s = new Set<string>();
     for (const r of results) {
@@ -123,7 +182,6 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
     return Array.from(s).sort().reverse();
   }, [results]);
 
-  // Filter results by session/semester
   const filteredResults = useMemo(() => {
     return results.filter((r) => {
       if (sessionFilter !== "all" && (r as any).session !== sessionFilter)
@@ -134,7 +192,6 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
     });
   }, [results, sessionFilter, semesterFilter]);
 
-  // Departments filtered by role
   const visibleDepts = useMemo(() => {
     if (userRole === "HOD" && hodDepartmentId !== undefined) {
       return (departments as ExtendedDepartment[]).filter(
@@ -149,7 +206,6 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
     return departments as ExtendedDepartment[];
   }, [departments, userRole, hodDepartmentId, deptFilter]);
 
-  // Group depts by faculty
   const grouped = useMemo(() => {
     const map = new Map<
       string,
@@ -165,7 +221,6 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
     return Array.from(map.values());
   }, [visibleDepts, faculties]);
 
-  // Build report data per dept
   const reportData = useMemo(() => {
     return grouped.map(({ faculty, depts }) => ({
       faculty,
@@ -174,49 +229,48 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
         const prefixes = Array.from(
           new Set(deptCourses.map((c) => getCodePrefix(c.code))),
         ).sort();
-
+        const isEd = isEducationDept(dept.name);
         const deptStudents = students.filter((s) => s.departmentId === dept.id);
 
         const rows = deptStudents.map((student, idx) => {
-          const stuResults = filteredResults.filter(
-            (r) => r.studentId === student.id,
-          );
-          const approvedResults = stuResults.filter(
-            (r) => r.status === "approved" || r.status === "published",
-          );
-
-          // Per prefix average
-          const prefixScores: Record<string, string> = {};
+          const subjectStats: Record<
+            string,
+            { tco: number; tcp: number; tgp: number; cgpa: number | null }
+          > = {};
           for (const prefix of prefixes) {
-            const matching = approvedResults.filter((r) => {
-              const c = courses.find((co) => co.id === r.courseId);
-              return c && getCodePrefix(c.code) === prefix;
-            });
-            if (matching.length === 0) {
-              prefixScores[prefix] = "-";
-            } else {
-              const avg =
-                matching.reduce((s, r) => s + r.totalScore, 0) /
-                matching.length;
-              prefixScores[prefix] = avg.toFixed(1);
-            }
+            subjectStats[prefix] = calcSubjectAreaStats(
+              student.id,
+              prefix,
+              filteredResults,
+              courses,
+            );
           }
-
-          const cgpa = calcCGPA(student.id, filteredResults, courses);
+          const gcgpa = calcGCGPA(
+            student.id,
+            prefixes,
+            filteredResults,
+            courses,
+          );
+          const level = Number(student.level);
+          const remarks = getProgressRemarks(gcgpa, level);
+          const approvedResults = filteredResults.filter(
+            (r) =>
+              r.studentId === student.id &&
+              (r.status === "approved" || r.status === "published"),
+          );
           const outstanding = approvedResults
             .filter((r) => r.grade === "F")
             .map((r) => courses.find((c) => c.id === r.courseId)?.code ?? "?")
             .join(", ");
-
           return {
             sno: idx + 1,
             matricNumber: student.matricNumber,
             name: student.name,
-            level: Number(student.level),
-            prefixScores,
-            cgpa,
+            level,
+            subjectStats,
+            gcgpa,
             outstanding: outstanding || "None",
-            remarks: getRemarks(cgpa),
+            remarks,
             graduatingYear: getGraduatingYear(
               student.matricNumber,
               student.level,
@@ -224,7 +278,7 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
           };
         });
 
-        return { dept, prefixes, rows, isEd: isEducationDept(dept.name) };
+        return { dept, prefixes, rows, isEd };
       }),
     }));
   }, [grouped, courses, students, filteredResults]);
@@ -240,9 +294,8 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
   const handlePrint = () => {
     window.print();
     const deptNames =
-      reportData
-        .flatMap((d) => d.depts.map((dept) => dept.dept.name))
-        .join(", ") || "All";
+      reportData.flatMap((d) => d.depts.map((dd) => dd.dept.name)).join(", ") ||
+      "All";
     logReportActivity(
       "Senate",
       deptNames.slice(0, 60),
@@ -253,44 +306,55 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
   };
 
   const handleExportCSV = () => {
-    const rows: string[] = [];
+    const csvRows: string[] = [];
     for (const { faculty, depts } of reportData) {
-      for (const { dept, prefixes, rows: deptRows, isEd } of depts) {
-        rows.push(
+      for (const { dept, prefixes, rows: deptRows } of depts) {
+        csvRows.push(
           `"FACULTY: ${faculty?.name ?? "Unknown"}",,"DEPARTMENT: ${dept.name}"`,
         );
-        const header = [
-          "S/No",
-          "Matric Number",
-          "Student Name",
-          ...prefixes,
-          "CGPA",
+        const headerCols: string[] = ["S/No", "Matric Number", "Student Name"];
+        for (const p of prefixes) {
+          headerCols.push(`${p}_TCO`, `${p}_TCP`, `${p}_TGP`, `${p}_CGPA`);
+        }
+        headerCols.push(
+          "GCGPA",
           "Outstanding Courses",
           "Remarks",
           "Graduating Year",
-        ];
-        rows.push(header.map((h) => `"${h}"`).join(","));
+        );
+        csvRows.push(headerCols.map((h) => `"${h}"`).join(","));
         for (const r of deptRows) {
-          const line = [
+          const line: Array<string | number> = [
             r.sno,
             `"${r.matricNumber}"`,
             `"${r.name}"`,
-            ...prefixes.map((p) =>
-              isEd
-                ? scoreToGradeLabel(r.prefixScores[p] ?? "-")
-                : (r.prefixScores[p] ?? "-"),
-            ),
-            r.cgpa !== null ? r.cgpa.toFixed(2) : "-",
-            `"${r.outstanding}"`,
-            `"${isEd ? getEdRemarks(r.cgpa) : r.remarks}"`,
-            r.graduatingYear,
           ];
-          rows.push(line.join(","));
+          for (const p of prefixes) {
+            const st = r.subjectStats[p] ?? {
+              tco: 0,
+              tcp: 0,
+              tgp: 0,
+              cgpa: null,
+            };
+            line.push(
+              st.tco,
+              st.tcp,
+              st.tgp.toFixed(2),
+              st.cgpa !== null ? st.cgpa.toFixed(2) : "-",
+            );
+          }
+          line.push(
+            r.gcgpa !== null ? r.gcgpa.toFixed(2) : "-",
+            `"${r.outstanding}"`,
+            `"${r.remarks}"`,
+            r.graduatingYear,
+          );
+          csvRows.push(line.join(","));
         }
-        rows.push("");
+        csvRows.push("");
       }
     }
-    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -298,9 +362,8 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
     a.click();
     URL.revokeObjectURL(url);
     const deptNames =
-      reportData
-        .flatMap((d) => d.depts.map((dept) => dept.dept.name))
-        .join(", ") || "All";
+      reportData.flatMap((d) => d.depts.map((dd) => dd.dept.name)).join(", ") ||
+      "All";
     logReportActivity(
       "Senate",
       deptNames.slice(0, 60),
@@ -312,7 +375,7 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Controls - hidden on print */}
+      {/* Controls */}
       <div className="no-print flex flex-wrap gap-3 items-end bg-muted/30 rounded-lg p-4 border border-border/50">
         <div className="space-y-1">
           <Label className="text-xs font-medium">Session</Label>
@@ -385,19 +448,25 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
           </Button>
           <Button
             data-ocid="senate.print.button"
+            onClick={() => {
+              setPendingExportFn(() => handlePrint);
+              setExportDialogOpen(true);
+            }}
             size="sm"
             variant="outline"
             className="h-8 text-xs"
-            onClick={handlePrint}
           >
             <Printer className="w-3.5 h-3.5 mr-1.5" />
             Print All
           </Button>
           <Button
             data-ocid="senate.export.button"
+            onClick={() => {
+              setPendingExportFn(() => handleExportCSV);
+              setExportDialogOpen(true);
+            }}
             size="sm"
             className="h-8 text-xs"
-            onClick={handleExportCSV}
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
             Export CSV
@@ -421,7 +490,6 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
             key={faculty?.id !== undefined ? String(faculty.id) : "nofac"}
             className="mb-10 senate-faculty-section"
           >
-            {/* Faculty header */}
             <div className="faculty-header border-t-4 border-primary pt-4 mb-4">
               <div className="text-center mb-1">
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">
@@ -442,7 +510,6 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
             </div>
 
             {depts.map(({ dept, prefixes, rows, isEd }) => {
-              // Group rows by level
               const levelGroups: Record<number, typeof rows> = {};
               for (const row of rows) {
                 const lvl = row.level ?? 100;
@@ -450,6 +517,7 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                 levelGroups[lvl].push(row);
               }
               const sortedLevels = Object.keys(levelGroups).map(Number).sort();
+
               return (
                 <div key={String(dept.id)} className="senate-dept-section mb-8">
                   {sortedLevels.length === 0 && (
@@ -459,14 +527,15 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                   )}
                   {sortedLevels.map((lvl) => {
                     const lvlRows = levelGroups[lvl];
+                    const finalYear = isFinalYear(lvl);
                     return (
                       <div
                         key={lvl}
-                        className="mb-6"
+                        className="mb-8"
                         style={{ pageBreakInside: "avoid" }}
                       >
-                        {/* Institution / Faculty / Dept / Level Heading */}
-                        <div className="level-heading text-center py-3 mb-0">
+                        {/* Level heading */}
+                        <div className="level-heading text-center py-3 mb-0 border-b-2 border-primary/30">
                           <p className="text-xs font-bold uppercase tracking-widest">
                             {institutionName}
                           </p>
@@ -478,7 +547,7 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                             Department of {dept.name}
                           </p>
                           <p className="text-sm font-bold uppercase mt-1">
-                            Level {lvl} Students —{" "}
+                            Level {lvl} Students &mdash;{" "}
                             {sessionFilter !== "all"
                               ? sessionFilter
                               : "All Sessions"}{" "}
@@ -488,44 +557,96 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                           <hr className="mt-2 border-foreground/30" />
                         </div>
 
-                        {/* Table */}
+                        {/* Two-row header table */}
                         <div className="overflow-x-auto border border-t-0 border-border rounded-b-md">
-                          <table className="w-full text-xs border-collapse">
+                          <table className="w-full text-xs border-collapse senate-table">
                             <thead>
+                              {/* Row 1: group column headers */}
                               <tr className="bg-primary text-primary-foreground">
-                                <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20 w-8">
+                                <th
+                                  rowSpan={2}
+                                  className="px-2 py-2 text-left font-semibold border border-primary-foreground/20 w-8 align-middle"
+                                >
                                   S/No
                                 </th>
-                                <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20 whitespace-nowrap">
+                                <th
+                                  rowSpan={2}
+                                  className="px-2 py-2 text-left font-semibold border border-primary-foreground/20 whitespace-nowrap align-middle"
+                                >
                                   Matric No
                                 </th>
-                                <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20">
+                                <th
+                                  rowSpan={2}
+                                  className="px-2 py-2 text-left font-semibold border border-primary-foreground/20 align-middle"
+                                >
                                   Student Name
                                 </th>
                                 {prefixes.map((p) => (
                                   <th
                                     key={p}
-                                    className="px-2 py-2 text-center font-semibold border-r border-primary-foreground/20 whitespace-nowrap"
+                                    colSpan={4}
+                                    className="px-2 py-1.5 text-center font-bold border border-primary-foreground/20"
                                   >
                                     {p}
                                   </th>
                                 ))}
-                                <th className="px-2 py-2 text-center font-semibold border-r border-primary-foreground/20">
-                                  CGPA
+                                <th
+                                  rowSpan={2}
+                                  className="px-2 py-2 text-center font-bold border border-primary-foreground/20 whitespace-nowrap align-middle"
+                                >
+                                  GCGPA
                                 </th>
-                                <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20">
+                                <th
+                                  rowSpan={2}
+                                  className="px-2 py-2 text-left font-semibold border border-primary-foreground/20 align-middle"
+                                >
                                   Outstanding Courses
                                 </th>
-                                <th className="px-2 py-2 text-left font-semibold border-r border-primary-foreground/20">
+                                <th
+                                  rowSpan={2}
+                                  className="px-2 py-2 text-left font-semibold border border-primary-foreground/20 align-middle"
+                                >
                                   Remarks
                                 </th>
-                                <th className="px-2 py-2 text-center font-semibold whitespace-nowrap">
+                                <th
+                                  rowSpan={2}
+                                  className="px-2 py-2 text-center font-semibold border border-primary-foreground/20 whitespace-nowrap align-middle"
+                                >
                                   Graduating Year
                                 </th>
+                              </tr>
+                              {/* Row 2: sub-column headers */}
+                              <tr className="bg-primary/80 text-primary-foreground">
+                                {prefixes.map((p) => (
+                                  <Fragment key={p}>
+                                    <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                      TCO
+                                    </th>
+                                    <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                      TCP
+                                    </th>
+                                    <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                      TGP
+                                    </th>
+                                    <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                      {isEd ? "Grade" : "CGPA"}
+                                    </th>
+                                  </Fragment>
+                                ))}
                               </tr>
                             </thead>
                             <tbody>
                               {lvlRows.map((row, ri) => {
+                                const gcgpaColor =
+                                  row.gcgpa === null
+                                    ? "text-red-600"
+                                    : row.gcgpa >= 3.5
+                                      ? "text-green-700"
+                                      : row.gcgpa >= 2.4
+                                        ? "text-blue-700"
+                                        : row.gcgpa < 1.0
+                                          ? "text-red-600"
+                                          : "";
                                 return (
                                   <tr
                                     key={row.matricNumber}
@@ -536,67 +657,63 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                                         : "bg-muted/20"
                                     } hover:bg-primary/5 transition-colors`}
                                   >
-                                    <td className="px-2 py-1.5 text-center text-muted-foreground border-r border-border/30">
+                                    <td className="px-2 py-1.5 text-center text-muted-foreground border border-border/30">
                                       {row.sno}
                                     </td>
-                                    <td className="px-2 py-1.5 font-mono border-r border-border/30 whitespace-nowrap">
+                                    <td className="px-2 py-1.5 font-mono border border-border/30 whitespace-nowrap">
                                       {row.matricNumber}
                                     </td>
-                                    <td className="px-2 py-1.5 font-medium border-r border-border/30">
+                                    <td className="px-2 py-1.5 font-medium border border-border/30">
                                       {row.name}
                                     </td>
                                     {prefixes.map((p) => {
-                                      const raw = row.prefixScores[p] ?? "-";
-                                      if (!isEd) {
-                                        return (
-                                          <td
-                                            key={p}
-                                            className="px-2 py-1.5 text-center border-r border-border/30"
-                                          >
-                                            {raw}
-                                          </td>
-                                        );
-                                      }
-                                      const label = scoreToGradeLabel(raw);
-                                      const cls =
-                                        label === "Distinction"
-                                          ? "bg-green-50 text-green-700 font-semibold"
-                                          : label === "Credit"
-                                            ? "bg-blue-50 text-blue-700 font-semibold"
-                                            : label === "Merit"
-                                              ? "bg-amber-50 text-amber-700 font-semibold"
-                                              : label === "Pass"
-                                                ? "bg-gray-50 text-gray-600 font-semibold"
-                                                : label === "Fail"
-                                                  ? "bg-red-50 text-red-600 font-semibold"
-                                                  : "";
+                                      const stats = row.subjectStats[p] ?? {
+                                        tco: 0,
+                                        tcp: 0,
+                                        tgp: 0,
+                                        cgpa: null,
+                                      };
+                                      const cgpaDisplay =
+                                        stats.cgpa !== null
+                                          ? stats.cgpa.toFixed(2)
+                                          : "-";
+                                      const gradeLabel = cgpaToGradeLabel(
+                                        stats.cgpa,
+                                      );
                                       return (
-                                        <td
-                                          key={p}
-                                          className={`px-2 py-1.5 text-center border-r border-border/30 ${cls}`}
-                                        >
-                                          {label}
-                                        </td>
+                                        <Fragment key={p}>
+                                          <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                            {stats.tco > 0 ? stats.tco : "-"}
+                                          </td>
+                                          <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                            {stats.tco > 0 ? stats.tcp : "-"}
+                                          </td>
+                                          <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                            {stats.tco > 0
+                                              ? stats.tgp.toFixed(1)
+                                              : "-"}
+                                          </td>
+                                          <td
+                                            className={`px-1.5 py-1.5 text-center border border-border/30 ${
+                                              isEd
+                                                ? gradeLabelColor(gradeLabel)
+                                                : ""
+                                            }`}
+                                          >
+                                            {isEd ? gradeLabel : cgpaDisplay}
+                                          </td>
+                                        </Fragment>
                                       );
                                     })}
                                     <td
-                                      className={`px-2 py-1.5 text-center font-bold border-r border-border/30 ${
-                                        row.cgpa !== null && row.cgpa >= 4.5
-                                          ? "text-green-600"
-                                          : row.cgpa !== null && row.cgpa >= 3.5
-                                            ? "text-blue-600"
-                                            : row.cgpa !== null &&
-                                                row.cgpa < 1.5
-                                              ? "text-red-500"
-                                              : ""
-                                      }`}
+                                      className={`px-2 py-1.5 text-center font-bold border border-border/30 ${gcgpaColor}`}
                                     >
-                                      {row.cgpa !== null
-                                        ? row.cgpa.toFixed(2)
+                                      {row.gcgpa !== null
+                                        ? row.gcgpa.toFixed(2)
                                         : "-"}
                                     </td>
                                     <td
-                                      className={`px-2 py-1.5 border-r border-border/30 ${
+                                      className={`px-2 py-1.5 border border-border/30 ${
                                         row.outstanding !== "None"
                                           ? "text-red-600 font-medium"
                                           : "text-muted-foreground"
@@ -604,37 +721,15 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                                     >
                                       {row.outstanding}
                                     </td>
-                                    {(() => {
-                                      const displayRemark = isEd
-                                        ? getEdRemarks(row.cgpa)
-                                        : row.remarks;
-                                      const remarkCls = isEd
-                                        ? displayRemark === "Distinction"
-                                          ? "text-green-700"
-                                          : displayRemark === "Credit"
-                                            ? "text-blue-700"
-                                            : displayRemark === "Merit"
-                                              ? "text-amber-700"
-                                              : displayRemark === "Pass"
-                                                ? "text-gray-600"
-                                                : "text-red-600"
-                                        : row.remarks === "First Class Hons"
-                                          ? "text-green-700"
-                                          : row.remarks === "Second Class Upper"
-                                            ? "text-blue-700"
-                                            : row.remarks.includes("Fail")
-                                              ? "text-red-600"
-                                              : "";
-                                      return (
-                                        <td
-                                          className={`px-2 py-1.5 border-r border-border/30 whitespace-nowrap font-medium ${remarkCls}`}
-                                        >
-                                          {displayRemark}
-                                        </td>
-                                      );
-                                    })()}
-                                    <td className="px-2 py-1.5 text-center">
-                                      {row.graduatingYear}
+                                    <td
+                                      className={`px-2 py-1.5 border border-border/30 whitespace-nowrap ${remarkColor(row.remarks)}`}
+                                    >
+                                      {row.remarks}
+                                    </td>
+                                    <td className="px-2 py-1.5 text-center border border-border/30">
+                                      {finalYear
+                                        ? `March, ${row.graduatingYear}`
+                                        : row.graduatingYear}
                                     </td>
                                   </tr>
                                 );
@@ -642,64 +737,42 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                             </tbody>
                           </table>
                         </div>
-                        {/* Level footer */}
-                        <div className="text-xs text-muted-foreground mt-1 px-1 flex justify-between">
+
+                        {/* Level footer stats */}
+                        <div className="text-xs text-muted-foreground mt-1 flex justify-between bg-muted/20 rounded px-2 py-1">
                           <span>
-                            Level {lvl} — Total: {lvlRows.length}
+                            Level {lvl} &mdash; Total: {lvlRows.length}
                           </span>
-                          {isEd ? (
-                            <span>
-                              Distinction:{" "}
-                              {
-                                lvlRows.filter(
-                                  (r) => getEdRemarks(r.cgpa) === "Distinction",
-                                ).length
-                              }{" "}
-                              | Credit:{" "}
-                              {
-                                lvlRows.filter(
-                                  (r) => getEdRemarks(r.cgpa) === "Credit",
-                                ).length
-                              }{" "}
-                              | Merit:{" "}
-                              {
-                                lvlRows.filter(
-                                  (r) => getEdRemarks(r.cgpa) === "Merit",
-                                ).length
-                              }{" "}
-                              | Pass:{" "}
-                              {
-                                lvlRows.filter(
-                                  (r) => getEdRemarks(r.cgpa) === "Pass",
-                                ).length
-                              }{" "}
-                              | Fail:{" "}
-                              {
-                                lvlRows.filter(
-                                  (r) => getEdRemarks(r.cgpa) === "Fail",
-                                ).length
-                              }
+                          {finalYear ? (
+                            <span className="text-blue-700 font-semibold">
+                              Graduating: {lvlRows.length}
                             </span>
                           ) : (
                             <span>
-                              First Class:{" "}
-                              {
-                                lvlRows.filter(
-                                  (r) => r.remarks === "First Class Hons",
-                                ).length
-                              }{" "}
-                              | 2nd Upper:{" "}
-                              {
-                                lvlRows.filter(
-                                  (r) => r.remarks === "Second Class Upper",
-                                ).length
-                              }{" "}
-                              | 2nd Lower:{" "}
-                              {
-                                lvlRows.filter(
-                                  (r) => r.remarks === "Second Class Lower",
-                                ).length
-                              }
+                              Promoted:{" "}
+                              <span className="text-green-700 font-semibold">
+                                {
+                                  lvlRows.filter(
+                                    (r) => r.remarks === "Promoted",
+                                  ).length
+                                }
+                              </span>
+                              {" | "}Probation:{" "}
+                              <span className="text-amber-700 font-semibold">
+                                {
+                                  lvlRows.filter(
+                                    (r) => r.remarks === "Probation",
+                                  ).length
+                                }
+                              </span>
+                              {" | "}Withdrawn:{" "}
+                              <span className="text-red-600 font-semibold">
+                                {
+                                  lvlRows.filter(
+                                    (r) => r.remarks === "Withdrawn",
+                                  ).length
+                                }
+                              </span>
                             </span>
                           )}
                         </div>
@@ -720,12 +793,40 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
           .senate-faculty-section:first-child { page-break-before: avoid; }
           .senate-dept-section { page-break-inside: avoid; }
           .dept-header { page-break-after: avoid; }
-          body { font-size: 11px; }
-          table { border-collapse: collapse; }
-          th, td { border: 1px solid #999 !important; }
-          thead { background: #1a3a5c !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body { font-size: 10px; }
+          .senate-table { border-collapse: collapse; width: 100%; }
+          .senate-table th, .senate-table td { border: 1px solid #999 !important; padding: 2px 4px; }
+          .senate-table thead tr:first-child th { background: #1a3a5c !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .senate-table thead tr:last-child th { background: #2c5282 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       `}</style>
+
+      {/* Export Authorization Dialog */}
+      <AlertDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <AlertDialogContent data-ocid="senate.export_dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Export Authorization</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to export sensitive academic data. Please confirm
+              you are authorized to access this report.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-ocid="senate.export_cancel_button">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-ocid="senate.export_confirm_button"
+              onClick={() => {
+                if (pendingExportFn) pendingExportFn();
+                setPendingExportFn(null);
+              }}
+            >
+              Confirm Export
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

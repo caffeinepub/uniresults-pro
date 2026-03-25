@@ -52,12 +52,14 @@ import AttendanceTab from "./tabs/AttendanceTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 
 export default function LecturerDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
 
   const quickActions = [
     { label: "Enter Results", tab: "results", icon: ClipboardList },
+    { label: "Score Sheet", tab: "score_sheet", icon: ClipboardList },
     { label: "Mark Attendance", tab: "attendance", icon: ClipboardCheck },
     { label: "View Courses", tab: "overview", icon: BookOpen },
   ];
@@ -91,6 +93,8 @@ export default function LecturerDashboard() {
         <BiometricAttendanceTab />
       ) : activeTab === "exam_schedule" ? (
         <LecturerExamScheduleTab />
+      ) : activeTab === "score_sheet" ? (
+        <ScoreEntrySheetTab />
       ) : (
         <CoursesView />
       )}

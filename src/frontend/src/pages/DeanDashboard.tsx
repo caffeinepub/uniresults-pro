@@ -50,6 +50,7 @@ import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FacultyReportTab from "./tabs/FacultyReportTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 
 export default function DeanDashboard() {
@@ -57,6 +58,7 @@ export default function DeanDashboard() {
 
   const quickActions = [
     { label: "Faculty Report", tab: "faculty_report", icon: FileText },
+    { label: "Score Sheet", tab: "score_sheet", icon: FileText },
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
     { label: "Dept. Results", tab: "dept_results", icon: FileText },
@@ -75,6 +77,8 @@ export default function DeanDashboard() {
     view = <SenateReportTab userRole="Dean" />;
   else if (activeTab === "dept_results")
     view = <DeptResultsTab userRole="Dean" />;
+  else if (activeTab === "score_sheet")
+    view = <ScoreEntrySheetTab readonly={true} />;
   else view = <OverviewTab />;
 
   return (

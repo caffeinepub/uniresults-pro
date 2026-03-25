@@ -1,3 +1,13 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +29,8 @@ import { Download, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useApp } from "../../context/AppContext";
 
+const LEVELS = [100, 200, 300, 400, 500];
+
 export default function FacultyReportTab() {
   const {
     faculties,
@@ -27,7 +39,12 @@ export default function FacultyReportTab() {
     students,
     results,
     academicCalendars,
+    institutionSettings,
+    currentUser,
+    logAudit,
   } = useApp();
+
+  const institutionName = institutionSettings?.name ?? "University";
 
   const sessions = useMemo(() => {
     const set = new Set<string>();
@@ -39,21 +56,41 @@ export default function FacultyReportTab() {
   const [facultyId, setFacultyId] = useState(String(faculties[0]?.id ?? 1));
   const [session, setSession] = useState(sessions[0] ?? "2024/2025");
   const [semester, setSemester] = useState("First");
+  const [filterLevel, setFilterLevel] = useState<string>("all");
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [pendingExportFn, setPendingExportFn] = useState<(() => void) | null>(
+    null,
+  );
 
   const faculty = faculties.find((f) => String(f.id) === facultyId);
   const facultyDepts = departments.filter(
     (d) => String(d.facultyId) === facultyId,
   );
 
-  const deptStats = useMemo(() => {
-    return facultyDepts.map((dept) => {
+  const activeLevel = filterLevel === "all" ? null : Number(filterLevel);
+  const visibleLevels = LEVELS.filter(
+    (lvl) => activeLevel === null || lvl === activeLevel,
+  );
+
+  function getLevelStats(lvl: number) {
+    const lvlStudents = students.filter(
+      (s) =>
+        facultyDepts.some((d) => d.id === s.departmentId) &&
+        Number(s.level ?? 100) === lvl,
+    );
+    const lvlStudentIds = new Set(lvlStudents.map((s) => s.id));
+
+    const deptStats = facultyDepts.map((dept) => {
       const deptCourses = courses.filter(
         (c) => c.departmentId === dept.id && c.semester === semester,
       );
       const deptCourseIds = new Set(deptCourses.map((c) => c.id));
-      const deptStudents = students.filter((s) => s.departmentId === dept.id);
+      const deptLvlStudents = lvlStudents.filter(
+        (s) => s.departmentId === dept.id,
+      );
       const deptResults = results.filter(
         (r) =>
+          lvlStudentIds.has(r.studentId) &&
           deptCourseIds.has(r.courseId) &&
           (r.status === "published" || r.status === "approved"),
       );
@@ -74,67 +111,77 @@ export default function FacultyReportTab() {
       );
       return {
         dept,
-        studentCount: deptStudents.length,
+        studentCount: deptLvlStudents.length,
         resultCount: deptResults.length,
         passRate,
         avgScore,
         gradeDistrib,
       };
     });
-  }, [facultyDepts, courses, students, results, semester]);
 
-  // Top performers across the faculty
-  const facultyCourseIds = new Set(
-    courses
-      .filter(
-        (c) =>
-          facultyDepts.some((d) => d.id === c.departmentId) &&
-          c.semester === semester,
-      )
-      .map((c) => c.id),
-  );
-  const facultyResults = results.filter(
-    (r) =>
-      facultyCourseIds.has(r.courseId) &&
-      (r.status === "published" || r.status === "approved"),
-  );
-  const facultyStudents = students.filter((s) =>
-    facultyDepts.some((d) => d.id === s.departmentId),
-  );
+    const facultyCourseIds = new Set(
+      courses
+        .filter(
+          (c) =>
+            facultyDepts.some((d) => d.id === c.departmentId) &&
+            c.semester === semester,
+        )
+        .map((c) => c.id),
+    );
+    const facultyLvlResults = results.filter(
+      (r) =>
+        lvlStudentIds.has(r.studentId) &&
+        facultyCourseIds.has(r.courseId) &&
+        (r.status === "published" || r.status === "approved"),
+    );
 
-  const top5 = facultyStudents
-    .map((s) => {
-      const sr = facultyResults.filter((r) => r.studentId === s.id);
-      const avg =
-        sr.length > 0
-          ? sr.reduce((a, r) => a + r.totalScore, 0) / sr.length
-          : 0;
-      return { student: s, avg, count: sr.length };
-    })
-    .filter((s) => s.count > 0)
-    .sort((a, b) => b.avg - a.avg)
-    .slice(0, 5);
+    const top5 = lvlStudents
+      .map((s) => {
+        const sr = facultyLvlResults.filter((r) => r.studentId === s.id);
+        const avg =
+          sr.length > 0
+            ? sr.reduce((a, r) => a + r.totalScore, 0) / sr.length
+            : 0;
+        return { student: s, avg, count: sr.length };
+      })
+      .filter((s) => s.count > 0)
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 5);
 
-  function downloadCSV() {
+    return { lvlStudents, deptStats, top5, facultyLvlResults };
+  }
+
+  function buildCSVAll() {
     const lines: string[] = [
-      `Faculty Report: ${faculty?.name ?? ""}`,
+      institutionName,
+      faculty?.name ?? "",
       `Session: ${session}, Semester: ${semester}`,
       "",
-      "Department Comparison",
-      "Department,Students,Results,Avg Score,Pass Rate,A,B,C,D,E,F",
-      ...deptStats.map(
-        (d) =>
-          `${d.dept.name},${d.studentCount},${d.resultCount},${d.avgScore},${d.passRate}%,${d.gradeDistrib.join(",")}`,
-      ),
-      "",
-      "Top Performers (Faculty-wide)",
-      "Name,Matric,Avg Score",
-      ...top5.map(
-        (s) =>
-          `${s.student.name},${s.student.matricNumber},${s.avg.toFixed(1)}`,
-      ),
     ];
-    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    for (const lvl of LEVELS) {
+      const s = getLevelStats(lvl);
+      if (s.lvlStudents.length === 0) continue;
+      lines.push(`LEVEL ${lvl}`);
+      lines.push("Department,Students,Results,Avg Score,Pass Rate,A,B,C,D,E,F");
+      for (const d of s.deptStats) {
+        lines.push(
+          `${d.dept.name},${d.studentCount},${d.resultCount},${d.avgScore},${d.passRate}%,${d.gradeDistrib.join(",")}`,
+        );
+      }
+      lines.push("");
+      lines.push("Top 5 Performers");
+      lines.push("Name,Matric,Avg Score");
+      for (const st of s.top5)
+        lines.push(
+          `${st.student.name},${st.student.matricNumber},${st.avg.toFixed(1)}`,
+        );
+      lines.push("");
+    }
+    return lines.join("\n");
+  }
+
+  function doDownloadCSV() {
+    const blob = new Blob([buildCSVAll()], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -145,6 +192,27 @@ export default function FacultyReportTab() {
       );
     a.click();
     URL.revokeObjectURL(url);
+    logAudit(
+      currentUser?.name ?? "",
+      currentUser?.role ?? "",
+      "report_export",
+      `Faculty Report CSV exported: ${faculty?.name}, ${session} ${semester}`,
+    );
+  }
+
+  function doPrint() {
+    window.print();
+    logAudit(
+      currentUser?.name ?? "",
+      currentUser?.role ?? "",
+      "report_export",
+      `Faculty Report printed: ${faculty?.name}, ${session} ${semester}`,
+    );
+  }
+
+  function requestExport(fn: () => void) {
+    setPendingExportFn(() => fn);
+    setExportDialogOpen(true);
   }
 
   return (
@@ -160,7 +228,7 @@ export default function FacultyReportTab() {
           <Button
             variant="outline"
             size="sm"
-            onClick={downloadCSV}
+            onClick={() => requestExport(doDownloadCSV)}
             data-ocid="faculty_report.download_button"
           >
             <Download className="w-4 h-4 mr-1" /> Download CSV
@@ -168,7 +236,7 @@ export default function FacultyReportTab() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.print()}
+            onClick={() => requestExport(doPrint)}
             data-ocid="faculty_report.print_button"
           >
             <Printer className="w-4 h-4 mr-1" /> Print Report
@@ -220,138 +288,218 @@ export default function FacultyReportTab() {
             <SelectItem value="Second">Second Semester</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={filterLevel} onValueChange={setFilterLevel}>
+          <SelectTrigger
+            data-ocid="faculty_report.level.select"
+            className="w-36"
+          >
+            <SelectValue placeholder="All Levels" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Levels</SelectItem>
+            {LEVELS.map((l) => (
+              <SelectItem key={l} value={String(l)}>
+                Level {l}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Department comparison table */}
-      <div className="print-area">
-        <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
-          Department Comparison
-        </h2>
-        <div className="rounded-xl border border-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40">
-                <TableHead>Department</TableHead>
-                <TableHead>Students</TableHead>
-                <TableHead>Results</TableHead>
-                <TableHead>Avg Score</TableHead>
-                <TableHead>Pass Rate</TableHead>
-                <TableHead>A</TableHead>
-                <TableHead>B</TableHead>
-                <TableHead>C</TableHead>
-                <TableHead>D</TableHead>
-                <TableHead>E</TableHead>
-                <TableHead>F</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {deptStats.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={11}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    No departments in this faculty
-                  </TableCell>
-                </TableRow>
-              ) : (
-                deptStats.map(
-                  ({
-                    dept,
-                    studentCount,
-                    resultCount,
-                    passRate,
-                    avgScore,
-                    gradeDistrib,
-                  }) => (
-                    <TableRow key={String(dept.id)}>
-                      <TableCell className="font-medium">{dept.name}</TableCell>
-                      <TableCell className="text-sm">{studentCount}</TableCell>
-                      <TableCell className="text-sm">{resultCount}</TableCell>
-                      <TableCell className="text-sm font-medium">
-                        {avgScore}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            Number(passRate) >= 60
-                              ? "bg-success/15 text-success"
-                              : "bg-destructive/15 text-destructive"
-                          }
+      {/* Level-separated sections */}
+      {visibleLevels.map((lvl, idx) => {
+        const stats = getLevelStats(lvl);
+        if (stats.lvlStudents.length === 0) return null;
+        return (
+          <div
+            key={lvl}
+            className={`level-section space-y-4 ${idx > 0 ? "mt-10" : ""}`}
+          >
+            {/* Level heading */}
+            <div className="level-heading rounded-xl border-2 border-primary/30 bg-primary/5 p-4 text-center">
+              <p className="text-base font-bold text-foreground">
+                {institutionName}
+              </p>
+              <p className="text-sm font-semibold text-muted-foreground">
+                {faculty?.name ?? ""}
+              </p>
+              <p className="text-sm font-bold text-primary mt-1">
+                LEVEL {lvl} — {semester.toUpperCase()} SEMESTER {session}
+              </p>
+            </div>
+
+            {/* Department comparison table */}
+            <div className="print-area">
+              <h3 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">
+                Department Comparison — Level {lvl}
+              </h3>
+              <div className="rounded-xl border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead>Department</TableHead>
+                      <TableHead>Students</TableHead>
+                      <TableHead>Results</TableHead>
+                      <TableHead>Avg Score</TableHead>
+                      <TableHead>Pass Rate</TableHead>
+                      <TableHead>A</TableHead>
+                      <TableHead>B</TableHead>
+                      <TableHead>C</TableHead>
+                      <TableHead>D</TableHead>
+                      <TableHead>E</TableHead>
+                      <TableHead>F</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {stats.deptStats.filter((d) => d.studentCount > 0)
+                      .length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={11}
+                          className="text-center py-6 text-muted-foreground"
                         >
-                          {passRate}%
-                        </Badge>
-                      </TableCell>
-                      {["A", "B", "C", "D", "E", "F"].map((grade, gIdx) => (
-                        <TableCell key={grade} className="text-sm text-center">
-                          {gradeDistrib[gIdx]}
+                          No students at Level {lvl} in this faculty
                         </TableCell>
-                      ))}
-                    </TableRow>
-                  ),
-                )
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                      </TableRow>
+                    ) : (
+                      stats.deptStats
+                        .filter((d) => d.studentCount > 0)
+                        .map(
+                          ({
+                            dept,
+                            studentCount,
+                            resultCount,
+                            passRate,
+                            avgScore,
+                            gradeDistrib,
+                          }) => (
+                            <TableRow key={String(dept.id)}>
+                              <TableCell className="font-medium">
+                                {dept.name}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {studentCount}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {resultCount}
+                              </TableCell>
+                              <TableCell className="text-sm font-medium">
+                                {avgScore}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  className={
+                                    Number(passRate) >= 60
+                                      ? "bg-green-500/15 text-green-600"
+                                      : "bg-destructive/15 text-destructive"
+                                  }
+                                >
+                                  {passRate}%
+                                </Badge>
+                              </TableCell>
+                              {gradeDistrib.map((count, gIdx) => (
+                                <TableCell
+                                  key={["A", "B", "C", "D", "E", "F"][gIdx]}
+                                  className="text-sm text-center"
+                                >
+                                  {count}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ),
+                        )
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
 
-      {/* Top performers */}
-      <div className="print-area">
-        <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
-          Top Performers (Faculty-wide)
-        </h2>
-        <div className="rounded-xl border border-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40">
-                <TableHead>#</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Matric No.</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Avg Score</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {top5.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-center py-6 text-muted-foreground"
-                  >
-                    No results data available
-                  </TableCell>
-                </TableRow>
-              ) : (
-                top5.map((s, i) => {
-                  const dept = departments.find(
-                    (d) => d.id === s.student.departmentId,
-                  );
-                  return (
-                    <TableRow key={String(s.student.id)}>
-                      <TableCell className="font-bold text-primary">
-                        {i + 1}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {s.student.name}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {s.student.matricNumber}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {dept?.name ?? "-"}
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        {s.avg.toFixed(1)}
-                      </TableCell>
+            {/* Top performers */}
+            <div className="print-area">
+              <h3 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">
+                Top Performers — Level {lvl} (Faculty-wide)
+              </h3>
+              <div className="rounded-xl border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead>#</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Matric No.</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Avg Score</TableHead>
                     </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                  </TableHeader>
+                  <TableBody>
+                    {stats.top5.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={5}
+                          className="text-center py-6 text-muted-foreground"
+                        >
+                          No result data for this level
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      stats.top5.map((s, i) => {
+                        const dept = departments.find(
+                          (d) => d.id === s.student.departmentId,
+                        );
+                        return (
+                          <TableRow key={String(s.student.id)}>
+                            <TableCell className="font-bold text-primary">
+                              {i + 1}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {s.student.name}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {s.student.matricNumber}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {dept?.name ?? "-"}
+                            </TableCell>
+                            <TableCell className="font-semibold">
+                              {s.avg.toFixed(1)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Export Authorization Dialog */}
+      <AlertDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <AlertDialogContent data-ocid="faculty_report.export_dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Export Authorization</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to export sensitive academic data. Please confirm
+              you are authorized to access this report.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-ocid="faculty_report.export_cancel_button">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-ocid="faculty_report.export_confirm_button"
+              onClick={() => {
+                if (pendingExportFn) pendingExportFn();
+                setPendingExportFn(null);
+              }}
+            >
+              Confirm Export
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

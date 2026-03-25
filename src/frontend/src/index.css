@@ -142,3 +142,22 @@
     box-shadow: none !important;
   }
 }
+
+/* Level-separated report sections */
+.level-section + .level-section {
+  page-break-before: always;
+}
+
+@media print {
+  .level-heading {
+    text-align: center;
+    margin-bottom: 1rem;
+    border: 2px solid #1a3a5c !important;
+    background: #f0f5ff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .level-section + .level-section {
+    page-break-before: always;
+  }
+}

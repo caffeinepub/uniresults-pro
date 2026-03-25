@@ -282,6 +282,7 @@ interface AppState {
   institutionSettings: InstitutionSettings;
   syncStatus: SyncStatus;
   seeded: boolean;
+  moderatorNames: Record<string, string>;
 }
 
 interface AppContextValue extends AppState {
@@ -368,6 +369,7 @@ interface AppContextValue extends AppState {
   resetToDefaultData: () => void;
   updateInstitutionSettings: (settings: InstitutionSettings) => void;
   loadSenateSampleData: () => void;
+  setModeratorName: (courseId: bigint, name: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -2842,6 +2844,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     () => lsGet<CourseFeedback[]>("courseFeedback") ?? [],
   );
   const [seeded] = useState(true);
+  const [moderatorNames, setModeratorNamesState] = useState<
+    Record<string, string>
+  >(() => {
+    try {
+      const raw = localStorage.getItem("unirp_moderatorNames");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
 
   const DEFAULT_INSTITUTION: InstitutionSettings = {
     name: "Federal University of Education Kontagora, Niger State",
@@ -3645,6 +3657,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const setModeratorName = useCallback((courseId: bigint, name: string) => {
+    setModeratorNamesState((prev) => {
+      const next = { ...prev, [courseId.toString()]: name };
+      try {
+        localStorage.setItem("unirp_moderatorNames", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
   const loadSenateSampleData = useCallback(() => {
     setStudents((prev) => {
       const existingIds = new Set(prev.map((s) => s.id));
@@ -3738,6 +3760,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         syncStatus,
         updateInstitutionSettings,
         loadSenateSampleData,
+        moderatorNames,
+        setModeratorName,
       }}
     >
       {children}

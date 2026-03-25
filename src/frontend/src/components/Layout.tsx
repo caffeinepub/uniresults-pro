@@ -428,6 +428,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { isDark, toggleDark } = useTheme();
   const [activeTab, setActiveTab] = useState("overview");
   const [notifOpen, setNotifOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
   const notifRef = useRef<HTMLDivElement>(null);
   const role = currentUser?.role ?? "SuperAdmin";
   const navItems = NAV_BY_ROLE[role] ?? NAV_BY_ROLE.SuperAdmin;
@@ -450,6 +462,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <TabContext.Provider value={{ activeTab, setActiveTab }}>
       <div className="min-h-screen flex flex-col bg-background">
         {/* Top navbar */}
+        {/* Offline Banner */}
+        {!isOnline && (
+          <div
+            className="w-full bg-amber-500 text-white text-xs font-medium text-center py-1.5 px-4 z-50 no-print"
+            data-ocid="offline.banner"
+          >
+            ⚠️ You are offline. Changes will sync when connection is restored.
+          </div>
+        )}
+
         <header className="sticky top-0 z-40 bg-card border-b border-border h-14 flex items-center px-4 gap-3 shadow-xs no-print">
           <div className="flex items-center gap-2 min-w-[160px]">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">

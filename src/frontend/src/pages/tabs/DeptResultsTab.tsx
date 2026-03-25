@@ -1,3 +1,13 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -258,6 +268,10 @@ export default function DeptResultsTab({ userRole }: Props) {
   const { students, results, courses, departments, faculties } =
     useApp() as any;
   const [filterFaculty, setFilterFaculty] = useState("all");
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [pendingExportFn, setPendingExportFn] = useState<(() => void) | null>(
+    null,
+  );
   const [filterDept, setFilterDept] = useState("all");
   const [filterLevel, setFilterLevel] = useState("all");
   const [filterSession, setFilterSession] = useState("");
@@ -541,7 +555,10 @@ export default function DeptResultsTab({ userRole }: Props) {
           <Button
             variant="outline"
             size="sm"
-            onClick={exportAllCSV}
+            onClick={() => {
+              setPendingExportFn(() => exportAllCSV);
+              setExportDialogOpen(true);
+            }}
             data-ocid="dept_results.export_all.button"
           >
             <Download className="w-3.5 h-3.5 mr-1" /> Export All CSV
@@ -549,7 +566,10 @@ export default function DeptResultsTab({ userRole }: Props) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.print()}
+            onClick={() => {
+              setPendingExportFn(() => () => window.print());
+              setExportDialogOpen(true);
+            }}
             data-ocid="dept_results.print_all.button"
           >
             <Printer className="w-3.5 h-3.5 mr-1" /> Print All
@@ -712,7 +732,10 @@ export default function DeptResultsTab({ userRole }: Props) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => exportDeptCSV(section)}
+                      onClick={() => {
+                        setPendingExportFn(() => () => exportDeptCSV(section));
+                        setExportDialogOpen(true);
+                      }}
                       data-ocid="dept_results.dept_export.button"
                     >
                       <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
@@ -720,7 +743,12 @@ export default function DeptResultsTab({ userRole }: Props) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => printDept(section.deptId)}
+                      onClick={() => {
+                        setPendingExportFn(
+                          () => () => printDept(section.deptId),
+                        );
+                        setExportDialogOpen(true);
+                      }}
                       data-ocid="dept_results.dept_print.button"
                     >
                       <Printer className="w-3.5 h-3.5 mr-1" /> Print
@@ -935,6 +963,31 @@ export default function DeptResultsTab({ userRole }: Props) {
           ))}
         </div>
       )}
+      <AlertDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <AlertDialogContent data-ocid="dept_results.export_dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Export Authorization</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to export sensitive academic data. Please confirm
+              you are authorized to access this report.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-ocid="dept_results.export_cancel_button">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-ocid="dept_results.export_confirm_button"
+              onClick={() => {
+                if (pendingExportFn) pendingExportFn();
+                setPendingExportFn(null);
+              }}
+            >
+              Confirm Export
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

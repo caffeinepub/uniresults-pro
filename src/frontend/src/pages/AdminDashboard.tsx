@@ -93,6 +93,7 @@ import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import NoticeManagementTab from "./tabs/NoticeManagementTab";
 import QRScannerModal from "./tabs/QRScannerModal";
 import ReportMonitorTab from "./tabs/ReportMonitorTab";
+import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
 import StaffTab from "./tabs/StaffTab";
@@ -114,6 +115,7 @@ export default function AdminDashboard() {
     { label: "Add Course", tab: "courses", icon: BookOpen },
     { label: "Settings", tab: "settings", icon: Settings2 },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
+    { label: "Score Sheet", tab: "score_sheet", icon: ScrollText },
     { label: "Dept. Results", tab: "dept_results", icon: BarChart3 },
   ];
 
@@ -152,6 +154,7 @@ export default function AdminDashboard() {
   else if (activeTab === "biometric") view = <BiometricAttendanceTab />;
   else if (activeTab === "cam_security") view = <CameraSecurityTab />;
   else if (activeTab === "report_monitor") view = <ReportMonitorTab />;
+  else if (activeTab === "score_sheet") view = <ScoreEntrySheetTab />;
   else view = <OverviewTab />;
 
   return (
