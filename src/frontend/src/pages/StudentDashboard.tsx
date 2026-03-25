@@ -48,9 +48,14 @@ import {
 } from "../context/AppContext";
 import { CarryOverBanner } from "./tabs/CarryOverAutoTab";
 import CourseEvaluationTab from "./tabs/CourseEvaluationTab";
+import CourseRegSlipModal from "./tabs/CourseRegSlipModal";
+import { StudentTransferTab } from "./tabs/DepartmentTransferTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FeeStatusTab from "./tabs/FeeStatusTab";
+import GPATrendChart from "./tabs/GPATrendChart";
+import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import StudentDocumentsTab from "./tabs/StudentDocumentsTab";
+import StudentIDCardModal from "./tabs/StudentIDCardModal";
 import StudentProgressTab from "./tabs/StudentProgressTab";
 
 function classifyDegree(cgpa: number): { label: string; color: string } {
@@ -88,10 +93,12 @@ export default function StudentDashboard() {
   else if (activeTab === "documents") content = <StudentDocumentsTab />;
   else if (activeTab === "exam_schedule") content = <StudentExamScheduleTab />;
   else if (activeTab === "course_eval") content = <CourseEvaluationTab />;
+  else if (activeTab === "transfer") content = <StudentTransferTab />;
   else content = <OverviewTab />;
 
   return (
     <>
+      <NoticeBoardPanel userRole="Student" />
       <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
           <button
@@ -138,6 +145,23 @@ function getStudentData() {
 
 function OverviewTab() {
   const { me, myResults, cgpa } = getStudentData();
+  const [showIDCard, setShowIDCard] = useState(false);
+  // Get advisor
+  const advisorAssignments: { studentMatric: string; staffId: string }[] =
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem("advisorAssignments") || "[]");
+      } catch {
+        return [];
+      }
+    })();
+  const { staffMembers } = useApp();
+  const myAdvisorAssignment = me
+    ? advisorAssignments.find((a) => a.studentMatric === me.matricNumber)
+    : null;
+  const myAdvisor = myAdvisorAssignment
+    ? staffMembers.find((s) => s.staffId === myAdvisorAssignment.staffId)
+    : null;
   const classification = classifyDegree(cgpa);
   const gradeData = ["A", "B", "C", "D", "E", "F"].map((g) => ({
     grade: g,
@@ -148,22 +172,41 @@ function OverviewTab() {
   return (
     <div className="space-y-6">
       <CarryOverBanner />
-      <div>
-        <h1 className="text-2xl font-bold">Student Portal</h1>
-        <p className="text-sm text-muted-foreground">
-          {me?.name} &middot; {me?.matricNumber}
-        </p>
-        {myResults.length > 0 &&
-          (() => {
-            const standing = getAcademicStanding(cgpa);
-            return (
-              <span
-                className={`inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${standing.badgeClass}`}
-              >
-                {standing.label}
-              </span>
-            );
-          })()}
+      {me && showIDCard && (
+        <StudentIDCardModal
+          student={me}
+          open={showIDCard}
+          onClose={() => setShowIDCard(false)}
+        />
+      )}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold">Student Portal</h1>
+          <p className="text-sm text-muted-foreground">
+            {me?.name} &middot; {me?.matricNumber}
+          </p>
+          {myResults.length > 0 &&
+            (() => {
+              const standing = getAcademicStanding(cgpa);
+              return (
+                <span
+                  className={`inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${standing.badgeClass}`}
+                >
+                  {standing.label}
+                </span>
+              );
+            })()}
+        </div>
+        {me && (
+          <Button
+            size="sm"
+            variant="outline"
+            data-ocid="student.print_id_button"
+            onClick={() => setShowIDCard(true)}
+          >
+            <Printer className="w-4 h-4 mr-1" /> Print ID Card
+          </Button>
+        )}
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -206,6 +249,26 @@ function OverviewTab() {
           </p>
         </div>
       )}
+      {myAdvisor && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs font-semibold text-muted-foreground mb-2">
+            MY ACADEMIC ADVISOR
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-primary text-xs font-bold">
+                {myAdvisor.name.charAt(0)}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{myAdvisor.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {myAdvisor.designation}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       {myResults.length > 0 && (
         <div className="bg-card rounded-xl border border-border p-5 shadow-xs">
           <h2 className="text-sm font-semibold mb-4">My Grade Distribution</h2>
@@ -232,12 +295,14 @@ function OverviewTab() {
 }
 
 function CourseRegistrationTab() {
+  const [showRegSlip, setShowRegSlip] = useState(false);
   const {
     currentUser,
     students,
     courses,
     results,
     courseRegistrations,
+    academicCalendars: cals,
     addCourseRegistration,
     dropCourseRegistration,
   } = useApp();
@@ -274,8 +339,37 @@ function CourseRegistrationTab() {
 
   const deptCourses = courses.filter((c) => c.departmentId === me.departmentId);
 
+  // active semester for slip
+  const activeCalSlip = cals.find((c) => c.isActive);
+  const regSlipSession =
+    activeCalSlip?.session ??
+    `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+  const regSlipSemester = activeCalSlip
+    ? `${activeCalSlip.semester} Semester`
+    : "First Semester";
+
+  // All registered courses for slip
+  const allRegCourses = courses.filter((c) =>
+    semesters.some((sem) =>
+      courseRegistrations.some(
+        (r) =>
+          r.studentId === me.id && r.courseId === c.id && r.semester === sem,
+      ),
+    ),
+  );
+
   return (
     <div className="space-y-6">
+      {showRegSlip && (
+        <CourseRegSlipModal
+          student={me}
+          registeredCourses={allRegCourses}
+          session={regSlipSession}
+          semester={regSlipSemester}
+          open={showRegSlip}
+          onClose={() => setShowRegSlip(false)}
+        />
+      )}
       <div>
         <h1 className="text-xl font-bold">Course Registration</h1>
         <p className="text-sm text-muted-foreground">
@@ -324,10 +418,21 @@ function CourseRegistrationTab() {
             <div className="grid lg:grid-cols-2 gap-4">
               {/* Registered courses */}
               <div className="bg-card rounded-xl border border-border shadow-xs">
-                <div className="p-4 border-b border-border">
+                <div className="p-4 border-b border-border flex items-center justify-between gap-2">
                   <h3 className="text-sm font-semibold">
                     Registered Courses ({registeredCourses.length})
                   </h3>
+                  {registeredCourses.length > 0 && me && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      data-ocid="coursereg.print_slip_button"
+                      onClick={() => setShowRegSlip(true)}
+                    >
+                      <Printer className="w-3 h-3 mr-1" /> Print Slip
+                    </Button>
+                  )}
                 </div>
                 <Table>
                   <TableHeader>
@@ -1075,7 +1180,7 @@ function GPATab() {
 
 function TranscriptTab() {
   const { me, courses, cgpa } = getStudentData();
-  const { results, departments } = useApp();
+  const { results, departments, institutionSettings } = useApp();
 
   // Only published results
   const publishedResults = me
@@ -1214,17 +1319,17 @@ function TranscriptTab() {
               className="text-2xl font-black tracking-widest uppercase mb-1"
               style={{ letterSpacing: "0.2em" }}
             >
-              Federal University of Technology
+              {institutionSettings.name}
             </h1>
             <p className="text-sm text-gray-500 tracking-wide uppercase">
               Office of the Registrar — Academic Transcript
             </p>
             <div className="mt-3 flex justify-center gap-6 text-xs text-gray-400">
-              <span>P.M.B. 65, University Road</span>
+              <span>{institutionSettings.address}</span>
               <span>|</span>
-              <span>registry@fut.edu.ng</span>
+              <span>{institutionSettings.email}</span>
               <span>|</span>
-              <span>www.fut.edu.ng</span>
+              <span>{institutionSettings.website}</span>
             </div>
           </div>
 

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -42,6 +43,7 @@ import {
   Plus,
   RefreshCw,
   ScrollText,
+  Settings2,
   Trash2,
   Upload,
   Users,
@@ -73,22 +75,32 @@ import {
   getAcademicStanding,
   useApp,
 } from "../context/AppContext";
+import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
 import DeferralsTab from "./tabs/DefferralsTab";
+import { AdminTransferTab } from "./tabs/DepartmentTransferTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
+import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
+import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import NoticeManagementTab from "./tabs/NoticeManagementTab";
+import SenateReportTab from "./tabs/SenateReportTab";
+import SettingsTab from "./tabs/SettingsTab";
 import StaffTab from "./tabs/StaffTab";
 import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
 
 export default function AdminDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
+  const { currentUser: adminUser } = useApp();
 
   const quickActions = [
     { label: "Add Student", tab: "students", icon: Users },
     { label: "Publish Results", tab: "results", icon: CheckCircle },
     { label: "Fee Reports", tab: "fee_management", icon: BarChart3 },
     { label: "Add Course", tab: "courses", icon: BookOpen },
+    { label: "Settings", tab: "settings", icon: Settings2 },
+    { label: "Senate Report", tab: "senate_report", icon: ScrollText },
   ];
 
   let view: React.ReactNode;
@@ -112,10 +124,18 @@ export default function AdminDashboard() {
   else if (activeTab === "deferrals") view = <DeferralsTab />;
   else if (activeTab === "benchmarking") view = <BenchmarkingTab />;
   else if (activeTab === "exam_schedule") view = <ExamScheduleTab isAdmin />;
+  else if (activeTab === "settings") view = <SettingsTab />;
+  else if (activeTab === "grade_scale") view = <GradeScaleConfigTab />;
+  else if (activeTab === "advisors") view = <AdvisorAssignmentTab />;
+  else if (activeTab === "notices_mgmt") view = <NoticeManagementTab />;
+  else if (activeTab === "transfers") view = <AdminTransferTab />;
+  else if (activeTab === "senate_report")
+    view = <SenateReportTab userRole="Registrar" />;
   else view = <OverviewTab />;
 
   return (
     <>
+      <NoticeBoardPanel userRole={adminUser?.role ?? "SuperAdmin"} />
       <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
           <button
@@ -3348,8 +3368,10 @@ function AuditLogTab() {
 
 // ===================== FACULTIES TAB =====================
 function FacultiesTab() {
-  const { faculties, addFaculty, bulkAddFaculties } = useApp();
+  const { faculties, addFaculty, bulkAddFaculties, resetToDefaultData } =
+    useApp();
   const [open, setOpen] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
   const [name, setName] = useState("");
   const [bulkFacOpen, setBulkFacOpen] = useState(false);
   const [bulkFacRows, setBulkFacRows] = useState<
@@ -3417,7 +3439,15 @@ function FacultiesTab() {
             {faculties.length} faculties registered
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            data-ocid="faculties.generate_data_button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowResetDialog(true)}
+          >
+            ⚡ Generate Default Data
+          </Button>
           <Button
             data-ocid="faculties.bulk_upload_button"
             variant="outline"
@@ -3470,6 +3500,41 @@ function FacultiesTab() {
             </DialogContent>
           </Dialog>
         </div>
+        {/* Generate Default Data Dialog */}
+        <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+          <DialogContent data-ocid="faculties.reset_dialog">
+            <DialogHeader>
+              <DialogTitle>Generate Default University Data</DialogTitle>
+              <DialogDescription>
+                This will populate the system with a comprehensive Nigerian
+                university structure including 6 faculties, 24 departments, and
+                130+ courses. Existing students and results will NOT be
+                affected.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                data-ocid="faculties.reset_cancel_button"
+                variant="outline"
+                onClick={() => setShowResetDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                data-ocid="faculties.reset_confirm_button"
+                onClick={() => {
+                  resetToDefaultData();
+                  setShowResetDialog(false);
+                  toast.success(
+                    "Default university data generated successfully!",
+                  );
+                }}
+              >
+                Generate Data
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Dialog open={bulkFacOpen} onOpenChange={setBulkFacOpen}>
           <DialogContent data-ocid="faculties.bulk.dialog" className="max-w-xl">
             <DialogHeader>

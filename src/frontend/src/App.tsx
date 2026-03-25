@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Layout from "./components/Layout";
 import { AppProvider, useApp } from "./context/AppContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import AdminDashboard from "./pages/AdminDashboard";
 import DeanDashboard from "./pages/DeanDashboard";
 import HODDashboard from "./pages/HODDashboard";
@@ -29,10 +30,12 @@ function DashboardRouter() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppProvider>
-        <DashboardRouter />
-        <Toaster />
-      </AppProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <DashboardRouter />
+          <Toaster />
+        </AppProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

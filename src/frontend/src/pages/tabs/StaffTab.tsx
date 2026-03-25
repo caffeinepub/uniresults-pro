@@ -24,11 +24,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pencil, Plus, Trash2, Users } from "lucide-react";
+import { Pencil, Plus, Printer, Trash2, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { StaffMember } from "../../context/AppContext";
 import { useApp } from "../../context/AppContext";
+import StaffIDCardModal from "./StaffIDCardModal";
 
 const DESIGNATIONS: StaffMember["designation"][] = [
   "Graduate Assistant",
@@ -56,6 +57,7 @@ export default function StaffTab() {
   const [open, setOpen] = useState(false);
   const [editMember, setEditMember] = useState<StaffMember | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<StaffMember | null>(null);
+  const [idCardMember, setIdCardMember] = useState<StaffMember | null>(null);
 
   const emptyForm = {
     name: "",
@@ -259,6 +261,15 @@ export default function StaffTab() {
                     <TableCell>
                       <div className="flex gap-1">
                         <Button
+                          data-ocid={`staff.print_button.${i + 1}`}
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-muted-foreground"
+                          onClick={() => setIdCardMember(m)}
+                        >
+                          <Printer className="w-3 h-3" />
+                        </Button>
+                        <Button
                           data-ocid={`staff.edit_button.${i + 1}`}
                           size="sm"
                           variant="ghost"
@@ -452,6 +463,20 @@ export default function StaffTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {idCardMember && (
+        <StaffIDCardModal
+          staff={idCardMember}
+          departmentName={
+            departments.find((d) => d.id === idCardMember.departmentId)?.name
+          }
+          facultyName={
+            faculties.find((f) => f.id === idCardMember.facultyId)?.name
+          }
+          open={!!idCardMember}
+          onClose={() => setIdCardMember(null)}
+        />
+      )}
 
       {/* Confirm Delete */}
       <Dialog

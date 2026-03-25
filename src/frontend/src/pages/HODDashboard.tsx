@@ -25,6 +25,7 @@ import {
   Download,
   MessageSquare,
   RefreshCw,
+  ScrollText,
   Users,
   XCircle,
 } from "lucide-react";
@@ -50,17 +51,23 @@ import type { GraduationApplication } from "../context/AppContext";
 import type { ExtendedResult, GradeAppeal } from "../context/AppContext";
 import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
+import { HODTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptReportTab from "./tabs/DeptReportTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import GPATrendChart from "./tabs/GPATrendChart";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
+import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import SenateReportTab from "./tabs/SenateReportTab";
 
 export default function HODDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
+  const { currentUser: hodUser } = useApp();
 
   const quickActions = [
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
     { label: "View Analytics", tab: "analytics", icon: BarChart2 },
     { label: "Dept Report", tab: "dept_report", icon: ClipboardList },
+    { label: "Senate Report", tab: "senate_report", icon: ScrollText },
   ];
 
   let content: React.ReactNode;
@@ -78,10 +85,19 @@ export default function HODDashboard() {
   else if (activeTab === "course_feedback") content = <HodCourseFeedbackTab />;
   else if (activeTab === "lecturer_performance")
     content = <LecturerPerformanceTab />;
+  else if (activeTab === "hod_transfers") content = <HODTransferTab />;
+  else if (activeTab === "senate_report")
+    content = (
+      <SenateReportTab
+        userRole="HOD"
+        hodDepartmentId={(hodUser as any)?.departmentId}
+      />
+    );
   else content = <OverviewTab />;
 
   return (
     <>
+      <NoticeBoardPanel userRole={hodUser?.role ?? "HOD"} />
       <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
           <button

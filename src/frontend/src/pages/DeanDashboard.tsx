@@ -22,6 +22,7 @@ import {
   CheckCircle,
   ClipboardList,
   FileText,
+  ScrollText,
   Users,
   XCircle,
 } from "lucide-react";
@@ -46,6 +47,8 @@ import type { GraduationApplication } from "../context/AppContext";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FacultyReportTab from "./tabs/FacultyReportTab";
+import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import SenateReportTab from "./tabs/SenateReportTab";
 
 export default function DeanDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -53,6 +56,7 @@ export default function DeanDashboard() {
   const quickActions = [
     { label: "Faculty Report", tab: "faculty_report", icon: FileText },
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
+    { label: "Senate Report", tab: "senate_report", icon: ScrollText },
   ];
 
   let view: React.ReactNode;
@@ -63,10 +67,13 @@ export default function DeanDashboard() {
   else if (activeTab === "faculty_report") view = <FacultyReportTab />;
   else if (activeTab === "exam_schedule") view = <DeanExamScheduleTab />;
   else if (activeTab === "course_feedback") view = <DeanCourseFeedbackTab />;
+  else if (activeTab === "senate_report")
+    view = <SenateReportTab userRole="Dean" />;
   else view = <OverviewTab />;
 
   return (
     <>
+      <NoticeBoardPanel userRole="Dean" />
       <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
           <button

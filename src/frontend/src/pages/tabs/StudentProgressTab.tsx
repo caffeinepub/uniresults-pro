@@ -10,6 +10,7 @@ import {
 import { TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import { useApp } from "../../context/AppContext";
+import GPATrendChart from "./GPATrendChart";
 
 const GRADUATION_CREDITS = 120;
 
@@ -236,6 +237,8 @@ export default function StudentProgressTab() {
           </p>
         </div>
       )}
+
+      <GPATrendChart title="My GPA Trend by Semester" />
     </div>
   );
 }

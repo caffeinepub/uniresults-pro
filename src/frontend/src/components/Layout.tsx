@@ -12,16 +12,20 @@ import {
   GraduationCap,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   MessageSquare,
+  Moon,
   RefreshCw,
   ScrollText,
   Search,
   Settings,
+  Sun,
   Users,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import React, { useEffect, useRef, useState } from "react";
 import { getActiveCalendar, useApp } from "../context/AppContext";
+import { useTheme } from "../context/ThemeContext";
 
 interface NavItem {
   id: string;
@@ -48,6 +52,11 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "audit", label: "Audit Log", icon: ScrollText },
     { id: "roles", label: "User Roles", icon: Settings },
     { id: "benchmarking", label: "Benchmarking", icon: BarChart3 },
+    { id: "settings", label: "Settings", icon: Settings },
+    { id: "grade_scale", label: "Grade Scale", icon: Settings },
+    { id: "advisors", label: "Advisors", icon: Users },
+    { id: "notices_mgmt", label: "Notice Board", icon: Megaphone },
+    { id: "transfers", label: "Transfers", icon: ChevronRight },
   ],
   Registrar: [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -67,6 +76,11 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "calendar", label: "Academic Calendar", icon: CalendarDays },
     { id: "deferrals", label: "Deferrals", icon: Users },
     { id: "benchmarking", label: "Benchmarking", icon: BarChart3 },
+    { id: "settings", label: "Settings", icon: Settings },
+    { id: "grade_scale", label: "Grade Scale", icon: Settings },
+    { id: "advisors", label: "Advisors", icon: Users },
+    { id: "notices_mgmt", label: "Notice Board", icon: Megaphone },
+    { id: "transfers", label: "Transfers", icon: ChevronRight },
   ],
   HOD: [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -79,6 +93,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "appeals", label: "Grade Appeals", icon: MessageSquare },
     { id: "graduation", label: "Graduation", icon: GraduationCap },
     { id: "course_assignments", label: "Course Assignments", icon: BookOpen },
+    { id: "hod_transfers", label: "Transfers", icon: ChevronRight },
   ],
   Lecturer: [
     { id: "overview", label: "My Courses", icon: BookOpen },
@@ -102,6 +117,9 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "deferral", label: "Deferral", icon: CalendarDays },
     { id: "progress", label: "My Progress", icon: BarChart3 },
     { id: "documents", label: "Documents", icon: FileText },
+    { id: "transfer", label: "Transfer", icon: ChevronRight },
+    { id: "exam_schedule", label: "Exam Schedule", icon: CalendarDays },
+    { id: "course_eval", label: "Course Eval", icon: FileCheck },
   ],
   Dean: [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -384,7 +402,9 @@ function NotificationPanel({
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { currentUser, logout, academicCalendars, notifications } = useApp();
+  const { currentUser, logout, academicCalendars, notifications, syncStatus } =
+    useApp();
+  const { isDark, toggleDark } = useTheme();
   const [activeTab, setActiveTab] = useState("overview");
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -477,6 +497,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               )}
             </div>
 
+            <div className="hidden sm:flex items-center gap-1.5 text-xs">
+              <span
+                className={`w-2 h-2 rounded-full ${syncStatus.isOnline ? "bg-green-500" : "bg-amber-500"}`}
+              />
+              <span className="text-muted-foreground">
+                {syncStatus.isOnline ? "Online" : "Offline"}
+              </span>
+              {syncStatus.lastSaved && (
+                <span className="text-muted-foreground/60">
+                  · Saved{" "}
+                  {Math.round(
+                    (Date.now() - new Date(syncStatus.lastSaved).getTime()) /
+                      60000,
+                  ) || "<1"}
+                  m ago
+                </span>
+              )}
+            </div>
             <div className="text-right hidden sm:block">
               <p className="text-xs font-medium text-foreground">
                 {currentUser?.name}
@@ -485,6 +523,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {currentUser?.role}
               </p>
             </div>
+            <button
+              type="button"
+              data-ocid="nav.dark_mode.toggle"
+              onClick={toggleDark}
+              className="no-print w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              {isDark ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </button>
             <button
               type="button"
               data-ocid="nav.logout.button"

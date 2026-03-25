@@ -50,6 +50,7 @@ import type {
 } from "../context/AppContext";
 import AttendanceTab from "./tabs/AttendanceTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 
 export default function LecturerDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -62,6 +63,7 @@ export default function LecturerDashboard() {
 
   return (
     <>
+      <NoticeBoardPanel userRole="Lecturer" />
       <div className="flex flex-wrap gap-2 px-0 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
           <button
