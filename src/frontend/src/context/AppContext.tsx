@@ -30,6 +30,7 @@ export type ExtendedStudent = Student & {
   dob?: string;
   email?: string;
   phone?: string;
+  previousStanding?: string;
 };
 
 export type ExtendedResult = AcademicResult & {
@@ -2142,6 +2143,7 @@ const SENATE_SAMPLE_STUDENTS: ExtendedStudent[] = [
     dob: "2005-04-14",
     email: "gbenga.olawale@university.edu",
     phone: "08011000203",
+    previousStanding: "Probation",
   },
   {
     id: BigInt(204),

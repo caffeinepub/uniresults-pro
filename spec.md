@@ -1,45 +1,62 @@
 # UniResults Pro
 
 ## Current State
-SenateReportTab.tsx renders a two-row grouped header table per department per level. All subject-area columns (EDU, CSC, PHY, etc.) use the same 4 sub-columns: TCO, TCP, TGP, and either Grade (education depts) or CGPA. TP is treated like any other prefix and gets the same 4 sub-columns.
+Version 27 is live. The Senate Report tab (accessible to Registrar, HOD, Dean) already has:
+- Faculty Presentation Format with EDU (TCO/TCP/TGP/CGPA/Grade), TP, GSE, Dept subject columns, GCGPA, Outstanding Courses, Remarks
+- Level-separated sections with full institutional heading
+- Load Demo Data button
+- BSc and BSc Ed side-by-side programs
+- Education departments use grade labels (Distinction/Credit/Merit/Pass/Fail)
+- Promoted/Probation/Withdrawn status based on CGPA
+- Graduation month for Level 400
 
 ## Requested Changes (Diff)
 
 ### Add
-- A new "Faculty Presentation Report" display format (replace/update the existing Senate Report table rendering) with the following exact column structure:
-  - **S/No** (rowspan)
-  - **Matric Number** (rowspan)
-  - **Name** (rowspan)
-  - **EDU** group column → 5 sub-cols: TCO=, TCP=, TGP=, CGPA=, Grade= (Grade shows Distinction/Credit/Merit/Pass/Fail based on CGPA)
-  - **TP** single column (no sub-rows) → displays one grade label: Distinction / Credit / Merit / Pass / Fail (derived from TP course result)
-  - **Department subject column** (auto-detected: CSC, PHY, CHM, etc. — the non-EDU, non-TP prefix for this dept) → 5 sub-cols: TCO=, TCP=, TGP=, CGPA=, Grade=
-  - **GCGPA=** (rowspan)
-  - **Outstanding Courses** (rowspan)
-  - **Remarks** (rowspan) — Promoted / Probation / Withdrawn for years 1-3; "March, YYYY" for final year
-  - **Graduating Year** (rowspan)
-- For non-education departments: all subject-area prefixes use 5 sub-cols (TCO, TCP, TGP, CGPA, Grade), no TP special column
-- "Load Demo Data" button populates sample students with EDU, TP, and department-specific course results so the new format is visible
+- New "Cumulative Results" report format (second Senate format) as a new section/tab or sub-tab within the Senate Report
+- Document heading block per level per academic session:
+  1. Federal University of Education Kontagora (from institution settings)
+  2. Faculty of [auto-detected from student data]
+  3. Department of [auto-detected from student data]
+  4. [Session Year] Academic Session (e.g. "2024/2025 Academic Session")
+  5. "Cumulative Examination Results -- Level [100/200/300/400] -- Undergraduate Full Time"
+- Each level+session combination generates a separate document section
+- Column structure:
+  - S/No
+  - Matric Number
+  - Student Name
+  - EDU: sub-columns TCO, TCP, TGP, CGPA, Grade
+  - TP: Nil for levels 100-300; single grade label (Distinction/Credit/Merit/Pass/Fail) for Level 400
+  - GSE: sub-columns TCO, TCP, TGP, CGPA, Grade
+  - Dept subject (CSC/PHY/etc): sub-columns TCO, TCP, TGP, CGPA, Grade
+  - GCGPA
+  - Outstanding Courses
+  - Remarks:
+    - Level 100 → 200: "Promoted" or "Probation"
+    - Level 200 → 300: "Promoted", "Probation", or "Withdrawn" (two consecutive probations = Withdrawn)
+    - Level 400: "[Month, Year] Graduated" (e.g. "March, 2026") or "Failed"
+- Remarks logic: two consecutive probations (e.g. Probation at Level 100 AND Probation at Level 200) = Withdrawn when processing Level 300
+- Print-friendly output with all nav/header hidden
+- CSV export per level section
 
 ### Modify
-- `SenateReportTab.tsx`: update table rendering logic to:
-  - Detect TP prefix specially: render it as a single-cell column showing the grade label, not 5 sub-cols
-  - Render EDU prefix with 5 sub-cols (TCO, TCP, TGP, CGPA, Grade=)
-  - Render other prefixes (CSC, PHY, etc.) with 5 sub-cols (TCO, TCP, TGP, CGPA, Grade=)
-  - The two-row header must reflect: row1 = group labels (EDU span5, TP span1, CSC/PHY span5, GCGPA, Outstanding, Remarks, Grad Year); row2 = sub-col labels under each group
-  - Grade= column shows label (Distinction/Credit/Merit/Pass/Fail) derived from subject-area CGPA
-  - TP grade label derived from TP course results specifically (highest/only TP course grade label)
-- Update CSV export to include the new columns/format
-- AppContext `loadSenateSampleData`: ensure sample students have EDU, TP, and CSC/PHY course results populated
+- Senate Report tab to include this second "Cumulative Results" format as a switchable view
+- Demo data to include previousStanding field to simulate two-consecutive-probation cases
+- Offline sync: changes saved to localStorage
 
 ### Remove
-- Nothing removed; this replaces/updates the existing table column structure in SenateReportTab
+- Nothing removed; previous Senate Report format preserved
 
 ## Implementation Plan
-1. In `SenateReportTab.tsx`, update `calcSubjectAreaStats` or add a separate `calcTPGradeLabel` function that returns a single grade label for TP courses
-2. Update the two-row `<thead>` to handle:
-   - EDU group: colSpan=5, sub-cols: TCO | TCP | TGP | CGPA | Grade
-   - TP group: colSpan=1 (no sub-row needed, or rowSpan=2 with label "Grade")
-   - Other prefix groups: colSpan=5, sub-cols: TCO | TCP | TGP | CGPA | Grade
-3. Update `<tbody>` rows to render accordingly
-4. Update CSV export columns
-5. Ensure `loadSenateSampleData` in AppContext includes TP course results for sample students
+1. Add a format toggle in Senate Report tab: "Faculty Presentation" (existing) vs "Cumulative Results" (new)
+2. New CumulativeResultsReport component:
+   - Groups students by session + level + faculty + department
+   - Generates separate document section for each group
+   - Heading block: Institution name (from settings), Faculty, Department, Session, Level, "Undergraduate Full Time"
+   - Table with grouped sub-column headers (EDU/TP/GSE/Dept)
+   - TP logic: Nil badge for L100-300, grade label for L400
+   - Remarks logic: Promoted/Probation for L100-L200; Promoted/Probation/Withdrawn (2 consecutive) for L200-L300; Graduated month+year / Failed for L400
+3. Update Load Demo Data to add previousStanding and session fields to sample students
+4. CSV export per level section
+5. Print optimization: @media print shows only report content
+6. Offline sync: data persists in localStorage
