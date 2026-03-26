@@ -44,8 +44,10 @@ export default function DeptReportTab() {
     logAudit,
   } = useApp();
   const deptId = currentUser?.departmentId ?? BigInt(1);
-  const dept = departments.find((d) => d.id === deptId);
-  const faculty = faculties.find((f) => f.id === dept?.facultyId);
+  const dept = departments.find((d) => String(d.id) === String(deptId));
+  const faculty = faculties.find(
+    (f) => String(f.id) === String(dept?.facultyId),
+  );
   const institutionName = institutionSettings?.name ?? "University";
 
   const sessions = useMemo(() => {

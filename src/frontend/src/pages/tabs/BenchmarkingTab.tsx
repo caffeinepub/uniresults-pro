@@ -46,7 +46,7 @@ export default function BenchmarkingTab() {
           (semester === "All" || c.semester === semester),
       );
       const deptResults = publishedResults.filter((r) =>
-        deptCourses.some((c) => c.id === r.courseId),
+        deptCourses.some((c) => String(c.id) === String(r.courseId)),
       );
       const avgScore =
         deptResults.length > 0

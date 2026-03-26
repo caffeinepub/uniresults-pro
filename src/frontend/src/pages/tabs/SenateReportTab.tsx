@@ -56,7 +56,7 @@ function calcSubjectAreaStats(
       (r.status === "approved" || r.status === "published"),
   );
   const matching = approved.filter((r) => {
-    const c = courses.find((co) => co.id === r.courseId);
+    const c = courses.find((co) => String(co.id) === String(r.courseId));
     return c && getCodePrefix(c.code) === prefix;
   });
   if (matching.length === 0) return { tco: 0, tcp: 0, tgp: 0, cgpa: null };
@@ -64,7 +64,7 @@ function calcSubjectAreaStats(
   let tcp = 0;
   let tgp = 0;
   for (const r of matching) {
-    const c = courses.find((co) => co.id === r.courseId);
+    const c = courses.find((co) => String(co.id) === String(r.courseId));
     const cu = c ? Number(c.creditUnits) : 1;
     tco += cu;
     if (r.grade !== "F") tcp += cu;
@@ -89,11 +89,11 @@ function calcGCGPA(
   let totalTCO = 0;
   for (const prefix of prefixes) {
     const matching = approved.filter((r) => {
-      const c = courses.find((co) => co.id === r.courseId);
+      const c = courses.find((co) => String(co.id) === String(r.courseId));
       return c && getCodePrefix(c.code) === prefix;
     });
     for (const r of matching) {
-      const c = courses.find((co) => co.id === r.courseId);
+      const c = courses.find((co) => String(co.id) === String(r.courseId));
       const cu = c ? Number(c.creditUnits) : 1;
       totalTCO += cu;
       totalTGP += r.gradePoint * cu;
@@ -142,14 +142,14 @@ function calcTPGradeLabel(
       (r.status !== "approved" && r.status !== "published")
     )
       return false;
-    const c = courses.find((co) => co.id === r.courseId);
+    const c = courses.find((co) => String(co.id) === String(r.courseId));
     return c && getCodePrefix(c.code) === "TP";
   });
   if (tpResults.length === 0) return "-";
   let tco = 0;
   let tgp = 0;
   for (const r of tpResults) {
-    const c = courses.find((co) => co.id === r.courseId);
+    const c = courses.find((co) => String(co.id) === String(r.courseId));
     const cu = c ? Number(c.creditUnits) : 1;
     tco += cu;
     tgp += r.gradePoint * cu;
@@ -255,7 +255,7 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
   const visibleDepts = useMemo(() => {
     if (userRole === "HOD" && hodDepartmentId !== undefined) {
       return (departments as ExtendedDepartment[]).filter(
-        (d) => d.id === hodDepartmentId,
+        (d) => String(d.id) === String(hodDepartmentId),
       );
     }
     if (deptFilter !== "all") {
@@ -273,7 +273,9 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
     >();
     for (const dept of visibleDepts) {
       const fac =
-        (faculties as Faculty[]).find((f) => f.id === dept.facultyId) ?? null;
+        (faculties as Faculty[]).find(
+          (f) => String(f.id) === String(dept.facultyId),
+        ) ?? null;
       const key = fac ? String(fac.id) : "none";
       if (!map.has(key)) map.set(key, { faculty: fac, depts: [] });
       map.get(key)!.depts.push(dept);
@@ -324,7 +326,11 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
           );
           const outstanding = approvedResults
             .filter((r) => r.grade === "F")
-            .map((r) => courses.find((c) => c.id === r.courseId)?.code ?? "?")
+            .map(
+              (r) =>
+                courses.find((c) => String(c.id) === String(r.courseId))
+                  ?.code ?? "?",
+            )
             .join(", ");
           const tpGradeLabel = isEd
             ? calcTPGradeLabel(student.id, filteredResults, courses)

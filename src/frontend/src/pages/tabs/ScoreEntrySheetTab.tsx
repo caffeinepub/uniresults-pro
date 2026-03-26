@@ -26,6 +26,7 @@ import {
   Loader2,
   Printer,
   Save,
+  Send,
   Upload,
   WifiOff,
 } from "lucide-react";
@@ -98,11 +99,13 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
     syncStatus,
     moderatorNames,
     setModeratorName,
+    submitCourseResults,
   } = useApp();
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [rows, setRows] = useState<RowData[]>([]);
   const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [moderatorInput, setModeratorInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -122,10 +125,12 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
   );
 
   const dept = selectedCourse
-    ? departments.find((d) => d.id === selectedCourse.departmentId)
+    ? departments.find(
+        (d) => String(d.id) === String(selectedCourse.departmentId),
+      )
     : null;
   const faculty = dept
-    ? faculties.find((f) => f.id === (dept as any).facultyId)
+    ? faculties.find((f) => String(f.id) === String((dept as any).facultyId))
     : null;
 
   // Staff lookups
@@ -168,7 +173,9 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
     let enrolledStudents =
       enrolled.length > 0
         ? enrolled
-            .map((cr) => students.find((s) => s.id === cr.studentId))
+            .map((cr) =>
+              students.find((s) => String(s.id) === String(cr.studentId)),
+            )
             .filter(Boolean)
         : students.filter(
             (s) => s.departmentId === selectedCourse.departmentId,
@@ -282,6 +289,45 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
     setModeratorName,
     syncStatus,
   ]);
+
+  // Derive course status from first result for selected course
+  const courseStatusInfo = (() => {
+    if (!selectedCourse)
+      return { status: "draft" as const, rejectionComment: "" };
+    const courseResults = results.filter(
+      (r) => r.courseId === selectedCourse.id,
+    );
+    if (courseResults.length === 0)
+      return { status: "draft" as const, rejectionComment: "" };
+    const statuses = courseResults.map((r) => r.status);
+    const rejComment =
+      courseResults.find((r) => (r as any).rejectionReason)?.rejectionReason ??
+      "";
+    const hasSaved = courseResults.length > 0;
+    if (statuses.some((s) => s === "published"))
+      return { status: "published" as const, rejectionComment: "" };
+    if (statuses.some((s) => s === "approved" || s === "dean_approved"))
+      return { status: "dean_approved" as const, rejectionComment: "" };
+    if (statuses.some((s) => s === "hod_approved"))
+      return { status: "hod_approved" as const, rejectionComment: "" };
+    if (statuses.some((s) => s === "submitted"))
+      return { status: "submitted" as const, rejectionComment: "" };
+    if (rejComment && hasSaved)
+      return { status: "rejected" as const, rejectionComment: rejComment };
+    if (hasSaved) return { status: "draft" as const, rejectionComment: "" };
+    return { status: "draft" as const, rejectionComment: "" };
+  })();
+
+  const handleSubmitForApproval = async () => {
+    if (!selectedCourse) return;
+    setSubmitting(true);
+    try {
+      submitCourseResults(selectedCourse.id);
+      toast.success("Results submitted for approval!");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // Download blank template
   const downloadTemplate = (filled = false) => {
@@ -508,6 +554,73 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
             </CardContent>
           </Card>
 
+          {/* Status Badge + Rejection Banner */}
+          <div className="flex flex-wrap items-center gap-3 no-print">
+            {(() => {
+              const { status } = courseStatusInfo;
+              const statusMap: Record<string, { label: string; cls: string }> =
+                {
+                  draft: {
+                    label: "Draft",
+                    cls: "bg-muted text-muted-foreground",
+                  },
+                  submitted: {
+                    label: "Submitted — Awaiting HOD Review",
+                    cls: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+                  },
+                  hod_approved: {
+                    label: "HOD Approved — Awaiting Dean",
+                    cls: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
+                  },
+                  dean_approved: {
+                    label: "Dean Approved — Awaiting Publication",
+                    cls: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+                  },
+                  approved: {
+                    label: "Approved — Awaiting Publication",
+                    cls: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+                  },
+                  published: {
+                    label: "Published",
+                    cls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+                  },
+                  rejected: {
+                    label: "Rejected",
+                    cls: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+                  },
+                };
+              const entry = statusMap[status] ?? statusMap.draft;
+              return (
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${entry.cls}`}
+                  data-ocid="score_sheet.success_state"
+                >
+                  {entry.label}
+                </span>
+              );
+            })()}
+          </div>
+          {courseStatusInfo.status === "rejected" &&
+            courseStatusInfo.rejectionComment && (
+              <div
+                className="flex items-start gap-2 px-4 py-3 rounded-md bg-yellow-50 border border-yellow-300 dark:bg-yellow-900/20 dark:border-yellow-700 no-print"
+                data-ocid="score_sheet.error_state"
+              >
+                <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">
+                    Results Rejected
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-0.5">
+                    {courseStatusInfo.rejectionComment}
+                  </p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1 italic">
+                    Please revise the scores and resubmit for approval.
+                  </p>
+                </div>
+              </div>
+            )}
+
           {/* Action Buttons */}
           {!readonly && (
             <div
@@ -526,6 +639,22 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
                 )}
                 Save Scores
               </Button>
+              {["draft", "rejected"].includes(courseStatusInfo.status) &&
+                rows.some((r) => r.ca !== "" || r.exam !== "") && (
+                  <Button
+                    onClick={handleSubmitForApproval}
+                    disabled={submitting}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    data-ocid="score_sheet.submit_button"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-1" />
+                    )}
+                    Submit for Approval
+                  </Button>
+                )}
               <Button
                 variant="outline"
                 onClick={() => downloadTemplate(false)}

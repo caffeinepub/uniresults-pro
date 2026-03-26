@@ -61,7 +61,7 @@ export default function CourseEvaluationTab() {
       student && r.studentId === student.id && r.semester === activeSemester,
   );
   const myCourses = myRegistrations
-    .map((r) => courses.find((c) => c.id === r.courseId))
+    .map((r) => courses.find((c) => String(c.id) === String(r.courseId)))
     .filter(Boolean);
 
   const [ratings, setRatings] = useState<Record<string, number>>({});

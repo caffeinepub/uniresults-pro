@@ -50,6 +50,7 @@ import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FacultyReportTab from "./tabs/FacultyReportTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 
@@ -59,6 +60,7 @@ export default function DeanDashboard() {
   const quickActions = [
     { label: "Faculty Report", tab: "faculty_report", icon: FileText },
     { label: "Score Sheet", tab: "score_sheet", icon: FileText },
+    { label: "Results Pipeline", tab: "results_processing", icon: FileText },
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
     { label: "Dept. Results", tab: "dept_results", icon: FileText },
@@ -79,6 +81,8 @@ export default function DeanDashboard() {
     view = <DeptResultsTab userRole="Dean" />;
   else if (activeTab === "score_sheet")
     view = <ScoreEntrySheetTab readonly={true} />;
+  else if (activeTab === "results_processing")
+    view = <ResultsProcessingTab userRole="Dean" />;
   else view = <OverviewTab />;
 
   return (
@@ -118,7 +122,7 @@ function OverviewTab() {
       (s) => s.departmentId === dept.id,
     ).length;
     const deptResults = results.filter((r) => {
-      const course = courses.find((c) => c.id === r.courseId);
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
       return course?.departmentId === dept.id;
     });
     const avgScore =
@@ -315,8 +319,12 @@ function ApprovalsTab() {
               </TableRow>
             )}
             {pending.map((r, i) => {
-              const student = students.find((s) => s.id === r.studentId);
-              const course = courses.find((c) => c.id === r.courseId);
+              const student = students.find(
+                (s) => String(s.id) === String(r.studentId),
+              );
+              const course = courses.find(
+                (c) => String(c.id) === String(r.courseId),
+              );
               return (
                 <TableRow
                   key={String(r.id)}
@@ -394,8 +402,12 @@ function ApprovalsTab() {
               </TableHeader>
               <TableBody>
                 {pendingAmendments.map((a, i) => {
-                  const student = students.find((s) => s.id === a.studentId);
-                  const course = courses.find((c) => c.id === a.courseId);
+                  const student = students.find(
+                    (s) => String(s.id) === String(a.studentId),
+                  );
+                  const course = courses.find(
+                    (c) => String(c.id) === String(a.courseId),
+                  );
                   return (
                     <TableRow
                       key={String(a.id)}
@@ -474,7 +486,9 @@ function DepartmentsTab() {
           );
           const deptCourses = courses.filter((c) => c.departmentId === dept.id);
           const deptResults = results.filter((r) => {
-            const course = courses.find((c) => c.id === r.courseId);
+            const course = courses.find(
+              (c) => String(c.id) === String(r.courseId),
+            );
             return course?.departmentId === dept.id;
           });
           const passed = deptResults.filter((r) => r.grade !== "F").length;
@@ -557,8 +571,12 @@ function AllResultsTab() {
               </TableRow>
             )}
             {results.map((r, i) => {
-              const student = students.find((s) => s.id === r.studentId);
-              const course = courses.find((c) => c.id === r.courseId);
+              const student = students.find(
+                (s) => String(s.id) === String(r.studentId),
+              );
+              const course = courses.find(
+                (c) => String(c.id) === String(r.courseId),
+              );
               return (
                 <TableRow
                   key={String(r.id)}

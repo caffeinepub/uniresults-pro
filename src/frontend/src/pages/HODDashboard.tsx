@@ -59,6 +59,7 @@ import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import GPATrendChart from "./tabs/GPATrendChart";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 
@@ -69,6 +70,7 @@ export default function HODDashboard() {
   const quickActions = [
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
     { label: "Score Sheet", tab: "score_sheet", icon: ClipboardList },
+    { label: "Results Pipeline", tab: "results_processing", icon: BarChart2 },
     { label: "View Analytics", tab: "analytics", icon: BarChart2 },
     { label: "Dept Report", tab: "dept_report", icon: ClipboardList },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
@@ -102,6 +104,8 @@ export default function HODDashboard() {
   else if (activeTab === "dept_results")
     content = <DeptResultsTab userRole="HOD" />;
   else if (activeTab === "score_sheet") content = <ScoreEntrySheetTab />;
+  else if (activeTab === "results_processing")
+    content = <ResultsProcessingTab userRole="HOD" />;
   else content = <OverviewTab />;
 
   return (
@@ -133,18 +137,20 @@ function OverviewTab() {
   const deptStudents = students.filter((s) => s.departmentId === deptId);
   const pending = results.filter(
     (r) =>
-      r.status === "submitted" && deptCourses.some((c) => c.id === r.courseId),
+      r.status === "submitted" &&
+      deptCourses.some((c) => String(c.id) === String(r.courseId)),
   );
-  const dept = departments.find((d) => d.id === deptId);
+  const dept = departments.find((d) => String(d.id) === String(deptId));
   const published = results.filter(
     (r) =>
-      r.status === "published" && deptCourses.some((c) => c.id === r.courseId),
+      r.status === "published" &&
+      deptCourses.some((c) => String(c.id) === String(r.courseId)),
   );
   const carryovers = results.filter(
     (r) =>
       r.grade === "F" &&
       (r.status === "published" || r.status === "approved") &&
-      deptCourses.some((c) => c.id === r.courseId),
+      deptCourses.some((c) => String(c.id) === String(r.courseId)),
   );
   const gradeData = ["A", "B", "C", "D", "E", "F"].map((g) => ({
     grade: g,
@@ -247,7 +253,9 @@ function OverviewTab() {
                     results.filter(
                       (r) =>
                         r.status === s &&
-                        deptCourses.some((c) => c.id === r.courseId),
+                        deptCourses.some(
+                          (c) => String(c.id) === String(r.courseId),
+                        ),
                     ).length
                   }
                 </span>
@@ -275,13 +283,14 @@ function ApprovalsTab() {
   const deptCourses = courses.filter((c) => c.departmentId === deptId);
   const pending = results.filter(
     (r) =>
-      r.status === "submitted" && deptCourses.some((c) => c.id === r.courseId),
+      r.status === "submitted" &&
+      deptCourses.some((c) => String(c.id) === String(r.courseId)),
   ) as ExtendedResult[];
 
   const pendingAmendments = amendmentRequests.filter(
     (a) =>
       a.status === "pending_hod" &&
-      deptCourses.some((c) => c.id === a.courseId),
+      deptCourses.some((c) => String(c.id) === String(a.courseId)),
   );
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -398,8 +407,12 @@ function ApprovalsTab() {
               </TableRow>
             )}
             {pending.map((r, i) => {
-              const student = students.find((s) => s.id === r.studentId);
-              const course = courses.find((c) => c.id === r.courseId);
+              const student = students.find(
+                (s) => String(s.id) === String(r.studentId),
+              );
+              const course = courses.find(
+                (c) => String(c.id) === String(r.courseId),
+              );
               const idStr = String(r.id);
               return (
                 <TableRow
@@ -486,8 +499,12 @@ function ApprovalsTab() {
               </TableHeader>
               <TableBody>
                 {pendingAmendments.map((a, i) => {
-                  const student = students.find((s) => s.id === a.studentId);
-                  const course = courses.find((c) => c.id === a.courseId);
+                  const student = students.find(
+                    (s) => String(s.id) === String(a.studentId),
+                  );
+                  const course = courses.find(
+                    (c) => String(c.id) === String(a.courseId),
+                  );
                   return (
                     <TableRow
                       key={String(a.id)}
@@ -612,7 +629,7 @@ function CarryoversTab() {
     (r) =>
       r.grade === "F" &&
       (r.status === "published" || r.status === "approved") &&
-      deptCourses.some((c) => c.id === r.courseId),
+      deptCourses.some((c) => String(c.id) === String(r.courseId)),
   ) as ExtendedResult[];
 
   return (
@@ -651,8 +668,12 @@ function CarryoversTab() {
               </TableRow>
             )}
             {carryovers.map((r, i) => {
-              const student = students.find((s) => s.id === r.studentId);
-              const course = courses.find((c) => c.id === r.courseId);
+              const student = students.find(
+                (s) => String(s.id) === String(r.studentId),
+              );
+              const course = courses.find(
+                (c) => String(c.id) === String(r.courseId),
+              );
               return (
                 <TableRow
                   key={String(r.id)}
@@ -731,7 +752,7 @@ function AnalyticsTab() {
   const deptCourses = courses.filter((c) => c.departmentId === deptId);
   const deptStudents = students.filter((s) => s.departmentId === deptId);
   const deptResults = results.filter((r) =>
-    deptCourses.some((c) => c.id === r.courseId),
+    deptCourses.some((c) => String(c.id) === String(r.courseId)),
   ) as ExtendedResult[];
 
   const [sortKey, setSortKey] = useState<
@@ -856,7 +877,9 @@ function AnalyticsTab() {
         return {
           student: s,
           failedCourses: failedResults.map((r) => {
-            const course = courses.find((c) => c.id === r.courseId);
+            const course = courses.find(
+              (c) => String(c.id) === String(r.courseId),
+            );
             return { code: course?.code ?? "?", total: r.totalScore };
           }),
         };
@@ -871,7 +894,7 @@ function AnalyticsTab() {
         const lvlStudents = deptStudents.filter((s) => Number(s.level) === lvl);
         if (lvlStudents.length === 0) return null;
         const lvlResults = deptResults.filter((r) =>
-          lvlStudents.some((s) => s.id === r.studentId),
+          lvlStudents.some((s) => String(s.id) === String(r.studentId)),
         );
         const lvlPass = lvlResults.filter((r) => r.grade !== "F").length;
         const lvlAvg =
@@ -1486,7 +1509,7 @@ function HODCoursesTab() {
   const { currentUser, courses, departments } = useApp();
   const deptId = currentUser?.departmentId ?? BigInt(1);
   const deptCourses = courses.filter((c) => c.departmentId === deptId);
-  const dept = departments.find((d) => d.id === deptId);
+  const dept = departments.find((d) => String(d.id) === String(deptId));
 
   return (
     <div className="space-y-4">
@@ -1529,7 +1552,7 @@ function HODResultsTab() {
   const deptId = currentUser?.departmentId ?? BigInt(1);
   const deptCourses = courses.filter((c) => c.departmentId === deptId);
   const deptResults = results.filter((r) =>
-    deptCourses.some((c) => c.id === r.courseId),
+    deptCourses.some((c) => String(c.id) === String(r.courseId)),
   );
 
   return (
@@ -1554,8 +1577,12 @@ function HODResultsTab() {
           </TableHeader>
           <TableBody>
             {deptResults.map((r, i) => {
-              const student = students.find((s) => s.id === r.studentId);
-              const course = courses.find((c) => c.id === r.courseId);
+              const student = students.find(
+                (s) => String(s.id) === String(r.studentId),
+              );
+              const course = courses.find(
+                (c) => String(c.id) === String(r.courseId),
+              );
               return (
                 <TableRow
                   key={String(r.id)}
@@ -1779,7 +1806,7 @@ function HODGraduationTab() {
     updateGraduationStatus,
   } = useApp();
   const deptId = currentUser?.departmentId ?? BigInt(1);
-  const dept = departments.find((d) => d.id === deptId);
+  const dept = departments.find((d) => String(d.id) === String(deptId));
   const [noteOpen, setNoteOpen] = useState(false);
   const [selected, setSelected] = useState<GraduationApplication | null>(null);
   const [note, setNote] = useState("");

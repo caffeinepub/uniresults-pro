@@ -36,6 +36,7 @@ import {
   CheckCircle,
   ClipboardList,
   Download,
+  Eye,
   FileText,
   Filter,
   Globe,
@@ -49,7 +50,15 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { QrCode, UserCheck } from "lucide-react";
+import {
+  Building,
+  DollarSign,
+  GraduationCap,
+  Mail,
+  QrCode,
+  Shield,
+  UserCheck,
+} from "lucide-react";
 import type React from "react";
 import { useContext, useMemo, useRef, useState } from "react";
 import {
@@ -78,7 +87,9 @@ import {
 } from "../context/AppContext";
 import { getPendingRegistrations, savePendingRegistrations } from "./LoginPage";
 import type { PendingRegistration } from "./LoginPage";
+import AdminInboxTab from "./tabs/AdminInboxTab";
 import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
+import AlumniManagementTab from "./tabs/AlumniManagementTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import CameraSecurityTab from "./tabs/CameraSecurityTab";
@@ -89,10 +100,14 @@ import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
+import HostelManagementTab from "./tabs/HostelManagementTab";
+import LibraryClearanceTab from "./tabs/LibraryClearanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import NoticeManagementTab from "./tabs/NoticeManagementTab";
+import PayrollTab from "./tabs/PayrollTab";
 import QRScannerModal from "./tabs/QRScannerModal";
 import ReportMonitorTab from "./tabs/ReportMonitorTab";
+import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
@@ -116,6 +131,7 @@ export default function AdminDashboard() {
     { label: "Settings", tab: "settings", icon: Settings2 },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
     { label: "Score Sheet", tab: "score_sheet", icon: ScrollText },
+    { label: "Results Pipeline", tab: "results_processing", icon: BarChart3 },
     { label: "Dept. Results", tab: "dept_results", icon: BarChart3 },
   ];
 
@@ -155,6 +171,13 @@ export default function AdminDashboard() {
   else if (activeTab === "cam_security") view = <CameraSecurityTab />;
   else if (activeTab === "report_monitor") view = <ReportMonitorTab />;
   else if (activeTab === "score_sheet") view = <ScoreEntrySheetTab />;
+  else if (activeTab === "results_processing")
+    view = <ResultsProcessingTab userRole="Registrar" />;
+  else if (activeTab === "alumni") view = <AlumniManagementTab />;
+  else if (activeTab === "payroll") view = <PayrollTab />;
+  else if (activeTab === "hostel") view = <HostelManagementTab />;
+  else if (activeTab === "library") view = <LibraryClearanceTab />;
+  else if (activeTab === "admin_inbox") view = <AdminInboxTab />;
   else view = <OverviewTab />;
 
   return (
@@ -199,6 +222,71 @@ export default function AdminDashboard() {
               {pendingCount}
             </span>
           )}
+        </button>
+        <button
+          type="button"
+          data-ocid="admin_quick.alumni.button"
+          onClick={() => setActiveTab("alumni")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
+            activeTab === "alumni"
+              ? "bg-primary/10 text-primary border-primary/30"
+              : ""
+          }`}
+        >
+          <GraduationCap className="w-3 h-3" />
+          Alumni
+        </button>
+        <button
+          type="button"
+          data-ocid="admin_quick.payroll.button"
+          onClick={() => setActiveTab("payroll")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
+            activeTab === "payroll"
+              ? "bg-primary/10 text-primary border-primary/30"
+              : ""
+          }`}
+        >
+          <DollarSign className="w-3 h-3" />
+          Payroll
+        </button>
+        <button
+          type="button"
+          data-ocid="admin_quick.hostel.button"
+          onClick={() => setActiveTab("hostel")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
+            activeTab === "hostel"
+              ? "bg-primary/10 text-primary border-primary/30"
+              : ""
+          }`}
+        >
+          <Building className="w-3 h-3" />
+          Hostel
+        </button>
+        <button
+          type="button"
+          data-ocid="admin_quick.library.button"
+          onClick={() => setActiveTab("library")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
+            activeTab === "library"
+              ? "bg-primary/10 text-primary border-primary/30"
+              : ""
+          }`}
+        >
+          <BookOpen className="w-3 h-3" />
+          Library
+        </button>
+        <button
+          type="button"
+          data-ocid="admin_quick.admin_inbox.button"
+          onClick={() => setActiveTab("admin_inbox")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
+            activeTab === "admin_inbox"
+              ? "bg-primary/10 text-primary border-primary/30"
+              : ""
+          }`}
+        >
+          <Mail className="w-3 h-3" />
+          Inbox
         </button>
       </div>
       {view}
@@ -289,8 +377,12 @@ function RecentResultsTable() {
       </TableHeader>
       <TableBody>
         {recent.map((r, i) => {
-          const student = students.find((s) => s.id === r.studentId);
-          const course = courses.find((c) => c.id === r.courseId);
+          const student = students.find(
+            (s) => String(s.id) === String(r.studentId),
+          );
+          const course = courses.find(
+            (c) => String(c.id) === String(r.courseId),
+          );
           return (
             <TableRow key={String(r.id)} data-ocid={`results.item.${i + 1}`}>
               <TableCell className="text-sm">{student?.name ?? "-"}</TableCell>
@@ -320,6 +412,7 @@ function DepartmentsTab() {
     useApp();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [selectedFacultyId, setSelectedFacultyId] = useState<string>("");
   const [bulkDeptOpen, setBulkDeptOpen] = useState(false);
   const [bulkDeptRows, setBulkDeptRows] = useState<
     {
@@ -383,8 +476,12 @@ function DepartmentsTab() {
 
   function handleAdd() {
     if (!name.trim()) return;
-    addDepartment({ id: BigInt(Date.now()), name: name.trim() });
+    const facultyId = selectedFacultyId
+      ? BigInt(selectedFacultyId)
+      : (faculties[0]?.id ?? BigInt(0));
+    addDepartment({ id: BigInt(Date.now()), name: name.trim(), facultyId });
     setName("");
+    setSelectedFacultyId("");
     setOpen(false);
     toast.success("Department added");
   }
@@ -431,6 +528,24 @@ function DepartmentsTab() {
                   placeholder="e.g. Computer Science"
                   onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                 />
+                <Label>Faculty</Label>
+                <Select
+                  value={selectedFacultyId}
+                  onValueChange={setSelectedFacultyId}
+                >
+                  <SelectTrigger data-ocid="dept.select">
+                    <SelectValue
+                      placeholder={faculties[0]?.name ?? "Select faculty"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {faculties.map((f) => (
+                      <SelectItem key={String(f.id)} value={String(f.id)}>
+                        {f.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <DialogFooter>
                 <Button
@@ -567,6 +682,7 @@ function StudentsTab() {
     results,
     courses,
     deferralApplications,
+    faculties,
   } = useApp();
 
   function getStudentGpa(studentId: bigint) {
@@ -579,7 +695,7 @@ function StudentsTab() {
     let wp = 0;
     let tc = 0;
     for (const r of sResults) {
-      const c = courses.find((c) => c.id === r.courseId);
+      const c = courses.find((c) => String(c.id) === String(r.courseId));
       const credits = c ? Number(c.creditUnits) : 0;
       wp += r.gradePoint * credits;
       tc += credits;
@@ -612,11 +728,25 @@ function StudentsTab() {
   const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = students.filter(
-    (s) =>
+  const [facultyFilter, setFacultyFilter] = useState<string>("all");
+  const [viewStudent, setViewStudent] = useState<ExtendedStudent | null>(null);
+
+  const filtered = students.filter((s) => {
+    const matchSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.matricNumber.toLowerCase().includes(search.toLowerCase()),
-  );
+      s.matricNumber.toLowerCase().includes(search.toLowerCase());
+    if (!matchSearch) return false;
+    if (facultyFilter !== "all") {
+      const dept = departments.find(
+        (d) => String(d.id) === String(s.departmentId),
+      );
+      const fac = dept
+        ? faculties.find((f) => String(f.id) === String(dept.facultyId))
+        : null;
+      if (!fac || String(fac.id) !== facultyFilter) return false;
+    }
+    return true;
+  });
 
   function resetManualForm() {
     setForm({
@@ -741,7 +871,20 @@ function StudentsTab() {
             {students.length} registered
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Select value={facultyFilter} onValueChange={setFacultyFilter}>
+            <SelectTrigger className="w-44" data-ocid="students.select">
+              <SelectValue placeholder="All Faculties" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Faculties</SelectItem>
+              {faculties.map((f) => (
+                <SelectItem key={String(f.id)} value={String(f.id)}>
+                  {f.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             data-ocid="students.search_input"
             placeholder="Search..."
@@ -1069,7 +1212,9 @@ function StudentsTab() {
               </TableRow>
             )}
             {filtered.map((s, i) => {
-              const dept = departments.find((d) => d.id === s.departmentId);
+              const dept = departments.find(
+                (d) => String(d.id) === String(s.departmentId),
+              );
               return (
                 <TableRow
                   key={String(s.id)}
@@ -1129,7 +1274,9 @@ function StudentsTab() {
                       );
                       let completed = 0;
                       for (const r of sResults) {
-                        const c = courses.find((c) => c.id === r.courseId);
+                        const c = courses.find(
+                          (c) => String(c.id) === String(r.courseId),
+                        );
                         if (r.grade !== "F" && c)
                           completed += Number(c.creditUnits);
                       }
@@ -1153,19 +1300,55 @@ function StudentsTab() {
                     })()}
                   </TableCell>
                   <TableCell>
-                    <button
-                      type="button"
-                      data-ocid={`students.open_modal_button.${i + 1}`}
-                      onClick={() => {
-                        setDocStudentId(s.id);
-                        setDocStudentName(s.name);
-                        setDocOpen(true);
-                      }}
-                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-                    >
-                      <FileText className="w-3 h-3" />
-                      Docs
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        data-ocid={`students.open_modal_button.${i + 1}`}
+                        onClick={() => {
+                          setDocStudentId(s.id);
+                          setDocStudentName(s.name);
+                          setDocOpen(true);
+                        }}
+                        className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        <FileText className="w-3 h-3" />
+                        Docs
+                      </button>
+                      <button
+                        type="button"
+                        data-ocid={`students.secondary_button.${i + 1}`}
+                        onClick={() => {
+                          const code = Math.random()
+                            .toString(36)
+                            .substring(2, 10)
+                            .toUpperCase();
+                          const codes = JSON.parse(
+                            localStorage.getItem("resultVerificationCodes") ||
+                              "[]",
+                          );
+                          const filtered2 = codes.filter(
+                            (c: any) => c.matricNumber !== s.matricNumber,
+                          );
+                          filtered2.push({
+                            matricNumber: s.matricNumber,
+                            code,
+                            generatedAt: new Date().toISOString(),
+                          });
+                          localStorage.setItem(
+                            "resultVerificationCodes",
+                            JSON.stringify(filtered2),
+                          );
+                          toast.success(
+                            `Verification code: ${code} (for ${s.name})`,
+                            { duration: 10000 },
+                          );
+                        }}
+                        className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                      >
+                        <Shield className="w-3 h-3" />
+                        Gen Code
+                      </button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -1181,6 +1364,63 @@ function StudentsTab() {
           onOpenChange={setDocOpen}
         />
       )}
+
+      {/* Student Detail Modal */}
+      <Dialog
+        open={!!viewStudent}
+        onOpenChange={(v) => {
+          if (!v) setViewStudent(null);
+        }}
+      >
+        <DialogContent data-ocid="students.dialog" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Student Details</DialogTitle>
+          </DialogHeader>
+          {viewStudent &&
+            (() => {
+              const dept = departments.find(
+                (d) => String(d.id) === String(viewStudent.departmentId),
+              );
+              const fac = dept
+                ? faculties.find((f) => String(f.id) === String(dept.facultyId))
+                : null;
+              const rows: { label: string; value: string | undefined }[] = [
+                { label: "Full Name", value: viewStudent.name },
+                { label: "Matric Number", value: viewStudent.matricNumber },
+                { label: "Department", value: dept?.name ?? "-" },
+                { label: "Faculty", value: fac?.name ?? "-" },
+                { label: "Level", value: `${String(viewStudent.level)} Level` },
+                { label: "Gender", value: viewStudent.gender },
+                { label: "Date of Birth", value: viewStudent.dob },
+                { label: "Email", value: viewStudent.email },
+                { label: "Phone", value: viewStudent.phone },
+                { label: "State of Origin", value: viewStudent.state },
+                { label: "LGA", value: viewStudent.lga },
+                { label: "JAMB Reg. No.", value: viewStudent.jambRegNo },
+                { label: "Status", value: viewStudent.status },
+              ];
+              return (
+                <div className="space-y-2 mt-2">
+                  {rows.map(({ label, value }) => (
+                    <div
+                      key={label}
+                      className="flex justify-between gap-4 py-1 border-b border-border last:border-0"
+                    >
+                      <span className="text-sm text-muted-foreground font-medium">
+                        {label}
+                      </span>
+                      <span className="text-sm font-semibold text-right">
+                        {value ?? (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1511,7 +1751,9 @@ function CoursesTab() {
           </TableHeader>
           <TableBody>
             {courses.map((c, i) => {
-              const dept = departments.find((d) => d.id === c.departmentId);
+              const dept = departments.find(
+                (d) => String(d.id) === String(c.departmentId),
+              );
               return (
                 <TableRow
                   key={String(c.id)}
@@ -1579,7 +1821,7 @@ function ResultsTab() {
       { total: number; deanApproved: number; published: number }
     > = {};
     for (const r of results) {
-      const course = courses.find((c) => c.id === r.courseId);
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
       if (!course) continue;
       const key = course.semester;
       if (!groups[key])
@@ -1595,7 +1837,7 @@ function ResultsTab() {
   function publishSemester(semester: string) {
     let count = 0;
     for (const r of results) {
-      const course = courses.find((c) => c.id === r.courseId);
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
       if (course?.semester === semester && r.status === "dean_approved") {
         updateResultStatus(r.id, "published");
         count++;
@@ -1723,8 +1965,12 @@ function ResultsTab() {
             </TableHeader>
             <TableBody>
               {pendingAmendments.map((a, i) => {
-                const student = students.find((s) => s.id === a.studentId);
-                const course = courses.find((c) => c.id === a.courseId);
+                const student = students.find(
+                  (s) => String(s.id) === String(a.studentId),
+                );
+                const course = courses.find(
+                  (c) => String(c.id) === String(a.courseId),
+                );
                 return (
                   <TableRow
                     key={String(a.id)}
@@ -1830,8 +2076,12 @@ function ResultsTab() {
                 </TableRow>
               )}
               {filtered.map((r, i) => {
-                const student = students.find((s) => s.id === r.studentId);
-                const course = courses.find((c) => c.id === r.courseId);
+                const student = students.find(
+                  (s) => String(s.id) === String(r.studentId),
+                );
+                const course = courses.find(
+                  (c) => String(c.id) === String(r.courseId),
+                );
                 return (
                   <TableRow
                     key={String(r.id)}
@@ -1859,7 +2109,7 @@ function ResultsTab() {
                       {r.status === "dean_approved" &&
                         (() => {
                           const course = courses.find(
-                            (c) => c.id === r.courseId,
+                            (c) => String(c.id) === String(r.courseId),
                           );
                           const sealed = course
                             ? isSemesterSealed(course.semester)
@@ -1911,7 +2161,9 @@ function SummariesTab() {
     }[] = [];
 
     for (const student of students) {
-      const dept = departments.find((d) => d.id === student.departmentId);
+      const dept = departments.find(
+        (d) => String(d.id) === String(student.departmentId),
+      );
       const studentResults = results.filter(
         (r) =>
           r.studentId === student.id &&
@@ -1921,7 +2173,7 @@ function SummariesTab() {
       // Group by semester
       const semGroups: Record<string, typeof results> = {};
       for (const r of studentResults) {
-        const course = courses.find((c) => c.id === r.courseId);
+        const course = courses.find((c) => String(c.id) === String(r.courseId));
         if (!course) continue;
         const sem = course.semester;
         if (!semGroups[sem]) semGroups[sem] = [];
@@ -1932,7 +2184,9 @@ function SummariesTab() {
         let weightedPoints = 0;
         let creditSum = 0;
         for (const r of semResults) {
-          const course = courses.find((c) => c.id === r.courseId);
+          const course = courses.find(
+            (c) => String(c.id) === String(r.courseId),
+          );
           const credits = course ? Number(course.creditUnits) : 0;
           weightedPoints += r.gradePoint * credits;
           creditSum += credits;
@@ -2089,7 +2343,7 @@ function SummariesTab() {
                             <TableBody>
                               {row.results.map((r) => {
                                 const course = courses.find(
-                                  (c) => c.id === r.courseId,
+                                  (c) => String(c.id) === String(r.courseId),
                                 );
                                 return (
                                   <TableRow key={String(r.id)}>
@@ -2143,10 +2397,12 @@ function CarryoversTab() {
       "Student Name,Matric,Department,Course Code,Course Name,Semester,Total Score,Grade",
     ];
     for (const r of carryovers) {
-      const student = students.find((s) => s.id === r.studentId);
-      const course = courses.find((c) => c.id === r.courseId);
+      const student = students.find(
+        (s) => String(s.id) === String(r.studentId),
+      );
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
       const dept = student
-        ? departments.find((d) => d.id === student.departmentId)
+        ? departments.find((d) => String(d.id) === String(student.departmentId))
         : null;
       lines.push(
         [
@@ -2222,10 +2478,16 @@ function CarryoversTab() {
               </TableRow>
             )}
             {carryovers.map((r, i) => {
-              const student = students.find((s) => s.id === r.studentId);
-              const course = courses.find((c) => c.id === r.courseId);
+              const student = students.find(
+                (s) => String(s.id) === String(r.studentId),
+              );
+              const course = courses.find(
+                (c) => String(c.id) === String(r.courseId),
+              );
               const dept = student
-                ? departments.find((d) => d.id === student.departmentId)
+                ? departments.find(
+                    (d) => String(d.id) === String(student.departmentId),
+                  )
                 : null;
               return (
                 <TableRow
@@ -2319,7 +2581,7 @@ function StatisticsTab() {
         (s) => s.departmentId === dept.id,
       ).length;
       const deptResults = results.filter((r) => {
-        const course = courses.find((c) => c.id === r.courseId);
+        const course = courses.find((c) => String(c.id) === String(r.courseId));
         return course?.departmentId === dept.id;
       });
       const avg =
@@ -2389,9 +2651,13 @@ function StatisticsTab() {
     const header =
       "Name,Matric,Department,Semester,Course Code,Course Name,CA,Exam,Total,Grade,Remarks,Status";
     const rows = results.map((r) => {
-      const student = students.find((s) => s.id === r.studentId);
-      const course = courses.find((c) => c.id === r.courseId);
-      const dept = departments.find((d) => d.id === course?.departmentId);
+      const student = students.find(
+        (s) => String(s.id) === String(r.studentId),
+      );
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
+      const dept = departments.find(
+        (d) => String(d.id) === String(course?.departmentId),
+      );
       return [
         `"${student?.name ?? ""}"`,
         student?.matricNumber ?? "",
@@ -2424,7 +2690,7 @@ function StatisticsTab() {
     const rows = deptSummary.map((d) => {
       const dept = departments.find((dep) => dep.name === d.name);
       const deptResults = results.filter((r) => {
-        const course = courses.find((c) => c.id === r.courseId);
+        const course = courses.find((c) => String(c.id) === String(r.courseId));
         return course?.departmentId === dept?.id;
       });
       const gradeCount = (g: string) =>
@@ -2994,7 +3260,9 @@ function CourseManagementTab() {
               </TableRow>
             )}
             {courses.map((c, i) => {
-              const dept = departments.find((d) => d.id === c.departmentId);
+              const dept = departments.find(
+                (d) => String(d.id) === String(c.departmentId),
+              );
               return (
                 <TableRow
                   key={String(c.id)}
@@ -3045,8 +3313,13 @@ function CourseManagementTab() {
 }
 
 function AcademicCalendarTab() {
-  const { academicCalendars, addAcademicCalendar, setActiveCalendar } =
-    useApp();
+  const {
+    academicCalendars,
+    addAcademicCalendar,
+    setActiveCalendar,
+    toggleRegistrationOpen,
+    toggleAddDropOpen,
+  } = useApp();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     session: "",
@@ -3067,6 +3340,8 @@ function AcademicCalendarTab() {
       isActive: false,
       startDate: form.startDate,
       endDate: form.endDate,
+      registrationOpen: false,
+      addDropOpen: false,
     };
     addAcademicCalendar(cal);
     setForm({ session: "", semester: "First", startDate: "", endDate: "" });
@@ -3185,9 +3460,10 @@ function AcademicCalendarTab() {
             <TableRow>
               <TableHead>Session</TableHead>
               <TableHead>Semester</TableHead>
-              <TableHead>Start Date</TableHead>
-              <TableHead>End Date</TableHead>
+              <TableHead>Dates</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Registration</TableHead>
+              <TableHead>Add/Drop</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -3212,10 +3488,7 @@ function AcademicCalendarTab() {
                 <TableCell className="font-semibold">{cal.session}</TableCell>
                 <TableCell>{cal.semester}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  {cal.startDate}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {cal.endDate}
+                  {cal.startDate} &ndash; {cal.endDate}
                 </TableCell>
                 <TableCell>
                   {cal.isActive ? (
@@ -3227,6 +3500,40 @@ function AcademicCalendarTab() {
                       Inactive
                     </span>
                   )}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    size="sm"
+                    variant={cal.registrationOpen ? "default" : "outline"}
+                    onClick={() => {
+                      toggleRegistrationOpen(cal.id);
+                      toast.success(
+                        cal.registrationOpen
+                          ? "Registration closed"
+                          : "Registration opened",
+                      );
+                    }}
+                    className={`h-7 text-xs ${cal.registrationOpen ? "bg-success text-success-foreground hover:bg-success/90" : ""}`}
+                    data-ocid={`calendar.toggle_reg.${i + 1}`}
+                  >
+                    {cal.registrationOpen ? "✓ Open" : "Closed"}
+                  </Button>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    size="sm"
+                    variant={cal.addDropOpen ? "default" : "outline"}
+                    onClick={() => {
+                      toggleAddDropOpen(cal.id);
+                      toast.success(
+                        cal.addDropOpen ? "Add/Drop closed" : "Add/Drop opened",
+                      );
+                    }}
+                    className={`h-7 text-xs ${cal.addDropOpen ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}`}
+                    data-ocid={`calendar.toggle_add_drop.${i + 1}`}
+                  >
+                    {cal.addDropOpen ? "✓ Open" : "Closed"}
+                  </Button>
                 </TableCell>
                 <TableCell>
                   {!cal.isActive && (
@@ -3958,6 +4265,8 @@ function TimetableBuilderTab() {
   const { timetableEntries, addTimetableEntry, removeTimetableEntry, courses } =
     useApp();
   const [open, setOpen] = useState(false);
+  const [clashWarning, setClashWarning] = useState<string | null>(null);
+  const [pendingEntry, setPendingEntry] = useState<TimetableEntry | null>(null);
   const [form, setForm] = useState<{
     courseId: string;
     day: string;
@@ -3974,6 +4283,35 @@ function TimetableBuilderTab() {
     semester: "First",
   });
 
+  function detectClashes(entry: TimetableEntry): string[] {
+    const newCourse = courses.find(
+      (c) => String(c.id) === String(entry.courseId),
+    );
+    const clashes: string[] = [];
+    for (const existing of timetableEntries) {
+      if (existing.day !== entry.day) continue;
+      // Check time overlap
+      const overlap =
+        entry.startTime < existing.endTime &&
+        entry.endTime > existing.startTime;
+      if (!overlap) continue;
+      const existingCourse = courses.find(
+        (c) => String(c.id) === String(existing.courseId),
+      );
+      // Same department clash
+      if (
+        newCourse &&
+        existingCourse &&
+        newCourse.departmentId === existingCourse.departmentId
+      ) {
+        clashes.push(
+          `${existingCourse.code} (${existing.startTime}-${existing.endTime}) - same department`,
+        );
+      }
+    }
+    return clashes;
+  }
+
   function handleAdd() {
     if (!form.courseId || !form.venue) {
       toast.error("Please fill all required fields");
@@ -3988,8 +4326,20 @@ function TimetableBuilderTab() {
       venue: form.venue.trim(),
       semester: form.semester,
     };
+    const clashes = detectClashes(entry);
+    if (clashes.length > 0) {
+      setClashWarning(`Clash detected: ${clashes.join("; ")}`);
+      setPendingEntry(entry);
+      return;
+    }
+    commitEntry(entry);
+  }
+
+  function commitEntry(entry: TimetableEntry) {
     addTimetableEntry(entry);
     setOpen(false);
+    setClashWarning(null);
+    setPendingEntry(null);
     setForm({
       courseId: "",
       day: "Monday",
@@ -3999,6 +4349,27 @@ function TimetableBuilderTab() {
       semester: "First",
     });
     toast.success("Timetable entry added");
+  }
+
+  // Detect all current clashes for the summary panel
+  const allClashes: {
+    entry1: TimetableEntry;
+    entry2: TimetableEntry;
+    reason: string;
+  }[] = [];
+  for (let i = 0; i < timetableEntries.length; i++) {
+    for (let j = i + 1; j < timetableEntries.length; j++) {
+      const a = timetableEntries[i];
+      const b = timetableEntries[j];
+      if (a.day !== b.day) continue;
+      const overlap = a.startTime < b.endTime && a.endTime > b.startTime;
+      if (!overlap) continue;
+      const ca = courses.find((c) => String(c.id) === String(a.courseId));
+      const cb = courses.find((c) => String(c.id) === String(b.courseId));
+      if (ca && cb && ca.departmentId === cb.departmentId) {
+        allClashes.push({ entry1: a, entry2: b, reason: "same department" });
+      }
+    }
   }
 
   const sorted = [...timetableEntries].sort((a, b) => {
@@ -4136,25 +4507,84 @@ function TimetableBuilderTab() {
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button
-                data-ocid="timetable.cancel_button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                data-ocid="timetable.submit_button"
-                onClick={handleAdd}
-                className="bg-primary text-primary-foreground"
-              >
-                Add Entry
-              </Button>
-            </DialogFooter>
+            {clashWarning && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-xs text-destructive">
+                ⚠ {clashWarning}
+                <div className="flex gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (pendingEntry) commitEntry(pendingEntry);
+                    }}
+                    className="px-2 py-1 bg-destructive text-destructive-foreground rounded text-xs"
+                    data-ocid="timetable.confirm_button"
+                  >
+                    Override & Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClashWarning(null);
+                      setPendingEntry(null);
+                    }}
+                    className="px-2 py-1 border border-border rounded text-xs"
+                    data-ocid="timetable.cancel_button"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            {!clashWarning && (
+              <DialogFooter>
+                <Button
+                  data-ocid="timetable.cancel_button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  data-ocid="timetable.submit_button"
+                  onClick={handleAdd}
+                  className="bg-primary text-primary-foreground"
+                >
+                  Add Entry
+                </Button>
+              </DialogFooter>
+            )}
           </DialogContent>
         </Dialog>
       </div>
+
+      {allClashes.length > 0 && (
+        <div
+          className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 space-y-2"
+          data-ocid="timetable.error_state"
+        >
+          <h3 className="text-sm font-semibold text-destructive">
+            ⚠ Timetable Clashes ({allClashes.length})
+          </h3>
+          {allClashes.map((clash, _i) => {
+            const ca = courses.find(
+              (c) => String(c.id) === String(clash.entry1.courseId),
+            );
+            const cb = courses.find(
+              (c) => String(c.id) === String(clash.entry2.courseId),
+            );
+            return (
+              <p
+                key={`${String(clash.entry1.id)}-${String(clash.entry2.id)}`}
+                className="text-xs text-destructive"
+              >
+                {clash.entry1.day} {clash.entry1.startTime}-
+                {clash.entry1.endTime}: {ca?.code ?? "?"} vs {cb?.code ?? "?"} —{" "}
+                {clash.reason}
+              </p>
+            );
+          })}
+        </div>
+      )}
 
       <div className="bg-card rounded-xl border border-border shadow-xs">
         <Table>
@@ -4181,7 +4611,9 @@ function TimetableBuilderTab() {
               </TableRow>
             )}
             {sorted.map((entry, i) => {
-              const course = courses.find((c) => c.id === entry.courseId);
+              const course = courses.find(
+                (c) => String(c.id) === String(entry.courseId),
+              );
               return (
                 <TableRow
                   key={String(entry.id)}

@@ -64,7 +64,7 @@ export default function AttendanceTab() {
   >({});
 
   const courseId = selectedCourseId ? BigInt(selectedCourseId) : null;
-  const course = myCourses.find((c) => c.id === courseId);
+  const course = myCourses.find((c) => String(c.id) === String(courseId));
   const registeredStudents = courseId
     ? students.filter((s) =>
         courseRegistrations.some(

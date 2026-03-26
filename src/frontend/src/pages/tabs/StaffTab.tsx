@@ -291,8 +291,12 @@ export default function StaffTab() {
               </TableRow>
             ) : (
               filtered.map((m, i) => {
-                const dept = departments.find((d) => d.id === m.departmentId);
-                const faculty = faculties.find((f) => f.id === m.facultyId);
+                const dept = departments.find(
+                  (d) => String(d.id) === String(m.departmentId),
+                );
+                const faculty = faculties.find(
+                  (f) => String(f.id) === String(m.facultyId),
+                );
                 const courseCount = m.courseIds.filter((cid) =>
                   courses.some((c) => c.id === cid),
                 ).length;
@@ -659,10 +663,14 @@ export default function StaffTab() {
         <StaffIDCardModal
           staff={idCardMember}
           departmentName={
-            departments.find((d) => d.id === idCardMember.departmentId)?.name
+            departments.find(
+              (d) => String(d.id) === String(idCardMember.departmentId),
+            )?.name
           }
           facultyName={
-            faculties.find((f) => f.id === idCardMember.facultyId)?.name
+            faculties.find(
+              (f) => String(f.id) === String(idCardMember.facultyId),
+            )?.name
           }
           open={!!idCardMember}
           onClose={() => setIdCardMember(null)}

@@ -84,7 +84,8 @@ export default function CourseAssignmentsTab() {
         <div className="p-4 border-b border-border flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-primary" />
           <h2 className="font-semibold text-sm">
-            {departments.find((d) => d.id === deptId)?.name ?? "Department"}{" "}
+            {departments.find((d) => String(d.id) === String(deptId))?.name ??
+              "Department"}{" "}
             Courses
           </h2>
         </div>

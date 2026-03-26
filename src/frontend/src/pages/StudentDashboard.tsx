@@ -13,10 +13,16 @@ import {
 import {
   AlertCircle,
   Award,
+  Bell,
   BookOpen,
+  CalendarCheck,
+  CheckCircle2,
+  ClipboardList,
   Download,
   FileText,
   GraduationCap,
+  Info,
+  Lock,
   MessageSquare,
   MinusCircle,
   PlusCircle,
@@ -24,9 +30,10 @@ import {
   RefreshCw,
   Star,
   TrendingUp,
+  XCircle,
 } from "lucide-react";
 import type React from "react";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -56,6 +63,7 @@ import GPATrendChart from "./tabs/GPATrendChart";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import StudentDocumentsTab from "./tabs/StudentDocumentsTab";
 import StudentIDCardModal from "./tabs/StudentIDCardModal";
+import StudentInboxTab, { InboxUnreadBadge } from "./tabs/StudentInboxTab";
 import StudentProgressTab from "./tabs/StudentProgressTab";
 
 function classifyDegree(cgpa: number): { label: string; color: string } {
@@ -70,6 +78,8 @@ function classifyDegree(cgpa: number): { label: string; color: string } {
 
 export default function StudentDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
+  const { currentUser, students } = useApp();
+  const me = students.find((s) => s.userPrincipal === currentUser?.principal);
 
   const quickActions = [
     { label: "View Transcript", tab: "transcript", icon: FileText },
@@ -94,6 +104,7 @@ export default function StudentDashboard() {
   else if (activeTab === "exam_schedule") content = <StudentExamScheduleTab />;
   else if (activeTab === "course_eval") content = <CourseEvaluationTab />;
   else if (activeTab === "transfer") content = <StudentTransferTab />;
+  else if (activeTab === "inbox") content = <StudentInboxTab />;
   else content = <OverviewTab />;
 
   return (
@@ -112,6 +123,20 @@ export default function StudentDashboard() {
             {a.label}
           </button>
         ))}
+        <button
+          type="button"
+          data-ocid="student_quick.inbox.button"
+          onClick={() => setActiveTab("inbox")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
+            activeTab === "inbox"
+              ? "bg-primary/10 text-primary border-primary/30"
+              : ""
+          }`}
+        >
+          <Bell className="w-3 h-3" />
+          Inbox
+          {me && <InboxUnreadBadge studentId={String(me.id)} />}
+        </button>
       </div>
       {content}
     </>
@@ -132,7 +157,7 @@ function getStudentData() {
   let totalWeightedPoints = 0;
   let totalCreditUnits = 0;
   for (const r of myResults) {
-    const course = courses.find((c) => c.id === r.courseId);
+    const course = courses.find((c) => String(c.id) === String(r.courseId));
     const credits = course ? Number(course.creditUnits) : 0;
     totalWeightedPoints += r.gradePoint * credits;
     totalCreditUnits += credits;
@@ -296,13 +321,14 @@ function OverviewTab() {
 
 function CourseRegistrationTab() {
   const [showRegSlip, setShowRegSlip] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<bigint | null>(null);
   const {
     currentUser,
     students,
     courses,
     results,
     courseRegistrations,
-    academicCalendars: cals,
+    academicCalendars,
     addCourseRegistration,
     dropCourseRegistration,
   } = useApp();
@@ -311,9 +337,25 @@ function CourseRegistrationTab() {
   const MIN_CREDITS = 12;
   const MAX_CREDITS = 24;
 
-  const semesters = ["First", "Second"];
+  // Get all sessions for selector
+  const allSessions = academicCalendars
+    .slice()
+    .sort((a, b) => a.session.localeCompare(b.session));
 
-  // Find carry-over courses (F grade, published/approved)
+  // Active calendar or selected
+  const activeCal = academicCalendars.find((c) => c.isActive);
+  const selectedCal = activeSessionId
+    ? academicCalendars.find((c) => String(c.id) === String(activeSessionId))
+    : activeCal;
+
+  // Set default to active calendar
+  useEffect(() => {
+    if (activeCal && !activeSessionId) {
+      setActiveSessionId(activeCal.id);
+    }
+  }, [activeCal, activeSessionId]);
+
+  // Carry-over courses: failed published/approved results
   const myResults = me
     ? results.filter(
         (r) =>
@@ -324,6 +366,39 @@ function CourseRegistrationTab() {
   const carryoverCourseIds = new Set(
     myResults.filter((r) => r.grade === "F").map((r) => r.courseId),
   );
+
+  // Student level
+  const level = me ? Number(me.level) : 0;
+  const is100Level = level === 100;
+  const isCarryoverLevel = level >= 200;
+
+  // Already registered courses for selected session
+  const sessionKey = selectedCal
+    ? `${selectedCal.session}_${selectedCal.semester}`
+    : null;
+  const sessionRegistrations =
+    me && sessionKey
+      ? courseRegistrations.filter(
+          (r) =>
+            r.studentId === me.id &&
+            r.semester === (selectedCal?.semester ?? ""),
+        )
+      : [];
+  const registeredCourseIds = new Set(
+    sessionRegistrations.map((r) => r.courseId),
+  );
+
+  // Auto-register carry-over courses for 200+ levels when registration opens
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally runs only when session changes
+  useEffect(() => {
+    if (!me || !selectedCal || !isCarryoverLevel) return;
+    if (!selectedCal.registrationOpen && !selectedCal.addDropOpen) return;
+    for (const cId of carryoverCourseIds) {
+      if (!registeredCourseIds.has(cId)) {
+        addCourseRegistration(me.id, cId, selectedCal.semester);
+      }
+    }
+  }, [selectedCal?.id, isCarryoverLevel]);
 
   if (!me) {
     return (
@@ -337,262 +412,646 @@ function CourseRegistrationTab() {
     );
   }
 
+  // Department courses
   const deptCourses = courses.filter((c) => c.departmentId === me.departmentId);
+  const semCourses = selectedCal
+    ? deptCourses.filter((c) => c.semester === selectedCal.semester)
+    : deptCourses;
 
-  // active semester for slip
-  const activeCalSlip = cals.find((c) => c.isActive);
+  const registeredCourses = semCourses.filter((c) =>
+    registeredCourseIds.has(c.id),
+  );
+  const availableCourses = semCourses.filter(
+    (c) => !registeredCourseIds.has(c.id),
+  );
+  const totalCredits = registeredCourses.reduce(
+    (sum, c) => sum + Number(c.creditUnits),
+    0,
+  );
+  const creditOk = totalCredits >= MIN_CREDITS && totalCredits <= MAX_CREDITS;
+
+  // Is registration or add/drop open?
+  const regOpen = selectedCal?.registrationOpen ?? false;
+  const addDropOpen = selectedCal?.addDropOpen ?? false;
+  const canRegister = regOpen || addDropOpen;
+
+  // Slip data
   const regSlipSession =
-    activeCalSlip?.session ??
+    selectedCal?.session ??
     `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
-  const regSlipSemester = activeCalSlip
-    ? `${activeCalSlip.semester} Semester`
+  const regSlipSemester = selectedCal
+    ? `${selectedCal.semester} Semester`
     : "First Semester";
 
-  // All registered courses for slip
-  const allRegCourses = courses.filter((c) =>
-    semesters.some((sem) =>
-      courseRegistrations.some(
-        (r) =>
-          r.studentId === me.id && r.courseId === c.id && r.semester === sem,
-      ),
-    ),
-  );
+  function handleAdd(courseId: bigint, courseName: string) {
+    if (!me || !selectedCal) return;
+    if (
+      totalCredits +
+        Number(
+          semCourses.find((c) => String(c.id) === String(courseId))
+            ?.creditUnits ?? 0,
+        ) >
+      MAX_CREDITS
+    ) {
+      toast.error("Adding this course exceeds the maximum credit units (24)");
+      return;
+    }
+    addCourseRegistration(me.id, courseId, selectedCal.semester);
+    toast.success(`Registered for ${courseName}`);
+  }
+
+  function handleDrop(courseId: bigint, courseName: string) {
+    if (!me || !selectedCal) return;
+    dropCourseRegistration(me.id, courseId, selectedCal.semester);
+    toast.success(`Dropped ${courseName}`);
+  }
+
+  const creditBadgeClass =
+    totalCredits === 0
+      ? "bg-muted text-muted-foreground"
+      : creditOk
+        ? "bg-success/10 text-success border border-success/20"
+        : totalCredits < MIN_CREDITS
+          ? "bg-warning/10 text-warning border border-warning/20"
+          : "bg-destructive/10 text-destructive border border-destructive/20";
 
   return (
     <div className="space-y-6">
       {showRegSlip && (
         <CourseRegSlipModal
           student={me}
-          registeredCourses={allRegCourses}
+          registeredCourses={registeredCourses}
           session={regSlipSession}
           semester={regSlipSemester}
           open={showRegSlip}
           onClose={() => setShowRegSlip(false)}
         />
       )}
-      <div>
-        <h1 className="text-xl font-bold">Course Registration</h1>
-        <p className="text-sm text-muted-foreground">
-          Select courses for each semester (Min: {MIN_CREDITS} | Max:{" "}
-          {MAX_CREDITS} credit units)
-        </p>
+
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <ClipboardList className="w-5 h-5 text-primary" />
+            Course Registration
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {me.name} &bull; {me.matricNumber} &bull; Level {level}
+          </p>
+        </div>
+        {registeredCourses.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            data-ocid="coursereg.print_slip_button"
+            onClick={() => setShowRegSlip(true)}
+          >
+            <Printer className="w-3 h-3 mr-1" /> Print Reg. Slip
+          </Button>
+        )}
       </div>
 
-      {semesters.map((semester) => {
-        const registered = courseRegistrations.filter(
-          (r) => r.studentId === me.id && r.semester === semester,
-        );
-        const registeredCourseIds = registered.map((r) => r.courseId);
-        const semCourses = deptCourses.filter((c) => c.semester === semester);
-        const registeredCourses = semCourses.filter((c) =>
-          registeredCourseIds.some((id) => id === c.id),
-        );
-        const availableCourses = semCourses.filter(
-          (c) => !registeredCourseIds.some((id) => id === c.id),
-        );
-        const totalCredits = registeredCourses.reduce(
-          (sum, c) => sum + Number(c.creditUnits),
-          0,
-        );
-        const creditOk = totalCredits >= MIN_CREDITS;
-
-        return (
-          <div key={semester} className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">{semester} Semester</h2>
-              <div
-                className={`text-sm font-medium px-3 py-1 rounded-full ${
-                  totalCredits === 0
-                    ? "bg-muted text-muted-foreground"
-                    : creditOk && totalCredits <= MAX_CREDITS
-                      ? "bg-success/10 text-success"
-                      : "bg-destructive/10 text-destructive"
+      {/* Session Selector */}
+      <div className="bg-card rounded-xl border border-border p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 min-w-[200px]">
+            <CalendarCheck className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">Academic Session:</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {allSessions.length === 0 && (
+              <span className="text-sm text-muted-foreground">
+                No sessions configured
+              </span>
+            )}
+            {allSessions.map((cal) => (
+              <button
+                key={String(cal.id)}
+                type="button"
+                onClick={() => setActiveSessionId(cal.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  selectedCal?.id === cal.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/30 border-border text-muted-foreground hover:bg-muted"
                 }`}
               >
-                {totalCredits} / {MAX_CREDITS} credit units
-                {totalCredits > 0 && !creditOk && " (min not met)"}
-                {totalCredits > MAX_CREDITS && " (exceeds max)"}
-              </div>
-            </div>
+                {cal.session} &ndash; {cal.semester} Semester
+                {cal.isActive && (
+                  <span className="ml-1.5 px-1 py-0.5 rounded text-[10px] bg-success/20 text-success">
+                    Active
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
 
-            <div className="grid lg:grid-cols-2 gap-4">
-              {/* Registered courses */}
-              <div className="bg-card rounded-xl border border-border shadow-xs">
-                <div className="p-4 border-b border-border flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">
-                    Registered Courses ({registeredCourses.length})
-                  </h3>
-                  {registeredCourses.length > 0 && me && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      data-ocid="coursereg.print_slip_button"
-                      onClick={() => setShowRegSlip(true)}
+        {selectedCal && (
+          <div className="mt-3 flex flex-wrap gap-3">
+            {/* Registration Status */}
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                selectedCal.registrationOpen
+                  ? "bg-success/10 text-success border-success/20"
+                  : "bg-muted/30 text-muted-foreground border-border"
+              }`}
+            >
+              {selectedCal.registrationOpen ? (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              ) : (
+                <Lock className="w-3.5 h-3.5" />
+              )}
+              Registration: {selectedCal.registrationOpen ? "Open" : "Closed"}
+            </div>
+            {/* Add/Drop Status */}
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                selectedCal.addDropOpen
+                  ? "bg-primary/10 text-primary border-primary/20"
+                  : "bg-muted/30 text-muted-foreground border-border"
+              }`}
+            >
+              {selectedCal.addDropOpen ? (
+                <RefreshCw className="w-3.5 h-3.5" />
+              ) : (
+                <Lock className="w-3.5 h-3.5" />
+              )}
+              Add/Drop: {selectedCal.addDropOpen ? "Open" : "Closed"}
+            </div>
+            {/* Credit summary */}
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${creditBadgeClass}`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              {totalCredits} credit units registered
+              {totalCredits > 0 &&
+                !creditOk &&
+                totalCredits < MIN_CREDITS &&
+                " (below min 12)"}
+              {totalCredits > MAX_CREDITS && " (exceeds max 24)"}
+              {creditOk && " ✓"}
+            </div>
+          </div>
+        )}
+
+        {!canRegister && selectedCal && (
+          <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20 text-warning text-xs">
+            <Info className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              Course registration and add/drop are currently{" "}
+              <strong>closed</strong> for this session. Contact the Registrar to
+              open registration.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Level 100: Full course selection grid */}
+      {is100Level && selectedCal && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-base">
+              {selectedCal.semester} Semester Courses &mdash; Level 100
+            </h2>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              Select courses to register
+            </span>
+          </div>
+
+          {semCourses.length === 0 && (
+            <div className="bg-card rounded-xl border border-border p-8 text-center">
+              <BookOpen className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No courses available for your department this semester
+              </p>
+            </div>
+          )}
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {semCourses.map((c, i) => {
+              const isReg = registeredCourseIds.has(c.id);
+              const wouldExceed =
+                !isReg && totalCredits + Number(c.creditUnits) > MAX_CREDITS;
+              return (
+                <div
+                  key={String(c.id)}
+                  data-ocid={`coursereg.l100.course.${i + 1}`}
+                  className={`relative flex flex-col gap-2 p-4 rounded-xl border transition-all ${
+                    isReg
+                      ? "border-success/40 bg-success/5"
+                      : wouldExceed
+                        ? "border-border/50 bg-muted/20 opacity-60"
+                        : "border-border bg-card hover:border-primary/40 hover:bg-primary/2"
+                  }`}
+                >
+                  {isReg && (
+                    <span className="absolute top-3 right-3">
+                      <CheckCircle2 className="w-4 h-4 text-success" />
+                    </span>
+                  )}
+                  <div>
+                    <p className="text-xs font-mono text-muted-foreground">
+                      {c.code}
+                    </p>
+                    <p className="text-sm font-semibold mt-0.5 pr-6">
+                      {c.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {String(c.creditUnits)} credit units
+                    </p>
+                  </div>
+                  {canRegister ? (
+                    isReg ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs border-destructive/40 text-destructive hover:bg-destructive/5 mt-auto"
+                        data-ocid={`coursereg.l100.drop.${i + 1}`}
+                        onClick={() => handleDrop(c.id, c.code)}
+                      >
+                        <XCircle className="w-3 h-3 mr-1" /> Drop
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        disabled={wouldExceed}
+                        className="h-7 text-xs mt-auto"
+                        data-ocid={`coursereg.l100.select.${i + 1}`}
+                        onClick={() => handleAdd(c.id, c.code)}
+                      >
+                        ✅ Select
+                      </Button>
+                    )
+                  ) : (
+                    <span
+                      className={`text-xs px-2 py-1 rounded mt-auto inline-block ${
+                        isReg
+                          ? "bg-success/10 text-success"
+                          : "bg-muted text-muted-foreground"
+                      }`}
                     >
-                      <Printer className="w-3 h-3 mr-1" /> Print Slip
-                    </Button>
+                      {isReg ? "Registered" : "Not Registered"}
+                    </span>
                   )}
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Course</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Units</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {registeredCourses.length === 0 && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={4}
-                          className="text-center py-4 text-muted-foreground text-sm"
-                          data-ocid={`coursereg.${semester.toLowerCase()}.empty_state`}
-                        >
-                          No courses registered
+              );
+            })}
+          </div>
+
+          {/* Summary bar for 100 level */}
+          {registeredCourses.length > 0 && (
+            <div className="bg-card rounded-xl border border-border p-4">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-success" />
+                Registered Courses ({registeredCourses.length})
+              </h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>S/N</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Course Title</TableHead>
+                    <TableHead>Units</TableHead>
+                    {canRegister && <TableHead />}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {registeredCourses.map((c, i) => (
+                    <TableRow key={String(c.id)}>
+                      <TableCell className="text-muted-foreground">
+                        {i + 1}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {c.code}
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">
+                        {c.name}
+                      </TableCell>
+                      <TableCell>{String(c.creditUnits)}</TableCell>
+                      {canRegister && (
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 text-xs"
+                            onClick={() => handleDrop(c.id, c.code)}
+                          >
+                            <MinusCircle className="w-3 h-3 mr-1" /> Drop
+                          </Button>
                         </TableCell>
-                      </TableRow>
-                    )}
-                    {registeredCourses.map((c, i) => {
-                      const isCarryover = carryoverCourseIds.has(c.id);
-                      return (
-                        <TableRow
-                          key={String(c.id)}
-                          data-ocid={`coursereg.registered.item.${i + 1}`}
-                          className={isCarryover ? "bg-destructive/5" : ""}
+                      )}
+                    </TableRow>
+                  ))}
+                  <TableRow className="bg-muted/20 font-semibold">
+                    <TableCell
+                      colSpan={canRegister ? 3 : 3}
+                      className="text-right text-sm"
+                    >
+                      Total Credit Units:
+                    </TableCell>
+                    <TableCell
+                      className={
+                        totalCredits < MIN_CREDITS
+                          ? "text-warning font-bold"
+                          : totalCredits > MAX_CREDITS
+                            ? "text-destructive font-bold"
+                            : "text-success font-bold"
+                      }
+                    >
+                      {totalCredits}
+                    </TableCell>
+                    {canRegister && <TableCell />}
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Level 200+: Carry-over + normal registration */}
+      {isCarryoverLevel && selectedCal && (
+        <div className="space-y-6">
+          {carryoverCourseIds.size > 0 && (
+            <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <RefreshCw className="w-4 h-4 text-destructive" />
+                <h3 className="font-semibold text-sm text-destructive">
+                  Carry-Over Courses ({carryoverCourseIds.size}) &mdash;
+                  Auto-Registered
+                </h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                The following courses were automatically registered because you
+                had an F grade. You must re-take them.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {Array.from(carryoverCourseIds).map((cId) => {
+                  const c = courses.find((x) => String(x.id) === String(cId));
+                  if (!c) return null;
+                  const isReg = registeredCourseIds.has(cId);
+                  return (
+                    <div
+                      key={String(cId)}
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-destructive/20"
+                    >
+                      <div>
+                        <span className="text-xs font-mono text-destructive">
+                          {c.code}
+                        </span>
+                        <p className="text-xs font-medium mt-0.5">{c.name}</p>
+                        <span className="text-[10px] text-muted-foreground">
+                          {String(c.creditUnits)} units
+                        </span>
+                      </div>
+                      {isReg ? (
+                        <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full bg-success/10 text-success font-semibold">
+                          <CheckCircle2 className="w-3 h-3" /> Registered
+                        </span>
+                      ) : canRegister ? (
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => handleAdd(c.id, c.code)}
                         >
-                          <TableCell className="font-medium text-sm">
-                            <div className="flex items-center gap-2">
-                              {c.name}
-                              {isCarryover && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20">
-                                  <RefreshCw className="w-2.5 h-2.5" />
-                                  Carry-over
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {c.code}
-                          </TableCell>
-                          <TableCell>{String(c.creditUnits)}</TableCell>
+                          <PlusCircle className="w-3 h-3 mr-1" /> Register
+                        </Button>
+                      ) : (
+                        <span className="text-[10px] px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                          Not Registered
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Remaining courses to complete min/max */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            {/* Registered list */}
+            <div className="bg-card rounded-xl border border-border">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h3 className="text-sm font-semibold">
+                  Registered Courses ({registeredCourses.length})
+                </h3>
+                <span
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${creditBadgeClass}`}
+                >
+                  {totalCredits} units{" "}
+                  {creditOk
+                    ? "✓"
+                    : totalCredits < MIN_CREDITS
+                      ? `(need ${MIN_CREDITS - totalCredits} more)`
+                      : `(over max by ${totalCredits - MAX_CREDITS})`}
+                </span>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Course</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Units</TableHead>
+                    {canRegister && <TableHead />}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {registeredCourses.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={canRegister ? 4 : 3}
+                        className="text-center py-6 text-muted-foreground text-sm"
+                        data-ocid="coursereg.200.registered.empty"
+                      >
+                        No courses registered yet
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {registeredCourses.map((c, i) => {
+                    const isCo = carryoverCourseIds.has(c.id);
+                    return (
+                      <TableRow
+                        key={String(c.id)}
+                        data-ocid={`coursereg.200.registered.${i + 1}`}
+                        className={isCo ? "bg-destructive/5" : ""}
+                      >
+                        <TableCell className="font-medium text-sm">
+                          <div className="flex items-center gap-1.5">
+                            {c.name}
+                            {isCo && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-destructive/10 text-destructive border border-destructive/20">
+                                <RefreshCw className="w-2.5 h-2.5" /> CO
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {c.code}
+                        </TableCell>
+                        <TableCell>{String(c.creditUnits)}</TableCell>
+                        {canRegister && (
                           <TableCell>
                             <Button
-                              data-ocid={`coursereg.drop_button.${i + 1}`}
                               size="sm"
                               variant="destructive"
-                              onClick={() => {
-                                dropCourseRegistration(me.id, c.id, semester);
-                                toast.success(`Dropped ${c.code}`);
-                              }}
                               className="h-7 text-xs"
+                              data-ocid={`coursereg.200.drop.${i + 1}`}
+                              onClick={() => handleDrop(c.id, c.code)}
                             >
                               <MinusCircle className="w-3 h-3 mr-1" /> Drop
                             </Button>
                           </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Available courses */}
-              <div className="bg-card rounded-xl border border-border shadow-xs">
-                <div className="p-4 border-b border-border">
-                  <h3 className="text-sm font-semibold">
-                    Available Courses ({availableCourses.length})
-                  </h3>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Course</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Units</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {availableCourses.length === 0 && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={4}
-                          className="text-center py-4 text-muted-foreground text-sm"
-                        >
-                          All courses registered
-                        </TableCell>
+                        )}
                       </TableRow>
-                    )}
-                    {availableCourses.map((c, i) => {
-                      const wouldExceed =
-                        totalCredits + Number(c.creditUnits) > MAX_CREDITS;
-                      const isCarryover = carryoverCourseIds.has(c.id);
-                      return (
-                        <TableRow
-                          key={String(c.id)}
-                          data-ocid={`coursereg.available.item.${i + 1}`}
-                          className={isCarryover ? "bg-destructive/5" : ""}
-                        >
-                          <TableCell className="font-medium text-sm">
-                            <div className="flex items-center gap-2">
-                              {c.name}
-                              {isCarryover && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20">
-                                  <RefreshCw className="w-2.5 h-2.5" />
-                                  Carry-over
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {c.code}
-                          </TableCell>
-                          <TableCell>{String(c.creditUnits)}</TableCell>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Available courses */}
+            <div className="bg-card rounded-xl border border-border">
+              <div className="p-4 border-b border-border">
+                <h3 className="text-sm font-semibold">
+                  Available Courses ({availableCourses.length})
+                </h3>
+                {totalCredits < MIN_CREDITS && (
+                  <p className="text-xs text-warning mt-0.5">
+                    Add {MIN_CREDITS - totalCredits} or more credit units to
+                    meet minimum (12)
+                  </p>
+                )}
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Course</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Units</TableHead>
+                    {canRegister && <TableHead />}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {availableCourses.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={canRegister ? 4 : 3}
+                        className="text-center py-6 text-muted-foreground text-sm"
+                      >
+                        All available courses are registered
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {availableCourses.map((c, i) => {
+                    const isCo = carryoverCourseIds.has(c.id);
+                    const wouldExceed =
+                      totalCredits + Number(c.creditUnits) > MAX_CREDITS;
+                    return (
+                      <TableRow
+                        key={String(c.id)}
+                        data-ocid={`coursereg.200.available.${i + 1}`}
+                        className={isCo ? "bg-destructive/5" : ""}
+                      >
+                        <TableCell className="font-medium text-sm">
+                          <div className="flex items-center gap-1.5">
+                            {c.name}
+                            {isCo && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-destructive/10 text-destructive border border-destructive/20">
+                                <RefreshCw className="w-2.5 h-2.5" /> CO
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {c.code}
+                        </TableCell>
+                        <TableCell>{String(c.creditUnits)}</TableCell>
+                        {canRegister && (
                           <TableCell>
                             <Button
-                              data-ocid={`coursereg.add_button.${i + 1}`}
                               size="sm"
                               disabled={wouldExceed}
-                              onClick={() => {
-                                addCourseRegistration(me.id, c.id, semester);
-                                toast.success(`Registered for ${c.code}`);
-                              }}
                               className={`h-7 text-xs ${
-                                isCarryover
+                                isCo
                                   ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  : "bg-primary text-primary-foreground"
+                                  : ""
                               }`}
+                              data-ocid={`coursereg.200.add.${i + 1}`}
+                              onClick={() => handleAdd(c.id, c.code)}
                             >
                               <PlusCircle className="w-3 h-3 mr-1" />
-                              {isCarryover ? "Re-register" : "Add"}
+                              {isCo ? "Re-register" : "✅ Add"}
                             </Button>
                           </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </div>
-        );
-      })}
+        </div>
+      )}
+
+      {/* No session selected */}
+      {!selectedCal && (
+        <div className="bg-card rounded-xl border border-border p-8 text-center">
+          <CalendarCheck className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-muted-foreground text-sm">
+            No academic session available. Contact the Registrar.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
 function ResultsTab() {
   const { me, myResults, courses, cgpa } = getStudentData();
+  const { courseRegistrations } = useApp();
+  const [activeSemFilter, setActiveSemFilter] = useState("all");
+
+  // Group published results by semester
+  const semesterGroups = useMemo(() => {
+    const groups: Record<string, typeof myResults> = {};
+    for (const r of myResults) {
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
+      const sem = course?.semester ?? "Unknown";
+      if (!groups[sem]) groups[sem] = [];
+      groups[sem].push(r);
+    }
+    return groups;
+  }, [myResults, courses]);
+
+  // Registered courses with no published result = awaiting
+  const awaitingCourses = useMemo(() => {
+    if (!me) return [];
+    const publishedCourseIds = new Set(
+      myResults.map((r) => r.courseId.toString()),
+    );
+    return courseRegistrations
+      .filter(
+        (cr) =>
+          cr.studentId === me.id &&
+          !publishedCourseIds.has(cr.courseId.toString()),
+      )
+      .map((cr) => courses.find((c) => String(c.id) === String(cr.courseId)))
+      .filter(Boolean);
+  }, [me, myResults, courseRegistrations, courses]);
+
+  const displayedResults =
+    activeSemFilter === "all"
+      ? myResults
+      : (semesterGroups[activeSemFilter] ?? []);
 
   function handleDownloadTranscript() {
     if (!me) return;
     const header =
       "Course Code,Course Name,Credit Units,CA (/40),Exam (/60),Total (/100),Grade,Grade Points,Remarks";
     const rows = myResults.map((r) => {
-      const course = courses.find((c) => c.id === r.courseId);
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
       return [
         course?.code ?? "-",
         `"${course?.name ?? "-"}"`,
@@ -622,6 +1081,30 @@ function ResultsTab() {
 
   return (
     <div className="space-y-4">
+      {/* Semester Filter Tabs */}
+      {Object.keys(semesterGroups).length > 1 && (
+        <div className="flex gap-2 flex-wrap no-print">
+          <button
+            type="button"
+            onClick={() => setActiveSemFilter("all")}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${activeSemFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted"}`}
+            data-ocid="results.tab"
+          >
+            All Semesters
+          </button>
+          {Object.keys(semesterGroups).map((sem) => (
+            <button
+              key={sem}
+              type="button"
+              onClick={() => setActiveSemFilter(sem)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${activeSemFilter === sem ? "bg-primary text-primary-foreground border-primary" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted"}`}
+              data-ocid="results.tab"
+            >
+              {sem} Semester
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">My Results</h1>
@@ -668,7 +1151,7 @@ function ResultsTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {myResults.length === 0 && (
+            {displayedResults.length === 0 && awaitingCourses.length === 0 && (
               <TableRow>
                 <TableCell
                   colSpan={9}
@@ -679,8 +1162,10 @@ function ResultsTab() {
                 </TableCell>
               </TableRow>
             )}
-            {myResults.map((r, i) => {
-              const course = courses.find((c) => c.id === r.courseId);
+            {displayedResults.map((r, i) => {
+              const course = courses.find(
+                (c) => String(c.id) === String(r.courseId),
+              );
               const isCarryover = r.grade === "F";
               return (
                 <TableRow
@@ -732,6 +1217,25 @@ function ResultsTab() {
                 </TableRow>
               );
             })}
+            {awaitingCourses.length > 0 &&
+              awaitingCourses.map((c, i) => (
+                <TableRow
+                  key={c!.id.toString()}
+                  data-ocid={`results.item.${displayedResults.length + i + 1}`}
+                >
+                  <TableCell className="font-medium text-muted-foreground">
+                    {c!.name}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm text-muted-foreground">
+                    {c!.code}
+                  </TableCell>
+                  <TableCell colSpan={7}>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
+                      Awaiting Publication
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       </div>
@@ -750,7 +1254,7 @@ function SemesterSummaryTab() {
     > = {};
 
     for (const r of myResults) {
-      const course = courses.find((c) => c.id === r.courseId);
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
       if (!course) continue;
       const key = course.semester;
       if (!groups[key]) {
@@ -766,7 +1270,7 @@ function SemesterSummaryTab() {
       let weightedPoints = 0;
       let creditSum = 0;
       for (const r of g.results) {
-        const course = courses.find((c) => c.id === r.courseId);
+        const course = courses.find((c) => String(c.id) === String(r.courseId));
         const credits = course ? Number(course.creditUnits) : 0;
         weightedPoints += r.gradePoint * credits;
         creditSum += credits;
@@ -789,7 +1293,7 @@ function SemesterSummaryTab() {
     for (const sem of semesters) {
       const g = semesterGroups[sem];
       for (const r of g.results) {
-        const course = courses.find((c) => c.id === r.courseId);
+        const course = courses.find((c) => String(c.id) === String(r.courseId));
         lines.push(
           [
             sem,
@@ -955,7 +1459,9 @@ function SemesterSummaryTab() {
                   </TableHeader>
                   <TableBody>
                     {g.results.map((r, i) => {
-                      const course = courses.find((c) => c.id === r.courseId);
+                      const course = courses.find(
+                        (c) => String(c.id) === String(r.courseId),
+                      );
                       return (
                         <TableRow
                           key={String(r.id)}
@@ -1042,7 +1548,7 @@ function GPATab() {
   let totalWeightedPoints = 0;
   let totalCreditUnits = 0;
   for (const r of myResults) {
-    const course = courses.find((c) => c.id === r.courseId);
+    const course = courses.find((c) => String(c.id) === String(r.courseId));
     const credits = course ? Number(course.creditUnits) : 0;
     totalWeightedPoints += r.gradePoint * credits;
     totalCreditUnits += credits;
@@ -1155,7 +1661,9 @@ function GPATab() {
             </TableHeader>
             <TableBody>
               {myResults.map((r, i) => {
-                const course = courses.find((c) => c.id === r.courseId);
+                const course = courses.find(
+                  (c) => String(c.id) === String(r.courseId),
+                );
                 return (
                   <TableRow key={String(r.id)} data-ocid={`gpa.item.${i + 1}`}>
                     <TableCell className="font-medium">
@@ -1187,7 +1695,9 @@ function TranscriptTab() {
     ? results.filter((r) => r.studentId === me.id && r.status === "published")
     : [];
 
-  const department = departments.find((d) => d.id === me?.departmentId);
+  const department = departments.find(
+    (d) => String(d.id) === String(me?.departmentId),
+  );
 
   // Group by semester
   const semesterGroups = useMemo(() => {
@@ -1196,7 +1706,7 @@ function TranscriptTab() {
       { results: typeof publishedResults; gpa: number; totalCredits: number }
     > = {};
     for (const r of publishedResults) {
-      const course = courses.find((c) => c.id === r.courseId);
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
       if (!course) continue;
       const key = course.semester;
       if (!groups[key]) groups[key] = { results: [], gpa: 0, totalCredits: 0 };
@@ -1208,7 +1718,7 @@ function TranscriptTab() {
       let wp = 0;
       let cu = 0;
       for (const r of g.results) {
-        const course = courses.find((c) => c.id === r.courseId);
+        const course = courses.find((c) => String(c.id) === String(r.courseId));
         const credits = course ? Number(course.creditUnits) : 0;
         wp += r.gradePoint * credits;
         cu += credits;
@@ -1424,7 +1934,9 @@ function TranscriptTab() {
                   </thead>
                   <tbody>
                     {g.results.map((r, i) => {
-                      const course = courses.find((c) => c.id === r.courseId);
+                      const course = courses.find(
+                        (c) => String(c.id) === String(r.courseId),
+                      );
                       return (
                         <tr
                           key={String(r.id)}
@@ -1642,7 +2154,9 @@ function GradeAppealsTab() {
     }
     const result = results.find((r) => r.id === BigInt(selectedResultId));
     if (!result) return;
-    const course = courses.find((c) => c.id === result.courseId);
+    const course = courses.find(
+      (c) => String(c.id) === String(result.courseId),
+    );
     const appeal: GradeAppeal = {
       id: BigInt(Date.now()),
       resultId: result.id,
@@ -1692,7 +2206,9 @@ function GradeAppealsTab() {
           >
             <option value="">-- Select a published result --</option>
             {myResults.map((r) => {
-              const course = courses.find((c) => c.id === r.courseId);
+              const course = courses.find(
+                (c) => String(c.id) === String(r.courseId),
+              );
               const alreadyAppealed = myAppeals.some(
                 (a) => a.resultId === r.id && a.status !== "resolved_upheld",
               );
@@ -1813,7 +2329,9 @@ function StudentGraduationTab() {
     submitGraduationApplication,
   } = useApp();
   const me = students.find((s) => s.userPrincipal === currentUser?.principal);
-  const dept = departments.find((d) => d.id === me?.departmentId);
+  const dept = departments.find(
+    (d) => String(d.id) === String(me?.departmentId),
+  );
   const myResults = results.filter((r) => r.studentId === me?.id);
   const publishedResults = myResults.filter((r) => r.status === "published");
 
@@ -2084,7 +2602,9 @@ function StudentTimetableTab() {
                 </div>
                 <div className="divide-y divide-border">
                   {dayEntries.map((entry, i) => {
-                    const course = courses.find((c) => c.id === entry.courseId);
+                    const course = courses.find(
+                      (c) => String(c.id) === String(entry.courseId),
+                    );
                     return (
                       <div
                         key={String(entry.id)}

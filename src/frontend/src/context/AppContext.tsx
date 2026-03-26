@@ -31,6 +31,9 @@ export type ExtendedStudent = Student & {
   email?: string;
   phone?: string;
   previousStanding?: string;
+  jambRegNo?: string;
+  state?: string;
+  lga?: string;
 };
 
 export type ExtendedResult = AcademicResult & {
@@ -93,6 +96,8 @@ export interface AcademicCalendar {
   isActive: boolean;
   startDate: string;
   endDate: string;
+  registrationOpen: boolean;
+  addDropOpen: boolean;
 }
 
 export interface GradeAppeal {
@@ -321,6 +326,8 @@ interface AppContextValue extends AppState {
   rejectAmendment: (id: bigint) => void;
   addAcademicCalendar: (cal: AcademicCalendar) => void;
   setActiveCalendar: (id: bigint) => void;
+  toggleRegistrationOpen: (id: bigint) => void;
+  toggleAddDropOpen: (id: bigint) => void;
   submitGradeAppeal: (appeal: GradeAppeal) => void;
   respondToAppeal: (
     id: bigint,
@@ -371,6 +378,14 @@ interface AppContextValue extends AppState {
   updateInstitutionSettings: (settings: InstitutionSettings) => void;
   loadSenateSampleData: () => void;
   setModeratorName: (courseId: bigint, name: string) => void;
+  submitCourseResults: (courseId: bigint) => void;
+  approveResultsByCourse: (
+    courseId: bigint,
+    level: "hod" | "dean" | "registrar",
+  ) => void;
+  rejectResultsByCourse: (courseId: bigint, comment: string) => void;
+  publishResultsByCourse: (courseId: bigint) => void;
+  publishResultsBatch: (courseIds: bigint[]) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -383,6 +398,7 @@ const FULL_FACULTIES: Faculty[] = [
   { id: BigInt(5), name: "Faculty of Law" },
   { id: BigInt(6), name: "Faculty of Business & Management" },
   { id: BigInt(7), name: "Faculty of Education" },
+  { id: BigInt(8), name: "Faculty of Science Education" },
 ];
 
 const DEMO_FACULTIES = FULL_FACULTIES;
@@ -412,8 +428,10 @@ const FULL_DEPARTMENTS: ExtendedDepartment[] = [
   { id: BigInt(22), name: "Business Administration", facultyId: BigInt(6) },
   { id: BigInt(23), name: "Economics", facultyId: BigInt(6) },
   { id: BigInt(24), name: "Finance", facultyId: BigInt(6) },
-  { id: BigInt(25), name: "Computer Science Education", facultyId: BigInt(7) },
-  { id: BigInt(26), name: "Science Education", facultyId: BigInt(7) },
+  { id: BigInt(25), name: "Computer Science Education", facultyId: BigInt(8) },
+  { id: BigInt(26), name: "Science Education", facultyId: BigInt(8) },
+  { id: BigInt(27), name: "Biology Education", facultyId: BigInt(8) },
+  { id: BigInt(28), name: "Chemistry Education", facultyId: BigInt(8) },
 ];
 
 const DEMO_DEPARTMENTS = FULL_DEPARTMENTS;
@@ -1772,6 +1790,1003 @@ const FULL_COURSES: Course[] = [
 
 const DEMO_COURSES = FULL_COURSES;
 
+// ============================================================
+// ADMISSION 2025/2026 - Faculty of Science Education
+// Extracted from official admission lists
+// ============================================================
+
+// Biology Education - 63 students (departmentId: 27)
+const ADMISSION_BIO_2025: ExtendedStudent[] = [
+  {
+    id: BigInt(100),
+    name: "Abdullah Mohammed",
+    matricNumber: "BIO/2025/001",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-001",
+    gender: "Male",
+    state: "Niger",
+    lga: "Magama",
+    jambRegNo: "20255145002315H",
+  },
+  {
+    id: BigInt(101),
+    name: "Abubakar Hawa",
+    matricNumber: "BIO/2025/002",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-002",
+    gender: "Female",
+    state: "Kwara",
+    lga: "Edu",
+    jambRegNo: "20255095005081F",
+  },
+  {
+    id: BigInt(102),
+    name: "Abubakar Zainab",
+    matricNumber: "BIO/2025/003",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-003",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255012477690A",
+  },
+  {
+    id: BigInt(103),
+    name: "Aliyu Fatima Chindo",
+    matricNumber: "BIO/2025/004",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-004",
+    gender: "Female",
+    state: "Kebbi",
+    lga: "Gwandu",
+    jambRegNo: "20255703348186A",
+  },
+  {
+    id: BigInt(104),
+    name: "Cyril Prince",
+    matricNumber: "BIO/2025/005",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-005",
+    gender: "Male",
+    state: "Niger",
+    lga: "Magama",
+    jambRegNo: "20255132476941A",
+  },
+  {
+    id: BigInt(105),
+    name: "Isiaka Hadiza",
+    matricNumber: "BIO/2025/006",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-006",
+    gender: "Female",
+    state: "Kogi",
+    lga: "Dekina",
+    jambRegNo: "20255139971531A",
+  },
+  {
+    id: BigInt(106),
+    name: "Moshood Olawale Olamide",
+    matricNumber: "BIO/2025/007",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-007",
+    gender: "Male",
+    state: "Kwara",
+    lga: "Offa",
+    jambRegNo: "20255047734891A",
+  },
+  {
+    id: BigInt(107),
+    name: "Muhammad Abdullahi Shafiu",
+    matricNumber: "BIO/2025/008",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-008",
+    gender: "Male",
+    state: "Kaduna",
+    lga: "Kagarko",
+    jambRegNo: "20255117061371A",
+  },
+  {
+    id: BigInt(108),
+    name: "Pius Joel Jagaba",
+    matricNumber: "BIO/2025/009",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-009",
+    gender: "Male",
+    state: "Niger",
+    lga: "Magama",
+    jambRegNo: "20255148472771A",
+  },
+  {
+    id: BigInt(109),
+    name: "Umar Suleiman",
+    matricNumber: "BIO/2025/010",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-010",
+    gender: "Male",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255087785681A",
+  },
+  {
+    id: BigInt(110),
+    name: "Abdulhamid Muhammad Jazuli",
+    matricNumber: "BIO/2025/011",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-011",
+    gender: "Male",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255104831801A",
+  },
+  {
+    id: BigInt(111),
+    name: "Abdullahi Amina",
+    matricNumber: "BIO/2025/012",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-012",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255153117316F",
+  },
+  {
+    id: BigInt(112),
+    name: "Abdulsalam Hassana",
+    matricNumber: "BIO/2025/013",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-013",
+    gender: "Female",
+    state: "Plateau",
+    lga: "Langtan-North",
+    jambRegNo: "20255065652001",
+  },
+  {
+    id: BigInt(113),
+    name: "Abednege Comfort",
+    matricNumber: "BIO/2025/014",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-014",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255065545600F",
+  },
+  {
+    id: BigInt(114),
+    name: "Abubakar Idris",
+    matricNumber: "BIO/2025/015",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-015",
+    gender: "Male",
+    state: "Niger",
+    lga: "Magama",
+    jambRegNo: "20255109656881A",
+  },
+  {
+    id: BigInt(115),
+    name: "Adamu Naja'atu",
+    matricNumber: "BIO/2025/016",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-016",
+    gender: "Female",
+    state: "Kebbi",
+    lga: "Yauri",
+    jambRegNo: "20255173034781F",
+  },
+  {
+    id: BigInt(116),
+    name: "Adamu Tasiu Taasi",
+    matricNumber: "BIO/2025/017",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-017",
+    gender: "Male",
+    state: "Niger",
+    lga: "Bida",
+    jambRegNo: "20255103390221H",
+  },
+  {
+    id: BigInt(117),
+    name: "Ahmad Zakari",
+    matricNumber: "BIO/2025/018",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-018",
+    gender: "Male",
+    state: "Osun",
+    lga: "Ayedade",
+    jambRegNo: "20255098174941F",
+  },
+  {
+    id: BigInt(118),
+    name: "Akinpelu Elizabeth",
+    matricNumber: "BIO/2025/019",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-019",
+    gender: "Female",
+    state: "Kwara",
+    lga: "Ifelodun",
+    jambRegNo: "20255086492961",
+  },
+  {
+    id: BigInt(119),
+    name: "Aminu Munirat",
+    matricNumber: "BIO/2025/020",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-020",
+    gender: "Female",
+    state: "Niger",
+    lga: "Magama",
+    jambRegNo: "20255005130231A",
+  },
+  {
+    id: BigInt(120),
+    name: "Andrawus Saminu",
+    matricNumber: "BIO/2025/021",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-021",
+    gender: "Male",
+    state: "Niger",
+    lga: "Mariga",
+    jambRegNo: "20255051537001A",
+  },
+  {
+    id: BigInt(121),
+    name: "Attahiru Saidu",
+    matricNumber: "BIO/2025/022",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-022",
+    gender: "Male",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255088644411C",
+  },
+  {
+    id: BigInt(122),
+    name: "Ayanlere Gabriel Oluwatimileyin",
+    matricNumber: "BIO/2025/023",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-023",
+    gender: "Male",
+    state: "Oyo",
+    lga: "Ogbomosho South",
+    jambRegNo: "20255018405551A",
+  },
+  {
+    id: BigInt(123),
+    name: "Azeez Feyisayo Wasilat",
+    matricNumber: "BIO/2025/024",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-024",
+    gender: "Female",
+    state: "Kwara",
+    lga: "Ifelodun",
+    jambRegNo: "20255108360EF",
+  },
+  {
+    id: BigInt(124),
+    name: "Babangida Hauwa Yusuf",
+    matricNumber: "BIO/2025/025",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-025",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+  },
+  {
+    id: BigInt(125),
+    name: "Bello Sadiya Mohammed",
+    matricNumber: "BIO/2025/026",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-026",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+  },
+  {
+    id: BigInt(126),
+    name: "Bulus Grace Pam",
+    matricNumber: "BIO/2025/027",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-027",
+    gender: "Female",
+    state: "Plateau",
+    lga: "Shendam",
+  },
+  {
+    id: BigInt(127),
+    name: "Chidinma Precious",
+    matricNumber: "BIO/2025/028",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-028",
+    gender: "Female",
+    state: "Anambra",
+    lga: "Idemili-North",
+  },
+  {
+    id: BigInt(128),
+    name: "Chihonso Rejoice Chinonye",
+    matricNumber: "BIO/2025/029",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-029",
+    gender: "Female",
+    state: "Anambra",
+    lga: "Anambra-East",
+    jambRegNo: "20255185902114",
+  },
+  {
+    id: BigInt(129),
+    name: "Edoziuno Glory Oluebuchekwu",
+    matricNumber: "BIO/2025/030",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-030",
+    gender: "Female",
+    state: "Anambra",
+    lga: "Anambra-East",
+    jambRegNo: "20255133098861F",
+  },
+  {
+    id: BigInt(130),
+    name: "Gado Jacintha Shekwoaga",
+    matricNumber: "BIO/2025/031",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-031",
+    gender: "Female",
+    state: "Benue",
+    lga: "Agatu",
+    jambRegNo: "20255003860291F",
+  },
+  {
+    id: BigInt(131),
+    name: "Haruna Rosemary",
+    matricNumber: "BIO/2025/032",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-032",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255043598281F",
+  },
+  {
+    id: BigInt(132),
+    name: "Hassan Amina Mohammed",
+    matricNumber: "BIO/2025/033",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-033",
+    gender: "Female",
+    state: "Anambra",
+    lga: "Ihiala",
+    jambRegNo: "20255045479451F",
+  },
+  {
+    id: BigInt(133),
+    name: "Ibeazuma Oluebube Jennifer",
+    matricNumber: "BIO/2025/034",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-034",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255020370CA",
+  },
+  {
+    id: BigInt(134),
+    name: "Ibrahim Khadija Imam",
+    matricNumber: "BIO/2025/035",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-035",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255049587BCA",
+  },
+  {
+    id: BigInt(135),
+    name: "Isah Fatima",
+    matricNumber: "BIO/2025/036",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-036",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255043159BA",
+  },
+  {
+    id: BigInt(136),
+    name: "Ishaya Saphirat",
+    matricNumber: "BIO/2025/037",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-037",
+    gender: "Female",
+    state: "Plateau",
+    lga: "Wase",
+    jambRegNo: "20255068872CF",
+  },
+  {
+    id: BigInt(137),
+    name: "James Joy",
+    matricNumber: "BIO/2025/038",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-038",
+    gender: "Female",
+    state: "Benue",
+    lga: "Vandeikya",
+    jambRegNo: "20255069226BF",
+  },
+  {
+    id: BigInt(138),
+    name: "Jibrin Hafsat",
+    matricNumber: "BIO/2025/039",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-039",
+    gender: "Female",
+    state: "Benue",
+    lga: "Obi",
+    jambRegNo: "20255187744CF",
+  },
+  {
+    id: BigInt(139),
+    name: "Johnson Loveth",
+    matricNumber: "BIO/2025/040",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-040",
+    gender: "Male",
+    state: "Niger",
+    lga: "Rijau",
+    jambRegNo: "20255074586361A",
+  },
+  {
+    id: BigInt(140),
+    name: "Joseph Gift",
+    matricNumber: "BIO/2025/041",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-041",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255083776201A",
+  },
+  {
+    id: BigInt(141),
+    name: "Maiyaki Yohanna Habila",
+    matricNumber: "BIO/2025/042",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-042",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255163044EA",
+  },
+  {
+    id: BigInt(142),
+    name: "Mohammed Ameerah Sani",
+    matricNumber: "BIO/2025/043",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-043",
+    gender: "Male",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255023046CF",
+  },
+  {
+    id: BigInt(143),
+    name: "Mohammed Rahmatullahi",
+    matricNumber: "BIO/2025/044",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-044",
+    gender: "Male",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255092385SHA",
+  },
+  {
+    id: BigInt(144),
+    name: "Muhammad Mustapha",
+    matricNumber: "BIO/2025/045",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-045",
+    gender: "Male",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255197993381F",
+  },
+  {
+    id: BigInt(145),
+    name: "Muhammed Mariyam",
+    matricNumber: "BIO/2025/046",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-046",
+    gender: "Female",
+    state: "Niger",
+    lga: "Magama",
+    jambRegNo: "20255038140901F",
+  },
+  {
+    id: BigInt(146),
+    name: "Musa Kefas Ayuba",
+    matricNumber: "BIO/2025/047",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-047",
+    gender: "Male",
+    state: "Oyo",
+    lga: "Ogbomosho North",
+    jambRegNo: "20255188266GA",
+  },
+  {
+    id: BigInt(147),
+    name: "Musa Shamsudeen",
+    matricNumber: "BIO/2025/048",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-048",
+    gender: "Male",
+    state: "Anambra",
+    lga: "Anambra-East",
+    jambRegNo: "20255173735CA",
+  },
+  {
+    id: BigInt(148),
+    name: "Ndife Onyeka John",
+    matricNumber: "BIO/2025/049",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-049",
+    gender: "Female",
+    state: "Anambra",
+    lga: "Awka-North",
+    jambRegNo: "20255022024HF",
+  },
+  {
+    id: BigInt(149),
+    name: "Nebechukwu Emmanuella Nmesoma",
+    matricNumber: "BIO/2025/050",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-050",
+    gender: "Female",
+    state: "Edo",
+    lga: "Etsako-Central",
+    jambRegNo: "20255000530BCA",
+  },
+  {
+    id: BigInt(150),
+    name: "Odine Oshiomhole",
+    matricNumber: "BIO/2025/051",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-051",
+    gender: "Female",
+    state: "Ogun",
+    lga: "Remo-North",
+    jambRegNo: "20255056551641F",
+  },
+  {
+    id: BigInt(151),
+    name: "Odukoya Yetunde Dorcas",
+    matricNumber: "BIO/2025/052",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-052",
+    gender: "Female",
+    state: "Oyo",
+    lga: "Ogbomosho South",
+    jambRegNo: "20255900018801F",
+  },
+  {
+    id: BigInt(152),
+    name: "Ogunnira Deborah Temilade",
+    matricNumber: "BIO/2025/053",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-053",
+    gender: "Female",
+    state: "Kogi",
+    lga: "Yagba-West",
+    jambRegNo: "20255900190102FA",
+  },
+  {
+    id: BigInt(153),
+    name: "Oluowa Rebecca Temidayo",
+    matricNumber: "BIO/2025/054",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-054",
+    gender: "Female",
+    state: "Oyo",
+    lga: "Ogbomosho South",
+    jambRegNo: "20255088551381F",
+  },
+  {
+    id: BigInt(154),
+    name: "Oyeleke Sunday Idowu",
+    matricNumber: "BIO/2025/055",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-055",
+    gender: "Male",
+    state: "Plateau",
+    lga: "Bassa",
+    jambRegNo: "20255900481798F",
+  },
+  {
+    id: BigInt(155),
+    name: "Philip Blessing",
+    matricNumber: "BIO/2025/056",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-056",
+    gender: "Female",
+    state: "Osun",
+    lga: "Atakumosa East",
+    jambRegNo: "20255900317951F",
+  },
+  {
+    id: BigInt(156),
+    name: "Samuel Cynthia",
+    matricNumber: "BIO/2025/057",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-057",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255513493581CA",
+  },
+  {
+    id: BigInt(157),
+    name: "Shuaibu Balkisu",
+    matricNumber: "BIO/2025/058",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-058",
+    gender: "Female",
+    state: "Niger",
+    lga: "Rijau",
+    jambRegNo: "20255162693881F",
+  },
+  {
+    id: BigInt(158),
+    name: "Sunday Regina",
+    matricNumber: "BIO/2025/059",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-059",
+    gender: "Female",
+    state: "Benue",
+    lga: "Ogbadibo",
+    jambRegNo: "20255111173441A",
+  },
+  {
+    id: BigInt(159),
+    name: "Ujah Lucy",
+    matricNumber: "BIO/2025/060",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-060",
+    gender: "Female",
+    state: "Benue",
+    lga: "Ogbadibo",
+    jambRegNo: "20255198273GFA",
+  },
+  {
+    id: BigInt(160),
+    name: "Umar Usman Danyaya",
+    matricNumber: "BIO/2025/061",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-061",
+    gender: "Male",
+    state: "Niger",
+    lga: "Manga",
+    jambRegNo: "20255034443ZAF",
+  },
+  {
+    id: BigInt(161),
+    name: "Yahaya Issa Mohammed",
+    matricNumber: "BIO/2025/062",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-062",
+    gender: "Male",
+    state: "Kwara",
+    lga: "Edu",
+    jambRegNo: "20255017824011",
+  },
+  {
+    id: BigInt(162),
+    name: "Yahaya Shakira",
+    matricNumber: "BIO/2025/063",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-063",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255086989ZCE",
+  },
+  {
+    id: BigInt(163),
+    name: "Yohanna Joshua",
+    matricNumber: "BIO/2025/064",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-064",
+    gender: "Male",
+    state: "Niger",
+    lga: "Rijau",
+    jambRegNo: "20255056045EA",
+  },
+  {
+    id: BigInt(164),
+    name: "Yusuf Sadiya Haleema",
+    matricNumber: "BIO/2025/065",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-065",
+    gender: "Female",
+    state: "Niger",
+    lga: "Kontagora",
+    jambRegNo: "20255112919BEE",
+  },
+  {
+    id: BigInt(165),
+    name: "Zubairu Fatima",
+    matricNumber: "BIO/2025/066",
+    departmentId: BigInt(27),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "bio-2025-066",
+    gender: "Female",
+    state: "Kwara",
+    lga: "Edu",
+    jambRegNo: "20255112991JA",
+  },
+];
+
+// Chemistry Education - 10 students (departmentId: 28)
+const ADMISSION_CHM_2025: ExtendedStudent[] = [
+  {
+    id: BigInt(200),
+    name: "Enoch Justin Basheke",
+    matricNumber: "CHM-EDU/2025/001",
+    departmentId: BigInt(28),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "chm-2025-001",
+    gender: "Male",
+    state: "Kaduna",
+    lga: "Dange-Kasai",
+    jambRegNo: "20255067348614",
+  },
+  {
+    id: BigInt(201),
+    name: "Mohammed Haruna",
+    matricNumber: "CHM-EDU/2025/002",
+    departmentId: BigInt(28),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "chm-2025-002",
+    gender: "Male",
+    state: "Niger",
+    lga: "Bida",
+    jambRegNo: "20255126850461",
+  },
+  {
+    id: BigInt(202),
+    name: "Jibril Rodiel Omobolante",
+    matricNumber: "CHM-EDU/2025/003",
+    departmentId: BigInt(28),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "chm-2025-003",
+    gender: "Female",
+    state: "Oyo",
+    lga: "Orelope",
+    jambRegNo: "20255059264SCA",
+  },
+  {
+    id: BigInt(203),
+    name: "John Precious Ogayi",
+    matricNumber: "CHM-EDU/2025/004",
+    departmentId: BigInt(28),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "chm-2025-004",
+    gender: "Female",
+    state: "Benue",
+    lga: "Katsina-Ala",
+    jambRegNo: "20255112428OEA",
+  },
+  {
+    id: BigInt(204),
+    name: "Okeke Patrick Ezechukwu",
+    matricNumber: "CHM-EDU/2025/005",
+    departmentId: BigInt(28),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "chm-2025-005",
+    gender: "Male",
+    state: "Imo",
+    lga: "Orumba",
+    jambRegNo: "202550140450IA",
+  },
+  {
+    id: BigInt(205),
+    name: "Okolo Gloria Oshiokenova",
+    matricNumber: "CHM-EDU/2025/006",
+    departmentId: BigInt(28),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "chm-2025-006",
+    gender: "Female",
+    state: "Edo",
+    lga: "Etsako-East",
+    jambRegNo: "20255084391700F",
+  },
+  {
+    id: BigInt(206),
+    name: "Olowe Ayomide Morenikeji",
+    matricNumber: "CHM-EDU/2025/007",
+    departmentId: BigInt(28),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "chm-2025-007",
+    gender: "Female",
+    state: "Osun",
+    lga: "Atakumosa",
+    jambRegNo: "20255068675HA",
+  },
+  {
+    id: BigInt(207),
+    name: "Raji Sikira",
+    matricNumber: "CHM-EDU/2025/008",
+    departmentId: BigInt(28),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "chm-2025-008",
+    gender: "Female",
+    state: "Oyo",
+    lga: "Ogbomosho South",
+    jambRegNo: "20255112609SIF",
+  },
+  {
+    id: BigInt(208),
+    name: "Sebastine Esther Acha",
+    matricNumber: "CHM-EDU/2025/009",
+    departmentId: BigInt(28),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "chm-2025-009",
+    gender: "Female",
+    state: "Katsina",
+    lga: "Dutsi",
+    jambRegNo: "202551771492GA",
+  },
+  {
+    id: BigInt(209),
+    name: "Shaaba Maryam",
+    matricNumber: "CHM-EDU/2025/010",
+    departmentId: BigInt(28),
+    level: BigInt(100),
+    status: "active",
+    userPrincipal: "chm-2025-010",
+    gender: "Female",
+    state: "Kwara",
+    lga: "Edu",
+    jambRegNo: "20255196017714",
+  },
+];
+
 const DEMO_STUDENTS: ExtendedStudent[] = [
   {
     id: BigInt(1),
@@ -1851,6 +2866,8 @@ const DEMO_STUDENTS: ExtendedStudent[] = [
     email: "taiwo.abiodun@university.edu",
     phone: "08067890123",
   },
+  ...ADMISSION_BIO_2025,
+  ...ADMISSION_CHM_2025,
 ];
 
 export function calcGradePoint(total: number): {
@@ -1866,6 +2883,23 @@ export function calcGradePoint(total: number): {
   if (total >= 40)
     return { grade: "E", gradePoint: 1.0, remarks: "Marginal Pass" };
   return { grade: "F", gradePoint: 0.0, remarks: "Fail" };
+}
+
+export function getStudentDepartment(
+  student: ExtendedStudent,
+  departments: ExtendedDepartment[],
+): ExtendedDepartment | undefined {
+  return departments.find((d) => String(d.id) === String(student.departmentId));
+}
+
+export function getStudentFaculty(
+  student: ExtendedStudent,
+  departments: ExtendedDepartment[],
+  faculties: Faculty[],
+): Faculty | undefined {
+  const dept = getStudentDepartment(student, departments);
+  if (!dept) return undefined;
+  return faculties.find((f) => String(f.id) === String(dept.facultyId));
 }
 
 export function getAcademicStanding(gpa: number): {
@@ -2588,6 +3622,18 @@ const DEMO_CALENDARS: AcademicCalendar[] = [
     isActive: true,
     startDate: "2024-09-01",
     endDate: "2025-01-31",
+    registrationOpen: true,
+    addDropOpen: false,
+  },
+  {
+    id: BigInt(2),
+    session: "2024/2025",
+    semester: "Second",
+    isActive: false,
+    startDate: "2025-02-01",
+    endDate: "2025-06-30",
+    registrationOpen: false,
+    addDropOpen: false,
   },
 ];
 
@@ -2778,18 +3824,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const currentUserRef = useRef<AppUser | null>(null);
 
-  const [departments, setDepartments] = useState<ExtendedDepartment[]>(
-    () => lsGet<ExtendedDepartment[]>("departments") ?? DEMO_DEPARTMENTS,
-  );
-  const [faculties, setFaculties] = useState<Faculty[]>(
-    () => lsGet<Faculty[]>("faculties") ?? DEMO_FACULTIES,
-  );
+  const [departments, setDepartments] = useState<ExtendedDepartment[]>(() => {
+    const saved = lsGet<ExtendedDepartment[]>("departments");
+    if (!saved) return DEMO_DEPARTMENTS;
+    const savedIds = new Set(saved.map((d) => String(d.id)));
+    const missing = DEMO_DEPARTMENTS.filter((d) => !savedIds.has(String(d.id)));
+    return missing.length > 0 ? [...saved, ...missing] : saved;
+  });
+  const [faculties, setFaculties] = useState<Faculty[]>(() => {
+    const saved = lsGet<Faculty[]>("faculties");
+    if (!saved) return DEMO_FACULTIES;
+    const savedIds = new Set(saved.map((f) => String(f.id)));
+    const missing = DEMO_FACULTIES.filter((f) => !savedIds.has(String(f.id)));
+    return missing.length > 0 ? [...saved, ...missing] : saved;
+  });
   const [courses, setCourses] = useState<Course[]>(
     () => lsGet<Course[]>("courses") ?? DEMO_COURSES,
   );
-  const [students, setStudents] = useState<ExtendedStudent[]>(
-    () => lsGet<ExtendedStudent[]>("students") ?? DEMO_STUDENTS,
-  );
+  const [students, setStudents] = useState<ExtendedStudent[]>(() => {
+    const saved = lsGet<ExtendedStudent[]>("students");
+    if (!saved) return DEMO_STUDENTS;
+    const savedIds = new Set(saved.map((s) => String(s.id)));
+    const missing = DEMO_STUDENTS.filter((s) => !savedIds.has(String(s.id)));
+    return missing.length > 0 ? [...saved, ...missing] : saved;
+  });
   const [results, setResults] = useState<ExtendedResult[]>(
     () => lsGet<ExtendedResult[]>("results") ?? DEMO_RESULTS,
   );
@@ -3284,6 +4342,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAcademicCalendars((prev) => [...prev, cal]);
   }, []);
 
+  const toggleRegistrationOpen = useCallback((id: bigint) => {
+    setAcademicCalendars((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, registrationOpen: !c.registrationOpen } : c,
+      ),
+    );
+  }, []);
+
+  const toggleAddDropOpen = useCallback((id: bigint) => {
+    setAcademicCalendars((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, addDropOpen: !c.addDropOpen } : c,
+      ),
+    );
+  }, []);
+
   const setActiveCalendar = useCallback(
     (id: bigint) => {
       setAcademicCalendars((prev) =>
@@ -3684,6 +4758,144 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const submitCourseResults = useCallback(
+    (courseId: bigint) => {
+      setResults((prev) =>
+        prev.map((r) => {
+          if (r.courseId !== courseId) return r;
+          if (r.status !== "pending") return r;
+          return {
+            ...r,
+            status: "submitted",
+            submittedAt: Date.now(),
+          } as ExtendedResult;
+        }),
+      );
+      const u = currentUserRef.current;
+      if (u)
+        logAudit(
+          u.name,
+          u.role ?? "",
+          "Results Submitted",
+          `Course ${courseId} results submitted`,
+        );
+    },
+    [logAudit],
+  );
+
+  const approveResultsByCourse = useCallback(
+    (courseId: bigint, level: "hod" | "dean" | "registrar") => {
+      setResults((prev) =>
+        prev.map((r) => {
+          if (r.courseId !== courseId) return r;
+          if (level === "hod" && r.status === "submitted")
+            return { ...r, status: "hod_approved", rejectionReason: undefined };
+          if (level === "dean" && r.status === "hod_approved")
+            return {
+              ...r,
+              status: "dean_approved",
+              rejectionReason: undefined,
+            };
+          if (
+            level === "registrar" &&
+            (r.status === "dean_approved" || r.status === "approved")
+          )
+            return { ...r, status: "approved", rejectionReason: undefined };
+          return r;
+        }),
+      );
+      const u = currentUserRef.current;
+      if (u)
+        logAudit(
+          u.name,
+          u.role ?? "",
+          "Results Approved",
+          `Course ${courseId} approved by ${level}`,
+        );
+    },
+    [logAudit],
+  );
+
+  const rejectResultsByCourse = useCallback(
+    (courseId: bigint, comment: string) => {
+      setResults((prev) =>
+        prev.map((r) => {
+          if (r.courseId !== courseId) return r;
+          return { ...r, status: "pending", rejectionReason: comment };
+        }),
+      );
+      addNotification(
+        "Lecturer",
+        `Results rejected: ${comment}`,
+        "score_sheet",
+      );
+      const u = currentUserRef.current;
+      if (u)
+        logAudit(
+          u.name,
+          u.role ?? "",
+          "Results Rejected",
+          `Course ${courseId} rejected: ${comment}`,
+        );
+    },
+    [logAudit, addNotification],
+  );
+
+  const publishResultsByCourse = useCallback(
+    (courseId: bigint) => {
+      setResults((prev) =>
+        prev.map((r) => {
+          if (r.courseId !== courseId) return r;
+          if (r.status === "dean_approved" || r.status === "approved")
+            return { ...r, status: "published" };
+          return r;
+        }),
+      );
+      addNotification(
+        "Student",
+        "New results published to your portal",
+        "results",
+      );
+      const u = currentUserRef.current;
+      if (u)
+        logAudit(
+          u.name,
+          u.role ?? "",
+          "Results Published",
+          `Course ${courseId} published`,
+        );
+    },
+    [logAudit, addNotification],
+  );
+
+  const publishResultsBatch = useCallback(
+    (courseIds: bigint[]) => {
+      const idSet = new Set(courseIds.map((id) => id.toString()));
+      setResults((prev) =>
+        prev.map((r) => {
+          if (!idSet.has(r.courseId.toString())) return r;
+          if (r.status === "dean_approved" || r.status === "approved")
+            return { ...r, status: "published" };
+          return r;
+        }),
+      );
+      addNotification(
+        "Student",
+        "Semester results published to your portal",
+        "results",
+      );
+      const u = currentUserRef.current;
+      if (u)
+        logAudit(
+          u.name,
+          u.role ?? "",
+          "Batch Results Published",
+          `${courseIds.length} courses published`,
+        );
+    },
+    [logAudit, addNotification],
+  );
+
   return (
     <AppContext.Provider
       value={{
@@ -3725,6 +4937,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         rejectAmendment,
         addAcademicCalendar,
         setActiveCalendar,
+        toggleRegistrationOpen,
+        toggleAddDropOpen,
         submitGradeAppeal,
         respondToAppeal,
         addNotification,
@@ -3764,6 +4978,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         loadSenateSampleData,
         moderatorNames,
         setModeratorName,
+        submitCourseResults,
+        approveResultsByCourse,
+        rejectResultsByCourse,
+        publishResultsByCourse,
+        publishResultsBatch,
       }}
     >
       {children}

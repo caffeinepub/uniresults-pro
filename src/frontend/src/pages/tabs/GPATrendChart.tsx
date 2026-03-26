@@ -37,7 +37,7 @@ export default function GPATrendChart({ student, title }: Props) {
       { totalPoints: number; totalCredits: number }
     >();
     for (const r of myResults) {
-      const course = courses.find((c) => c.id === r.courseId);
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
       if (!course) continue;
       const key = course.semester;
       if (!key) continue;

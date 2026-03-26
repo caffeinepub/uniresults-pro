@@ -49,7 +49,7 @@ export function CarryOverBanner() {
     );
     return failedResults
       .map((r) => {
-        const course = courses.find((c) => c.id === r.courseId);
+        const course = courses.find((c) => String(c.id) === String(r.courseId));
         return course ? { result: r, course } : null;
       })
       .filter(Boolean)

@@ -75,7 +75,7 @@ export default function FacultyReportTab() {
   function getLevelStats(lvl: number) {
     const lvlStudents = students.filter(
       (s) =>
-        facultyDepts.some((d) => d.id === s.departmentId) &&
+        facultyDepts.some((d) => String(d.id) === String(s.departmentId)) &&
         Number(s.level ?? 100) === lvl,
     );
     const lvlStudentIds = new Set(lvlStudents.map((s) => s.id));
@@ -123,7 +123,7 @@ export default function FacultyReportTab() {
       courses
         .filter(
           (c) =>
-            facultyDepts.some((d) => d.id === c.departmentId) &&
+            facultyDepts.some((d) => String(d.id) === String(c.departmentId)) &&
             c.semester === semester,
         )
         .map((c) => c.id),
@@ -443,7 +443,8 @@ export default function FacultyReportTab() {
                     ) : (
                       stats.top5.map((s, i) => {
                         const dept = departments.find(
-                          (d) => d.id === s.student.departmentId,
+                          (d) =>
+                            String(d.id) === String(s.student.departmentId),
                         );
                         return (
                           <TableRow key={String(s.student.id)}>

@@ -81,7 +81,9 @@ export function StudentTransferTab() {
   const myTransfers = me
     ? transfers.filter((t) => t.studentMatric === me.matricNumber)
     : [];
-  const myDept = departments.find((d) => d.id === me?.departmentId);
+  const myDept = departments.find(
+    (d) => String(d.id) === String(me?.departmentId),
+  );
   const activePending = myTransfers.find(
     (t) => t.status !== "finalized" && t.status !== "rejected",
   );

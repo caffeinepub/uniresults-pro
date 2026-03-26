@@ -52,6 +52,7 @@ import AttendanceTab from "./tabs/AttendanceTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 
 export default function LecturerDashboard() {
@@ -60,6 +61,11 @@ export default function LecturerDashboard() {
   const quickActions = [
     { label: "Enter Results", tab: "results", icon: ClipboardList },
     { label: "Score Sheet", tab: "score_sheet", icon: ClipboardList },
+    {
+      label: "Results Pipeline",
+      tab: "results_processing",
+      icon: ClipboardCheck,
+    },
     { label: "Mark Attendance", tab: "attendance", icon: ClipboardCheck },
     { label: "View Courses", tab: "overview", icon: BookOpen },
   ];
@@ -95,6 +101,8 @@ export default function LecturerDashboard() {
         <LecturerExamScheduleTab />
       ) : activeTab === "score_sheet" ? (
         <ScoreEntrySheetTab />
+      ) : activeTab === "results_processing" ? (
+        <ResultsProcessingTab userRole="Lecturer" />
       ) : (
         <CoursesView />
       )}
@@ -261,7 +269,9 @@ function CoursesView() {
     const header =
       "S/N,Student Name,Matric Number,CA (/40),Exam (/60),Total (/100),Grade,Grade Points,Remarks,Status";
     const rows = courseResults.map((r, i) => {
-      const student = students.find((s) => s.id === r.studentId);
+      const student = students.find(
+        (s) => String(s.id) === String(r.studentId),
+      );
       return [
         i + 1,
         student?.name ?? "-",
@@ -400,7 +410,9 @@ function CoursesView() {
                 </TableRow>
               )}
               {courseResults.map((r, i) => {
-                const student = students.find((s) => s.id === r.studentId);
+                const student = students.find(
+                  (s) => String(s.id) === String(r.studentId),
+                );
                 const pendingAmend = hasPendingAmendment(r.id);
                 return (
                   <TableRow
@@ -1205,7 +1217,9 @@ function TeachingScheduleTab() {
       ) : (
         <div className="grid gap-3">
           {myEntries.map((entry, i) => {
-            const course = courses.find((c) => c.id === entry.courseId);
+            const course = courses.find(
+              (c) => String(c.id) === String(entry.courseId),
+            );
             return (
               <div
                 key={String(entry.id)}

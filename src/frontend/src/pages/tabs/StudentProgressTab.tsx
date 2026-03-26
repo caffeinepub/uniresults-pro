@@ -28,7 +28,7 @@ export default function StudentProgressTab() {
 
     let completedCredits = 0;
     const resultRows = myResults.map((r) => {
-      const course = courses.find((c) => c.id === r.courseId);
+      const course = courses.find((c) => String(c.id) === String(r.courseId));
       const credits = course ? Number(course.creditUnits) : 0;
       if (r.grade !== "F") completedCredits += credits;
       return { r, course, credits };
