@@ -1,32 +1,45 @@
-# UniResults Pro V26: Score Entry Sheet
+# UniResults Pro
 
 ## Current State
-V25 has result entry in the approval workflow but no dedicated score entry sheet per course showing all enrolled students at once, with a print-ready format, signature blocks, and download/upload.
+SenateReportTab.tsx renders a two-row grouped header table per department per level. All subject-area columns (EDU, CSC, PHY, etc.) use the same 4 sub-columns: TCO, TCP, TGP, and either Grade (education depts) or CGPA. TP is treated like any other prefix and gets the same 4 sub-columns.
 
 ## Requested Changes (Diff)
 
 ### Add
-- ScoreEntrySheetTab.tsx: accessible from Lecturer, HOD, and Registrar dashboards
-- Score table per selected course: S/N, Matric Number, Student Name, CA (input, /40), Exam (input, /60), Total (auto), Grade (auto), GP (auto), Remarks (auto)
-- Sheet header: Institution name, Faculty, Department, Course Code/Title/Credit Units, Semester/Session, Lecturer in Charge
-- Signature block at bottom (print-friendly, blank line + printed name): Lecturer, HOD, Dean, Moderator (typed name input)
-- Download blank CSV template button
-- Download filled CSV export button
-- Upload CSV with validation (matric numbers must match enrolled students)
-- Offline sync: score changes queued; offline banner
-- Print button: hides UI chrome, shows clean A4 sheet
+- A new "Faculty Presentation Report" display format (replace/update the existing Senate Report table rendering) with the following exact column structure:
+  - **S/No** (rowspan)
+  - **Matric Number** (rowspan)
+  - **Name** (rowspan)
+  - **EDU** group column → 5 sub-cols: TCO=, TCP=, TGP=, CGPA=, Grade= (Grade shows Distinction/Credit/Merit/Pass/Fail based on CGPA)
+  - **TP** single column (no sub-rows) → displays one grade label: Distinction / Credit / Merit / Pass / Fail (derived from TP course result)
+  - **Department subject column** (auto-detected: CSC, PHY, CHM, etc. — the non-EDU, non-TP prefix for this dept) → 5 sub-cols: TCO=, TCP=, TGP=, CGPA=, Grade=
+  - **GCGPA=** (rowspan)
+  - **Outstanding Courses** (rowspan)
+  - **Remarks** (rowspan) — Promoted / Probation / Withdrawn for years 1-3; "March, YYYY" for final year
+  - **Graduating Year** (rowspan)
+- For non-education departments: all subject-area prefixes use 5 sub-cols (TCO, TCP, TGP, CGPA, Grade), no TP special column
+- "Load Demo Data" button populates sample students with EDU, TP, and department-specific course results so the new format is visible
 
 ### Modify
-- LecturerDashboard: add Score Sheet tab
-- HODDashboard: add Score Sheet tab
-- AdminDashboard (Registrar): add Score Sheet tab
-- AppContext: add moderator name storage per course; add enrolled-students-per-course helper
+- `SenateReportTab.tsx`: update table rendering logic to:
+  - Detect TP prefix specially: render it as a single-cell column showing the grade label, not 5 sub-cols
+  - Render EDU prefix with 5 sub-cols (TCO, TCP, TGP, CGPA, Grade=)
+  - Render other prefixes (CSC, PHY, etc.) with 5 sub-cols (TCO, TCP, TGP, CGPA, Grade=)
+  - The two-row header must reflect: row1 = group labels (EDU span5, TP span1, CSC/PHY span5, GCGPA, Outstanding, Remarks, Grad Year); row2 = sub-col labels under each group
+  - Grade= column shows label (Distinction/Credit/Merit/Pass/Fail) derived from subject-area CGPA
+  - TP grade label derived from TP course results specifically (highest/only TP course grade label)
+- Update CSV export to include the new columns/format
+- AppContext `loadSenateSampleData`: ensure sample students have EDU, TP, and CSC/PHY course results populated
 
 ### Remove
-- Nothing
+- Nothing removed; this replaces/updates the existing table column structure in SenateReportTab
 
 ## Implementation Plan
-1. Create ScoreEntrySheetTab.tsx with course selector, inline score table, header, signature block, download/upload, print support
-2. Wire into LecturerDashboard, HODDashboard, AdminDashboard
-3. Persist score sheet data via localStorage/AppContext
-4. Offline sync integration
+1. In `SenateReportTab.tsx`, update `calcSubjectAreaStats` or add a separate `calcTPGradeLabel` function that returns a single grade label for TP courses
+2. Update the two-row `<thead>` to handle:
+   - EDU group: colSpan=5, sub-cols: TCO | TCP | TGP | CGPA | Grade
+   - TP group: colSpan=1 (no sub-row needed, or rowSpan=2 with label "Grade")
+   - Other prefix groups: colSpan=5, sub-cols: TCO | TCP | TGP | CGPA | Grade
+3. Update `<tbody>` rows to render accordingly
+4. Update CSV export columns
+5. Ensure `loadSenateSampleData` in AppContext includes TP course results for sample students

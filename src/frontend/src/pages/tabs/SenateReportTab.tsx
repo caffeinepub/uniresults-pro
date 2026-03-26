@@ -123,6 +123,33 @@ function cgpaToGradeLabel(cgpa: number | null): string {
   return "Fail";
 }
 
+function calcTPGradeLabel(
+  studentId: bigint,
+  results: AppResults,
+  courses: AppCourses,
+): string {
+  const tpResults = results.filter((r) => {
+    if (
+      r.studentId !== studentId ||
+      (r.status !== "approved" && r.status !== "published")
+    )
+      return false;
+    const c = courses.find((co) => co.id === r.courseId);
+    return c && getCodePrefix(c.code) === "TP";
+  });
+  if (tpResults.length === 0) return "-";
+  let tco = 0;
+  let tgp = 0;
+  for (const r of tpResults) {
+    const c = courses.find((co) => co.id === r.courseId);
+    const cu = c ? Number(c.creditUnits) : 1;
+    tco += cu;
+    tgp += r.gradePoint * cu;
+  }
+  const cgpa = tco > 0 ? tgp / tco : null;
+  return cgpaToGradeLabel(cgpa);
+}
+
 function getGraduatingYear(
   matricNumber: string,
   level: bigint | number,
@@ -150,6 +177,27 @@ function gradeLabelColor(label: string): string {
   if (label === "Pass") return "text-gray-600 font-semibold";
   if (label === "Fail") return "text-red-600 font-semibold";
   return "";
+}
+
+/** Split prefixes into EDU, TP, and dept-subject (others) for education depts */
+function splitEdPrefixes(prefixes: string[]): {
+  eduPrefix: string | null;
+  tpPrefix: string | null;
+  deptPrefixes: string[];
+} {
+  const eduPrefix = prefixes.find((p) => p === "EDU") ?? null;
+  const tpPrefix = prefixes.find((p) => p === "TP") ?? null;
+  const gsePrefix = prefixes.find((p) => p === "GSE") ?? null;
+  const deptPrefixes = prefixes.filter(
+    (p) => p !== "EDU" && p !== "TP" && p !== "GSE",
+  );
+  // GSE is grouped with EDU-area prefixes (omit separately, show under EDU group if found)
+  // Actually per spec: EDU has TCO/TCP/TGP/CGPA/Grade, TP is single, dept subject (CSC/PHY) has TCO/TCP/TGP/CGPA/Grade
+  // GSE typically goes with EDU area — include it in deptPrefixes or omit per spec
+  // The spec says: EDU prefix, TP prefix, and remaining dept prefix (CSC, PHY)
+  // We'll add GSE as a 5-sub-col group similar to EDU if present, or skip it per original design
+  const extra = gsePrefix ? [gsePrefix] : [];
+  return { eduPrefix, tpPrefix, deptPrefixes: [...extra, ...deptPrefixes] };
 }
 
 export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
@@ -230,6 +278,7 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
           new Set(deptCourses.map((c) => getCodePrefix(c.code))),
         ).sort();
         const isEd = isEducationDept(dept.name);
+        const edSplit = isEd ? splitEdPrefixes(prefixes) : null;
         const deptStudents = students.filter((s) => s.departmentId === dept.id);
 
         const rows = deptStudents.map((student, idx) => {
@@ -262,6 +311,9 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
             .filter((r) => r.grade === "F")
             .map((r) => courses.find((c) => c.id === r.courseId)?.code ?? "?")
             .join(", ");
+          const tpGradeLabel = isEd
+            ? calcTPGradeLabel(student.id, filteredResults, courses)
+            : null;
           return {
             sno: idx + 1,
             matricNumber: student.matricNumber,
@@ -275,10 +327,11 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
               student.matricNumber,
               student.level,
             ),
+            tpGradeLabel,
           };
         });
 
-        return { dept, prefixes, rows, isEd };
+        return { dept, prefixes, edSplit, rows, isEd };
       }),
     }));
   }, [grouped, courses, students, filteredResults]);
@@ -308,13 +361,44 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
   const handleExportCSV = () => {
     const csvRows: string[] = [];
     for (const { faculty, depts } of reportData) {
-      for (const { dept, prefixes, rows: deptRows } of depts) {
+      for (const { dept, prefixes, isEd, edSplit, rows: deptRows } of depts) {
         csvRows.push(
           `"FACULTY: ${faculty?.name ?? "Unknown"}",,"DEPARTMENT: ${dept.name}"`,
         );
         const headerCols: string[] = ["S/No", "Matric Number", "Student Name"];
-        for (const p of prefixes) {
-          headerCols.push(`${p}_TCO`, `${p}_TCP`, `${p}_TGP`, `${p}_CGPA`);
+        if (isEd && edSplit) {
+          if (edSplit.eduPrefix) {
+            const p = edSplit.eduPrefix;
+            headerCols.push(
+              `${p}_TCO`,
+              `${p}_TCP`,
+              `${p}_TGP`,
+              `${p}_CGPA`,
+              `${p}_Grade`,
+            );
+          }
+          if (edSplit.tpPrefix) {
+            headerCols.push("TP_Grade");
+          }
+          for (const p of edSplit.deptPrefixes) {
+            headerCols.push(
+              `${p}_TCO`,
+              `${p}_TCP`,
+              `${p}_TGP`,
+              `${p}_CGPA`,
+              `${p}_Grade`,
+            );
+          }
+        } else {
+          for (const p of prefixes) {
+            headerCols.push(
+              `${p}_TCO`,
+              `${p}_TCP`,
+              `${p}_TGP`,
+              `${p}_CGPA`,
+              `${p}_Grade`,
+            );
+          }
         }
         headerCols.push(
           "GCGPA",
@@ -323,25 +407,63 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
           "Graduating Year",
         );
         csvRows.push(headerCols.map((h) => `"${h}"`).join(","));
+
         for (const r of deptRows) {
           const line: Array<string | number> = [
             r.sno,
             `"${r.matricNumber}"`,
             `"${r.name}"`,
           ];
-          for (const p of prefixes) {
-            const st = r.subjectStats[p] ?? {
-              tco: 0,
-              tcp: 0,
-              tgp: 0,
-              cgpa: null,
-            };
-            line.push(
-              st.tco,
-              st.tcp,
-              st.tgp.toFixed(2),
-              st.cgpa !== null ? st.cgpa.toFixed(2) : "-",
-            );
+          if (isEd && edSplit) {
+            if (edSplit.eduPrefix) {
+              const st = r.subjectStats[edSplit.eduPrefix] ?? {
+                tco: 0,
+                tcp: 0,
+                tgp: 0,
+                cgpa: null,
+              };
+              line.push(
+                st.tco,
+                st.tcp,
+                st.tgp.toFixed(2),
+                st.cgpa !== null ? st.cgpa.toFixed(2) : "-",
+                `"${cgpaToGradeLabel(st.cgpa)}"`,
+              );
+            }
+            if (edSplit.tpPrefix) {
+              line.push(`"${r.tpGradeLabel ?? "-"}"`);
+            }
+            for (const p of edSplit.deptPrefixes) {
+              const st = r.subjectStats[p] ?? {
+                tco: 0,
+                tcp: 0,
+                tgp: 0,
+                cgpa: null,
+              };
+              line.push(
+                st.tco,
+                st.tcp,
+                st.tgp.toFixed(2),
+                st.cgpa !== null ? st.cgpa.toFixed(2) : "-",
+                `"${cgpaToGradeLabel(st.cgpa)}"`,
+              );
+            }
+          } else {
+            for (const p of prefixes) {
+              const st = r.subjectStats[p] ?? {
+                tco: 0,
+                tcp: 0,
+                tgp: 0,
+                cgpa: null,
+              };
+              line.push(
+                st.tco,
+                st.tcp,
+                st.tgp.toFixed(2),
+                st.cgpa !== null ? st.cgpa.toFixed(2) : "-",
+                `"${cgpaToGradeLabel(st.cgpa)}"`,
+              );
+            }
           }
           line.push(
             r.gcgpa !== null ? r.gcgpa.toFixed(2) : "-",
@@ -509,7 +631,7 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
               </div>
             </div>
 
-            {depts.map(({ dept, prefixes, rows, isEd }) => {
+            {depts.map(({ dept, prefixes, edSplit, rows, isEd }) => {
               const levelGroups: Record<number, typeof rows> = {};
               for (const row of rows) {
                 const lvl = row.level ?? 100;
@@ -528,6 +650,15 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                   {sortedLevels.map((lvl) => {
                     const lvlRows = levelGroups[lvl];
                     const finalYear = isFinalYear(lvl);
+
+                    // Determine column layout
+                    const hasTp = isEd && edSplit && edSplit.tpPrefix !== null;
+                    const eduPfx = isEd && edSplit ? edSplit.eduPrefix : null;
+                    const deptPfxList =
+                      isEd && edSplit ? edSplit.deptPrefixes : null;
+                    // non-ed uses prefixes directly
+                    const nonEdPrefixes = !isEd ? prefixes : [];
+
                     return (
                       <div
                         key={lvl}
@@ -557,11 +688,11 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                           <hr className="mt-2 border-foreground/30" />
                         </div>
 
-                        {/* Two-row header table */}
+                        {/* Faculty Presentation Table */}
                         <div className="overflow-x-auto border border-t-0 border-border rounded-b-md">
                           <table className="w-full text-xs border-collapse senate-table">
                             <thead>
-                              {/* Row 1: group column headers */}
+                              {/* === ROW 1: Group headers === */}
                               <tr className="bg-primary text-primary-foreground">
                                 <th
                                   rowSpan={2}
@@ -579,17 +710,58 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                                   rowSpan={2}
                                   className="px-2 py-2 text-left font-semibold border border-primary-foreground/20 align-middle"
                                 >
-                                  Student Name
+                                  Name
                                 </th>
-                                {prefixes.map((p) => (
-                                  <th
-                                    key={p}
-                                    colSpan={4}
-                                    className="px-2 py-1.5 text-center font-bold border border-primary-foreground/20"
-                                  >
-                                    {p}
-                                  </th>
-                                ))}
+
+                                {/* Education layout */}
+                                {isEd && edSplit ? (
+                                  <>
+                                    {/* EDU group */}
+                                    {eduPfx && (
+                                      <th
+                                        colSpan={5}
+                                        className="px-2 py-1.5 text-center font-bold border border-primary-foreground/20"
+                                      >
+                                        {eduPfx}
+                                      </th>
+                                    )}
+                                    {/* TP: single cell spanning both rows */}
+                                    {hasTp && (
+                                      <th
+                                        rowSpan={2}
+                                        className="px-2 py-2 text-center font-bold border border-primary-foreground/20 align-middle whitespace-nowrap"
+                                      >
+                                        TP
+                                        <br />
+                                        <span className="text-[10px] font-normal opacity-80">
+                                          Grade
+                                        </span>
+                                      </th>
+                                    )}
+                                    {/* Dept subject groups (CSC, PHY, GSE, etc.) */}
+                                    {deptPfxList?.map((p) => (
+                                      <th
+                                        key={p}
+                                        colSpan={5}
+                                        className="px-2 py-1.5 text-center font-bold border border-primary-foreground/20"
+                                      >
+                                        {p}
+                                      </th>
+                                    ))}
+                                  </>
+                                ) : (
+                                  /* Non-education layout: all prefixes get colSpan=5 */
+                                  nonEdPrefixes.map((p) => (
+                                    <th
+                                      key={p}
+                                      colSpan={5}
+                                      className="px-2 py-1.5 text-center font-bold border border-primary-foreground/20"
+                                    >
+                                      {p}
+                                    </th>
+                                  ))
+                                )}
+
                                 <th
                                   rowSpan={2}
                                   className="px-2 py-2 text-center font-bold border border-primary-foreground/20 whitespace-nowrap align-middle"
@@ -600,7 +772,9 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                                   rowSpan={2}
                                   className="px-2 py-2 text-left font-semibold border border-primary-foreground/20 align-middle"
                                 >
-                                  Outstanding Courses
+                                  Outstanding
+                                  <br />
+                                  Courses
                                 </th>
                                 <th
                                   rowSpan={2}
@@ -612,29 +786,83 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                                   rowSpan={2}
                                   className="px-2 py-2 text-center font-semibold border border-primary-foreground/20 whitespace-nowrap align-middle"
                                 >
-                                  Graduating Year
+                                  Graduating
+                                  <br />
+                                  Year
                                 </th>
                               </tr>
-                              {/* Row 2: sub-column headers */}
+
+                              {/* === ROW 2: Sub-column headers === */}
                               <tr className="bg-primary/80 text-primary-foreground">
-                                {prefixes.map((p) => (
-                                  <Fragment key={p}>
-                                    <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
-                                      TCO
-                                    </th>
-                                    <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
-                                      TCP
-                                    </th>
-                                    <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
-                                      TGP
-                                    </th>
-                                    <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
-                                      {isEd ? "Grade" : "CGPA"}
-                                    </th>
-                                  </Fragment>
-                                ))}
+                                {isEd && edSplit ? (
+                                  <>
+                                    {/* EDU sub-cols */}
+                                    {eduPfx && (
+                                      <Fragment key={eduPfx}>
+                                        <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                          TCO
+                                        </th>
+                                        <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                          TCP
+                                        </th>
+                                        <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                          TGP
+                                        </th>
+                                        <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                          CGPA
+                                        </th>
+                                        <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                          Grade
+                                        </th>
+                                      </Fragment>
+                                    )}
+                                    {/* TP already used rowSpan=2, so no sub-header cell here */}
+                                    {/* Dept subject sub-cols */}
+                                    {deptPfxList?.map((p) => (
+                                      <Fragment key={p}>
+                                        <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                          TCO
+                                        </th>
+                                        <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                          TCP
+                                        </th>
+                                        <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                          TGP
+                                        </th>
+                                        <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                          CGPA
+                                        </th>
+                                        <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                          Grade
+                                        </th>
+                                      </Fragment>
+                                    ))}
+                                  </>
+                                ) : (
+                                  /* Non-education: all prefixes sub-cols */
+                                  nonEdPrefixes.map((p) => (
+                                    <Fragment key={p}>
+                                      <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                        TCO
+                                      </th>
+                                      <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                        TCP
+                                      </th>
+                                      <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                        TGP
+                                      </th>
+                                      <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                        CGPA
+                                      </th>
+                                      <th className="px-1.5 py-1 text-center font-medium border border-primary-foreground/20 whitespace-nowrap text-[10px]">
+                                        Grade
+                                      </th>
+                                    </Fragment>
+                                  ))
+                                )}
                               </tr>
                             </thead>
+
                             <tbody>
                               {lvlRows.map((row, ri) => {
                                 const gcgpaColor =
@@ -644,7 +872,7 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                                       ? "text-green-700"
                                       : row.gcgpa >= 2.4
                                         ? "text-blue-700"
-                                        : row.gcgpa < 1.0
+                                        : row.gcgpa !== null && row.gcgpa < 1.0
                                           ? "text-red-600"
                                           : "";
                                 return (
@@ -666,45 +894,153 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
                                     <td className="px-2 py-1.5 font-medium border border-border/30">
                                       {row.name}
                                     </td>
-                                    {prefixes.map((p) => {
-                                      const stats = row.subjectStats[p] ?? {
-                                        tco: 0,
-                                        tcp: 0,
-                                        tgp: 0,
-                                        cgpa: null,
-                                      };
-                                      const cgpaDisplay =
-                                        stats.cgpa !== null
-                                          ? stats.cgpa.toFixed(2)
-                                          : "-";
-                                      const gradeLabel = cgpaToGradeLabel(
-                                        stats.cgpa,
-                                      );
-                                      return (
-                                        <Fragment key={p}>
-                                          <td className="px-1.5 py-1.5 text-center border border-border/30">
-                                            {stats.tco > 0 ? stats.tco : "-"}
-                                          </td>
-                                          <td className="px-1.5 py-1.5 text-center border border-border/30">
-                                            {stats.tco > 0 ? stats.tcp : "-"}
-                                          </td>
-                                          <td className="px-1.5 py-1.5 text-center border border-border/30">
-                                            {stats.tco > 0
-                                              ? stats.tgp.toFixed(1)
-                                              : "-"}
-                                          </td>
+
+                                    {/* Education columns */}
+                                    {isEd && edSplit ? (
+                                      <>
+                                        {/* EDU cells */}
+                                        {eduPfx &&
+                                          (() => {
+                                            const stats = row.subjectStats[
+                                              eduPfx
+                                            ] ?? {
+                                              tco: 0,
+                                              tcp: 0,
+                                              tgp: 0,
+                                              cgpa: null,
+                                            };
+                                            const gradeLabel = cgpaToGradeLabel(
+                                              stats.cgpa,
+                                            );
+                                            return (
+                                              <Fragment key={eduPfx}>
+                                                <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                                  {stats.tco > 0
+                                                    ? stats.tco
+                                                    : "-"}
+                                                </td>
+                                                <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                                  {stats.tco > 0
+                                                    ? stats.tcp
+                                                    : "-"}
+                                                </td>
+                                                <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                                  {stats.tco > 0
+                                                    ? stats.tgp.toFixed(1)
+                                                    : "-"}
+                                                </td>
+                                                <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                                  {stats.tco > 0
+                                                    ? (stats.cgpa?.toFixed(2) ??
+                                                      "-")
+                                                    : "-"}
+                                                </td>
+                                                <td
+                                                  className={`px-1.5 py-1.5 text-center border border-border/30 text-[10px] ${gradeLabelColor(gradeLabel)}`}
+                                                >
+                                                  {stats.tco > 0
+                                                    ? gradeLabel
+                                                    : "-"}
+                                                </td>
+                                              </Fragment>
+                                            );
+                                          })()}
+
+                                        {/* TP single cell */}
+                                        {hasTp && (
                                           <td
-                                            className={`px-1.5 py-1.5 text-center border border-border/30 ${
-                                              isEd
-                                                ? gradeLabelColor(gradeLabel)
-                                                : ""
-                                            }`}
+                                            className={`px-1.5 py-1.5 text-center border border-border/30 text-[10px] ${gradeLabelColor(row.tpGradeLabel ?? "-")}`}
                                           >
-                                            {isEd ? gradeLabel : cgpaDisplay}
+                                            {row.tpGradeLabel ?? "-"}
                                           </td>
-                                        </Fragment>
-                                      );
-                                    })}
+                                        )}
+
+                                        {/* Dept subject cells (CSC, PHY, GSE, etc.) */}
+                                        {deptPfxList?.map((p) => {
+                                          const stats = row.subjectStats[p] ?? {
+                                            tco: 0,
+                                            tcp: 0,
+                                            tgp: 0,
+                                            cgpa: null,
+                                          };
+                                          const gradeLabel = cgpaToGradeLabel(
+                                            stats.cgpa,
+                                          );
+                                          return (
+                                            <Fragment key={p}>
+                                              <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                                {stats.tco > 0
+                                                  ? stats.tco
+                                                  : "-"}
+                                              </td>
+                                              <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                                {stats.tco > 0
+                                                  ? stats.tcp
+                                                  : "-"}
+                                              </td>
+                                              <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                                {stats.tco > 0
+                                                  ? stats.tgp.toFixed(1)
+                                                  : "-"}
+                                              </td>
+                                              <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                                {stats.tco > 0
+                                                  ? (stats.cgpa?.toFixed(2) ??
+                                                    "-")
+                                                  : "-"}
+                                              </td>
+                                              <td
+                                                className={`px-1.5 py-1.5 text-center border border-border/30 text-[10px] ${gradeLabelColor(gradeLabel)}`}
+                                              >
+                                                {stats.tco > 0
+                                                  ? gradeLabel
+                                                  : "-"}
+                                              </td>
+                                            </Fragment>
+                                          );
+                                        })}
+                                      </>
+                                    ) : (
+                                      /* Non-education columns */
+                                      nonEdPrefixes.map((p) => {
+                                        const stats = row.subjectStats[p] ?? {
+                                          tco: 0,
+                                          tcp: 0,
+                                          tgp: 0,
+                                          cgpa: null,
+                                        };
+                                        const gradeLabel = cgpaToGradeLabel(
+                                          stats.cgpa,
+                                        );
+                                        return (
+                                          <Fragment key={p}>
+                                            <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                              {stats.tco > 0 ? stats.tco : "-"}
+                                            </td>
+                                            <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                              {stats.tco > 0 ? stats.tcp : "-"}
+                                            </td>
+                                            <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                              {stats.tco > 0
+                                                ? stats.tgp.toFixed(1)
+                                                : "-"}
+                                            </td>
+                                            <td className="px-1.5 py-1.5 text-center border border-border/30">
+                                              {stats.tco > 0
+                                                ? (stats.cgpa?.toFixed(2) ??
+                                                  "-")
+                                                : "-"}
+                                            </td>
+                                            <td
+                                              className={`px-1.5 py-1.5 text-center border border-border/30 text-[10px] ${gradeLabelColor(gradeLabel)}`}
+                                            >
+                                              {stats.tco > 0 ? gradeLabel : "-"}
+                                            </td>
+                                          </Fragment>
+                                        );
+                                      })
+                                    )}
+
                                     <td
                                       className={`px-2 py-1.5 text-center font-bold border border-border/30 ${gcgpaColor}`}
                                     >
