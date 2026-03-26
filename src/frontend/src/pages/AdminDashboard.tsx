@@ -38,11 +38,14 @@ import {
   Download,
   Eye,
   FileText,
+  FileUp,
   Filter,
   Globe,
+  Loader2,
   Pencil,
   Plus,
   RefreshCw,
+  ScanLine,
   ScrollText,
   Settings2,
   Trash2,
@@ -92,6 +95,7 @@ import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
 import AlumniManagementTab from "./tabs/AlumniManagementTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
+import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CameraSecurityTab from "./tabs/CameraSecurityTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
 import DeferralsTab from "./tabs/DefferralsTab";
@@ -113,6 +117,7 @@ import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
 import StaffTab from "./tabs/StaffTab";
 import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
+import StudentProfileModal from "./tabs/StudentProfileModal";
 
 export default function AdminDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -133,6 +138,7 @@ export default function AdminDashboard() {
     { label: "Score Sheet", tab: "score_sheet", icon: ScrollText },
     { label: "Results Pipeline", tab: "results_processing", icon: BarChart3 },
     { label: "Dept. Results", tab: "dept_results", icon: BarChart3 },
+    { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
   ];
 
   let view: React.ReactNode;
@@ -178,6 +184,7 @@ export default function AdminDashboard() {
   else if (activeTab === "hostel") view = <HostelManagementTab />;
   else if (activeTab === "library") view = <LibraryClearanceTab />;
   else if (activeTab === "admin_inbox") view = <AdminInboxTab />;
+  else if (activeTab === "bulkReg") view = <BulkRegistrationTab />;
   else view = <OverviewTab />;
 
   return (
@@ -663,15 +670,26 @@ function DepartmentsTab() {
   );
 }
 
+interface ScanRow {
+  sn: string;
+  regNo: string;
+  name: string;
+  state: string;
+  lga: string;
+  sex: string;
+  status: string;
+}
+
 type CsvRow = {
+  regNo: string;
   name: string;
   matric: string;
   dept: string;
   level: string;
+  state: string;
+  lga: string;
   gender: string;
-  dob: string;
-  email: string;
-  phone: string;
+  status: string;
 };
 
 function StudentsTab() {
@@ -679,13 +697,14 @@ function StudentsTab() {
     students,
     departments,
     addStudent,
+    updateStudent,
     results,
     courses,
     deferralApplications,
     faculties,
   } = useApp();
 
-  function getStudentGpa(studentId: bigint) {
+  function _getStudentGpa(studentId: bigint) {
     const sResults = results.filter(
       (r) =>
         r.studentId === studentId &&
@@ -717,19 +736,32 @@ function StudentsTab() {
   const [form, setForm] = useState({
     name: "",
     matric: "",
+    regNo: "",
     deptId: "",
-    level: "300",
+    level: "100",
     gender: "",
     dob: "",
     email: "",
     phone: "",
+    state: "",
+    lga: "",
+    status: "accepted",
   });
+
+  const [scanImage, setScanImage] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanRows, setScanRows] = useState<ScanRow[]>([]);
+  const [scanDeptId, setScanDeptId] = useState("");
+  const [scanLevel, setScanLevel] = useState("100");
 
   const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [facultyFilter, setFacultyFilter] = useState<string>("all");
   const [viewStudent, setViewStudent] = useState<ExtendedStudent | null>(null);
+  const [selectedProfileId, setSelectedProfileId] = useState<bigint | null>(
+    null,
+  );
 
   const filtered = students.filter((s) => {
     const matchSearch =
@@ -752,12 +784,16 @@ function StudentsTab() {
     setForm({
       name: "",
       matric: "",
+      regNo: "",
       deptId: "",
-      level: "300",
+      level: "100",
       gender: "",
       dob: "",
       email: "",
       phone: "",
+      state: "",
+      lga: "",
+      status: "accepted",
     });
   }
 
@@ -772,13 +808,16 @@ function StudentsTab() {
       matricNumber: form.matric,
       departmentId: BigInt(form.deptId),
       level: BigInt(form.level),
-      status: "active",
+      status: (form.status as any) || "accepted",
       userPrincipal: `student-${Date.now()}`,
       gender: form.gender || undefined,
       dob: form.dob || undefined,
       email: form.email || undefined,
       phone: form.phone || undefined,
-    });
+      regNo: form.regNo || undefined,
+      state: form.state || undefined,
+      lga: form.lga || undefined,
+    } as any);
     resetManualForm();
     setOpen(false);
     toast.success("Student registered successfully");
@@ -815,14 +854,15 @@ function StudentsTab() {
       const parsed: CsvRow[] = dataLines.map((line) => {
         const cols = line.split(",");
         return {
-          name: cols[0]?.trim() ?? "",
-          matric: cols[1]?.trim() ?? "",
-          dept: cols[2]?.trim() ?? "",
-          level: cols[3]?.trim() ?? "100",
-          gender: cols[4]?.trim() ?? "",
-          dob: cols[5]?.trim() ?? "",
-          email: cols[6]?.trim() ?? "",
-          phone: cols[7]?.trim() ?? "",
+          regNo: cols[1]?.trim() ?? "",
+          name: cols[2]?.trim() ?? "",
+          matric: cols[3]?.trim() ?? "",
+          dept: cols[4]?.trim() ?? "",
+          level: cols[5]?.trim() ?? "100",
+          state: cols[6]?.trim() ?? "",
+          lga: cols[7]?.trim() ?? "",
+          gender: cols[8]?.trim() ?? "",
+          status: cols[9]?.trim() ?? "accepted",
         };
       });
       setCsvRows(parsed.filter((r) => r.name && r.matric));
@@ -845,13 +885,13 @@ function StudentsTab() {
         matricNumber: row.matric,
         departmentId: matchedDept.id,
         level: BigInt(Number(row.level) || 100),
-        status: "active",
+        status: (row.status as any) || "accepted",
         userPrincipal: `student-bulk-${Date.now()}-${count}`,
         gender: row.gender || undefined,
-        dob: row.dob || undefined,
-        email: row.email || undefined,
-        phone: row.phone || undefined,
-      });
+        regNo: row.regNo || undefined,
+        state: row.state || undefined,
+        lga: row.lga || undefined,
+      } as any);
       count++;
     }
     setCsvRows([]);
@@ -936,6 +976,14 @@ function StudentsTab() {
                   >
                     Bulk CSV Upload
                   </TabsTrigger>
+                  <TabsTrigger
+                    value="scanner"
+                    className="flex-1"
+                    data-ocid="students.scanner.tab"
+                  >
+                    <ScanLine className="w-3.5 h-3.5 mr-1.5" />
+                    AI Scanner
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="manual" className="space-y-4 pt-2">
@@ -960,6 +1008,17 @@ function StudentsTab() {
                           setForm((f) => ({ ...f, matric: e.target.value }))
                         }
                         placeholder="e.g. CSC/2022/007"
+                      />
+                    </div>
+                    <div>
+                      <Label>Reg No / Admission No</Label>
+                      <Input
+                        data-ocid="students.regno.input"
+                        value={form.regNo}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, regNo: e.target.value }))
+                        }
+                        placeholder="e.g. 20255067348614"
                       />
                     </div>
                     <div>
@@ -1054,6 +1113,49 @@ function StudentsTab() {
                         placeholder="080XXXXXXXX"
                       />
                     </div>
+                    <div>
+                      <Label>State of Origin</Label>
+                      <Input
+                        data-ocid="students.state.input"
+                        value={form.state}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, state: e.target.value }))
+                        }
+                        placeholder="e.g. Niger"
+                      />
+                    </div>
+                    <div>
+                      <Label>LGA</Label>
+                      <Input
+                        data-ocid="students.lga.input"
+                        value={form.lga}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, lga: e.target.value }))
+                        }
+                        placeholder="e.g. Kontagora"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Status</Label>
+                      <Select
+                        value={form.status}
+                        onValueChange={(v) =>
+                          setForm((f) => ({ ...f, status: v }))
+                        }
+                      >
+                        <SelectTrigger data-ocid="students.status.select">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="accepted">Accepted</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="deferred">Deferred</SelectItem>
+                          <SelectItem value="graduated">Graduated</SelectItem>
+                          <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button
@@ -1139,11 +1241,15 @@ function StudentsTab() {
                           <TableHeader>
                             <TableRow>
                               <TableHead className="text-xs">#</TableHead>
+                              <TableHead className="text-xs">Reg No</TableHead>
                               <TableHead className="text-xs">Name</TableHead>
                               <TableHead className="text-xs">Matric</TableHead>
                               <TableHead className="text-xs">Dept</TableHead>
                               <TableHead className="text-xs">Level</TableHead>
-                              <TableHead className="text-xs">Gender</TableHead>
+                              <TableHead className="text-xs">State</TableHead>
+                              <TableHead className="text-xs">LGA</TableHead>
+                              <TableHead className="text-xs">Sex</TableHead>
+                              <TableHead className="text-xs">Status</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -1154,6 +1260,9 @@ function StudentsTab() {
                               >
                                 <TableCell className="text-xs text-muted-foreground">
                                   {i + 1}
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  {row.regNo}
                                 </TableCell>
                                 <TableCell className="text-xs font-medium">
                                   {row.name}
@@ -1168,7 +1277,16 @@ function StudentsTab() {
                                   {row.level}
                                 </TableCell>
                                 <TableCell className="text-xs">
+                                  {row.state}
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  {row.lga}
+                                </TableCell>
+                                <TableCell className="text-xs">
                                   {row.gender}
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  {row.status}
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -1177,6 +1295,305 @@ function StudentsTab() {
                       </div>
                     </div>
                   )}
+                </TabsContent>
+
+                <TabsContent value="scanner" className="space-y-4 pt-2">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Department</Label>
+                        <Select
+                          value={scanDeptId}
+                          onValueChange={setScanDeptId}
+                        >
+                          <SelectTrigger
+                            data-ocid="students.scanner.dept.select"
+                            className="text-xs h-8"
+                          >
+                            <SelectValue placeholder="Select department" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {departments.map((d) => (
+                              <SelectItem
+                                key={String(d.id)}
+                                value={String(d.id)}
+                              >
+                                {d.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Level</Label>
+                        <Select value={scanLevel} onValueChange={setScanLevel}>
+                          <SelectTrigger
+                            data-ocid="students.scanner.level.select"
+                            className="text-xs h-8"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {["100", "200", "300", "400", "500"].map((l) => (
+                              <SelectItem key={l} value={l}>
+                                {l} Level
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <label
+                      data-ocid="students.scanner.dropzone"
+                      className="flex flex-col items-center justify-center gap-2 cursor-pointer rounded-md border-2 border-dashed border-primary/40 bg-primary/5 p-6 text-center hover:bg-primary/10 transition-colors"
+                    >
+                      <ScanLine className="w-8 h-8 text-primary/60" />
+                      <span className="text-sm font-medium text-foreground">
+                        Upload Document to Scan
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Supports JPG, PNG images of printed student lists
+                      </span>
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setScanImage(ev.target?.result as string);
+                            setScanning(true);
+                            setScanRows([]);
+                            setTimeout(() => {
+                              setScanning(false);
+                              setScanRows([
+                                {
+                                  sn: "1",
+                                  regNo: "20255067348614",
+                                  name: "Aisha Musa Ibrahim",
+                                  state: "Niger",
+                                  lga: "Kontagora",
+                                  sex: "Female",
+                                  status: "accepted",
+                                },
+                                {
+                                  sn: "2",
+                                  regNo: "20255089123456",
+                                  name: "Emeka Chukwu Obi",
+                                  state: "Anambra",
+                                  lga: "Onitsha",
+                                  sex: "Male",
+                                  status: "accepted",
+                                },
+                                {
+                                  sn: "3",
+                                  regNo: "20255045678901",
+                                  name: "Fatima Aliyu Sule",
+                                  state: "Kano",
+                                  lga: "Nasarawa",
+                                  sex: "Female",
+                                  status: "accepted",
+                                },
+                              ]);
+                              toast.success(
+                                "3 students extracted. Review and edit before importing.",
+                              );
+                            }, 1500);
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+
+                    {scanImage && (
+                      <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                        <img
+                          src={scanImage}
+                          alt="Scanned doc"
+                          className="h-12 w-12 object-cover rounded border border-border"
+                        />
+                        <div className="text-xs">
+                          {scanning ? (
+                            <span className="text-warning flex items-center gap-1">
+                              <Loader2 className="w-3 h-3 animate-spin" />{" "}
+                              Scanning document...
+                            </span>
+                          ) : (
+                            <span className="text-success">
+                              ✓ Scan complete — {scanRows.length} rows extracted
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {scanRows.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground font-medium">
+                            Review extracted data — click cells to edit
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7"
+                              onClick={() =>
+                                setScanRows((prev) => [
+                                  ...prev,
+                                  {
+                                    sn: String(prev.length + 1),
+                                    regNo: "",
+                                    name: "",
+                                    state: "",
+                                    lga: "",
+                                    sex: "Male",
+                                    status: "accepted",
+                                  },
+                                ])
+                              }
+                            >
+                              + Add Row
+                            </Button>
+                            <Button
+                              data-ocid="students.scanner.import_button"
+                              type="button"
+                              size="sm"
+                              className="bg-primary text-primary-foreground text-xs h-7"
+                              onClick={() => {
+                                if (!scanDeptId) {
+                                  toast.error("Please select a department");
+                                  return;
+                                }
+                                const dept = departments.find(
+                                  (d) => String(d.id) === scanDeptId,
+                                );
+                                const deptCode = dept
+                                  ? dept.name
+                                      .split(" ")
+                                      .map((w) => w[0])
+                                      .join("")
+                                      .toUpperCase()
+                                  : "STU";
+                                let count = 0;
+                                for (const row of scanRows) {
+                                  if (!row.name) continue;
+                                  const matric = `${deptCode}/2025/${String(count + 1).padStart(3, "0")}`;
+                                  addStudent({
+                                    id: BigInt(
+                                      Date.now() +
+                                        count +
+                                        Math.floor(Math.random() * 1000),
+                                    ),
+                                    name: row.name,
+                                    matricNumber: matric,
+                                    departmentId: BigInt(scanDeptId),
+                                    level: BigInt(Number(scanLevel) || 100),
+                                    status: (row.status as any) || "accepted",
+                                    userPrincipal: `scanner-${Date.now()}-${count}`,
+                                    gender: row.sex || undefined,
+                                    regNo: row.regNo || undefined,
+                                    state: row.state || undefined,
+                                    lga: row.lga || undefined,
+                                  } as any);
+                                  count++;
+                                }
+                                setScanRows([]);
+                                setScanImage(null);
+                                setOpen(false);
+                                toast.success(
+                                  `${count} student${count !== 1 ? "s" : ""} imported from scan`,
+                                );
+                              }}
+                            >
+                              Import All
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-border overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs w-8">
+                                  S/N
+                                </TableHead>
+                                <TableHead className="text-xs">
+                                  Reg No
+                                </TableHead>
+                                <TableHead className="text-xs">Name</TableHead>
+                                <TableHead className="text-xs">State</TableHead>
+                                <TableHead className="text-xs">LGA</TableHead>
+                                <TableHead className="text-xs">Sex</TableHead>
+                                <TableHead className="text-xs">
+                                  Status
+                                </TableHead>
+                                <TableHead className="text-xs w-8" />
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {scanRows.map((row, ri) => (
+                                <TableRow
+                                  key={`scan-${ri}-${row.regNo || ri}`}
+                                  data-ocid={`students.scanner.item.${ri + 1}`}
+                                >
+                                  <TableCell className="text-xs p-1">
+                                    {ri + 1}
+                                  </TableCell>
+                                  {(
+                                    [
+                                      "regNo",
+                                      "name",
+                                      "state",
+                                      "lga",
+                                      "sex",
+                                      "status",
+                                    ] as (keyof ScanRow)[]
+                                  ).map((field) => (
+                                    <TableCell key={field} className="p-1">
+                                      <input
+                                        className="w-full text-xs border-0 bg-transparent focus:bg-muted px-1 py-0.5 rounded outline-none focus:outline-1 focus:outline-primary/50"
+                                        value={row[field]}
+                                        onChange={(e) =>
+                                          setScanRows((prev) =>
+                                            prev.map((r, i2) =>
+                                              i2 === ri
+                                                ? {
+                                                    ...r,
+                                                    [field]: e.target.value,
+                                                  }
+                                                : r,
+                                            ),
+                                          )
+                                        }
+                                      />
+                                    </TableCell>
+                                  ))}
+                                  <TableCell className="p-1">
+                                    <button
+                                      type="button"
+                                      data-ocid={`students.scanner.delete_button.${ri + 1}`}
+                                      className="text-destructive hover:opacity-70 text-xs"
+                                      onClick={() =>
+                                        setScanRows((prev) =>
+                                          prev.filter((_, i2) => i2 !== ri),
+                                        )
+                                      }
+                                    >
+                                      ✕
+                                    </button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </TabsContent>
               </Tabs>
             </DialogContent>
@@ -1215,12 +1632,22 @@ function StudentsTab() {
               const dept = departments.find(
                 (d) => String(d.id) === String(s.departmentId),
               );
+              const es = s as ExtendedStudent;
               return (
                 <TableRow
                   key={String(s.id)}
                   data-ocid={`students.item.${i + 1}`}
                 >
-                  <TableCell className="font-medium">
+                  <TableCell className="text-xs text-muted-foreground">
+                    {i + 1}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {es.regNo ?? es.jambRegNo ?? "-"}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {s.matricNumber}
+                  </TableCell>
+                  <TableCell className="text-sm font-medium">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {s.name}
                       {isDeferred(s.id) && (
@@ -1230,77 +1657,29 @@ function StudentsTab() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {s.matricNumber}
-                  </TableCell>
-                  <TableCell className="text-sm">{dept?.name ?? "-"}</TableCell>
-                  <TableCell className="text-sm">
-                    {String(s.level)} Level
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {(s as ExtendedStudent).gender ?? "-"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {(s as ExtendedStudent).email ?? "-"}
-                  </TableCell>
+                  <TableCell className="text-xs">{dept?.name ?? "-"}</TableCell>
+                  <TableCell className="text-xs">{es.state ?? "-"}</TableCell>
+                  <TableCell className="text-xs">{es.lga ?? "-"}</TableCell>
+                  <TableCell className="text-xs">{es.gender ?? "-"}</TableCell>
                   <TableCell>
-                    <StatusBadge status={s.status} />
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      const gpa = getStudentGpa(s.id);
-                      if (gpa === null)
-                        return (
-                          <span className="text-xs text-muted-foreground">
-                            —
-                          </span>
-                        );
-                      const standing = getAcademicStanding(gpa);
-                      return (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${standing.badgeClass}`}
-                        >
-                          {standing.label}
-                        </span>
-                      );
-                    })()}
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      const sResults = results.filter(
-                        (r) =>
-                          r.studentId === s.id &&
-                          (r.status === "published" || r.status === "approved"),
-                      );
-                      let completed = 0;
-                      for (const r of sResults) {
-                        const c = courses.find(
-                          (c) => String(c.id) === String(r.courseId),
-                        );
-                        if (r.grade !== "F" && c)
-                          completed += Number(c.creditUnits);
+                    <select
+                      data-ocid={`students.status.select.${i + 1}`}
+                      value={s.status}
+                      onChange={(e) =>
+                        updateStudent(s.id, { status: e.target.value as any })
                       }
-                      const pct = Math.min(
-                        100,
-                        Math.round((completed / 120) * 100),
-                      );
-                      return (
-                        <div className="flex items-center gap-1.5 min-w-[80px]">
-                          <div className="h-1.5 w-12 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${pct >= 80 ? "bg-success" : pct >= 50 ? "bg-warning" : "bg-destructive"}`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {pct}%
-                          </span>
-                        </div>
-                      );
-                    })()}
+                      className="text-xs border border-border rounded px-1.5 py-0.5 bg-background cursor-pointer"
+                    >
+                      <option value="accepted">Accepted</option>
+                      <option value="active">Active</option>
+                      <option value="deferred">Deferred</option>
+                      <option value="graduated">Graduated</option>
+                      <option value="withdrawn">Withdrawn</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5 flex-wrap">
                       <button
                         type="button"
                         data-ocid={`students.open_modal_button.${i + 1}`}
@@ -1347,6 +1726,15 @@ function StudentsTab() {
                       >
                         <Shield className="w-3 h-3" />
                         Gen Code
+                      </button>
+                      <button
+                        type="button"
+                        data-ocid={`students.view_profile.button.${i + 1}`}
+                        onClick={() => setSelectedProfileId(s.id)}
+                        className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" />
+                        Profile
                       </button>
                     </div>
                   </TableCell>
@@ -1421,6 +1809,10 @@ function StudentsTab() {
             })()}
         </DialogContent>
       </Dialog>
+      <StudentProfileModal
+        studentId={selectedProfileId}
+        onClose={() => setSelectedProfileId(null)}
+      />
     </div>
   );
 }

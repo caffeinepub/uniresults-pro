@@ -34,6 +34,7 @@ export type ExtendedStudent = Student & {
   jambRegNo?: string;
   state?: string;
   lga?: string;
+  regNo?: string;
 };
 
 export type ExtendedResult = AcademicResult & {
@@ -300,6 +301,7 @@ interface AppContextValue extends AppState {
   updateCourse: (course: Course) => void;
   removeCourse: (courseId: bigint) => void;
   addStudent: (student: ExtendedStudent) => void;
+  updateStudent: (id: bigint, updates: Partial<ExtendedStudent>) => void;
   upsertResult: (result: ExtendedResult) => void;
   updateResultStatus: (
     resultId: bigint,
@@ -4136,6 +4138,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [logAudit],
   );
 
+  const updateStudent = useCallback(
+    (id: bigint, updates: Partial<ExtendedStudent>) => {
+      setStudents((prev) =>
+        prev.map((s) =>
+          String(s.id) === String(id) ? { ...s, ...updates } : s,
+        ),
+      );
+    },
+    [],
+  );
+
   const upsertResult = useCallback(
     (result: ExtendedResult) => {
       setResults((prev) => {
@@ -4926,6 +4939,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateCourse,
         removeCourse,
         addStudent,
+        updateStudent,
         upsertResult,
         updateResultStatus,
         publishSemesterResults,

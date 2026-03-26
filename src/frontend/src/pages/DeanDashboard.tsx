@@ -22,6 +22,7 @@ import {
   CheckCircle,
   ClipboardList,
   FileText,
+  FileUp,
   ScrollText,
   Users,
   XCircle,
@@ -45,6 +46,7 @@ import StatusBadge from "../components/StatusBadge";
 import { useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
+import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
@@ -53,6 +55,7 @@ import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
+import StudentProfileModal from "./tabs/StudentProfileModal";
 
 export default function DeanDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -64,6 +67,8 @@ export default function DeanDashboard() {
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
     { label: "Dept. Results", tab: "dept_results", icon: FileText },
+    { label: "Students", tab: "students", icon: Users },
+    { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
   ];
 
   let view: React.ReactNode;
@@ -83,6 +88,8 @@ export default function DeanDashboard() {
     view = <ScoreEntrySheetTab readonly={true} />;
   else if (activeTab === "results_processing")
     view = <ResultsProcessingTab userRole="Dean" />;
+  else if (activeTab === "students") view = <DeanStudentsTab />;
+  else if (activeTab === "bulkReg") view = <BulkRegistrationTab />;
   else view = <OverviewTab />;
 
   return (
@@ -790,4 +797,128 @@ function DeanExamScheduleTab() {
 function DeanCourseFeedbackTab() {
   const { courses } = useApp();
   return <CourseFeedbackView courses={courses} />;
+}
+
+function DeanStudentsTab() {
+  const { currentUser, students, departments, faculties } = useApp();
+  const [selectedProfileId, setSelectedProfileId] = useState<bigint | null>(
+    null,
+  );
+  // Find dean's faculty based on their department
+  const deanDept = departments.find(
+    (d) => String(d.id) === String(currentUser?.departmentId),
+  );
+  const facultyId = deanDept?.facultyId;
+  const faculty = faculties.find((f) => String(f.id) === String(facultyId));
+  const facultyDepts = departments.filter(
+    (d) => String(d.facultyId) === String(facultyId),
+  );
+  const facultyDeptIds = new Set(facultyDepts.map((d) => String(d.id)));
+  const facultyStudents = students.filter((s) =>
+    facultyDeptIds.has(String(s.departmentId)),
+  );
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold">
+          Students — {faculty?.name ?? "Faculty"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {facultyStudents.length} student
+          {facultyStudents.length !== 1 ? "s" : ""} across {facultyDepts.length}{" "}
+          departments
+        </p>
+      </div>
+      <div className="bg-card rounded-xl border border-border shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 border-b border-border">
+              <tr>
+                {[
+                  "S/N",
+                  "Reg No",
+                  "Matric No",
+                  "Name",
+                  "Department",
+                  "State",
+                  "LGA",
+                  "Sex",
+                  "Status",
+                  "Level",
+                  "Actions",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="text-left text-xs font-medium text-muted-foreground px-3 py-2"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {facultyStudents.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={11}
+                    className="text-center text-muted-foreground py-8 text-sm"
+                    data-ocid="dean.students.empty_state"
+                  >
+                    No students found
+                  </td>
+                </tr>
+              )}
+              {facultyStudents.map((s, i) => {
+                const es = s as any;
+                const dept = departments.find(
+                  (d) => String(d.id) === String(s.departmentId),
+                );
+                return (
+                  <tr
+                    key={String(s.id)}
+                    className="border-b border-border/50 hover:bg-muted/30"
+                    data-ocid={`dean.students.item.${i + 1}`}
+                  >
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {i + 1}
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {es.regNo ?? es.jambRegNo ?? "-"}
+                    </td>
+                    <td className="px-3 py-2 text-xs">{s.matricNumber}</td>
+                    <td className="px-3 py-2 text-xs font-medium">{s.name}</td>
+                    <td className="px-3 py-2 text-xs">{dept?.name ?? "-"}</td>
+                    <td className="px-3 py-2 text-xs">{es.state ?? "-"}</td>
+                    <td className="px-3 py-2 text-xs">{es.lga ?? "-"}</td>
+                    <td className="px-3 py-2 text-xs">{es.gender ?? "-"}</td>
+                    <td className="px-3 py-2">
+                      <StatusBadge status={s.status} />
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {String(s.level)} Level
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        data-ocid={`dean.students.view_profile.button.${i + 1}`}
+                        onClick={() => setSelectedProfileId(s.id)}
+                        className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        View Profile
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <StudentProfileModal
+        studentId={selectedProfileId}
+        onClose={() => setSelectedProfileId(null)}
+      />
+    </div>
+  );
 }

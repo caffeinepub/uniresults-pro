@@ -23,6 +23,7 @@ import {
   CheckCircle,
   ClipboardList,
   Download,
+  FileUp,
   MessageSquare,
   RefreshCw,
   ScrollText,
@@ -50,6 +51,7 @@ import { calcGradePoint, useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
 import type { ExtendedResult, GradeAppeal } from "../context/AppContext";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
+import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import { HODTransferTab } from "./tabs/DepartmentTransferTab";
@@ -62,6 +64,7 @@ import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
+import StudentProfileModal from "./tabs/StudentProfileModal";
 
 export default function HODDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -75,6 +78,8 @@ export default function HODDashboard() {
     { label: "Dept Report", tab: "dept_report", icon: ClipboardList },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
     { label: "Dept. Results", tab: "dept_results", icon: ClipboardList },
+    { label: "Students", tab: "students", icon: Users },
+    { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
   ];
 
   let content: React.ReactNode;
@@ -104,8 +109,10 @@ export default function HODDashboard() {
   else if (activeTab === "dept_results")
     content = <DeptResultsTab userRole="HOD" />;
   else if (activeTab === "score_sheet") content = <ScoreEntrySheetTab />;
+  else if (activeTab === "students") content = <HODStudentsTab />;
   else if (activeTab === "results_processing")
     content = <ResultsProcessingTab userRole="HOD" />;
+  else if (activeTab === "bulkReg") content = <BulkRegistrationTab />;
   else content = <OverviewTab />;
 
   return (
@@ -1991,4 +1998,114 @@ function HodCourseFeedbackTab() {
   const { currentUser, courses } = useApp();
   const deptId = currentUser?.departmentId ?? BigInt(1);
   return <CourseFeedbackView departmentIds={[deptId]} courses={courses} />;
+}
+
+function HODStudentsTab() {
+  const { currentUser, students, departments } = useApp();
+  const [selectedProfileId, setSelectedProfileId] = useState<bigint | null>(
+    null,
+  );
+  const deptId = currentUser?.departmentId ?? BigInt(1);
+  const dept = departments.find((d) => String(d.id) === String(deptId));
+  const deptStudents = students.filter(
+    (s) => String(s.departmentId) === String(deptId),
+  );
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold">
+          Students — {dept?.name ?? "Department"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {deptStudents.length} student{deptStudents.length !== 1 ? "s" : ""} in
+          your department
+        </p>
+      </div>
+      <div className="bg-card rounded-xl border border-border shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 border-b border-border">
+              <tr>
+                {[
+                  "S/N",
+                  "Reg No",
+                  "Matric No",
+                  "Name",
+                  "State",
+                  "LGA",
+                  "Sex",
+                  "Status",
+                  "Level",
+                  "Actions",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="text-left text-xs font-medium text-muted-foreground px-3 py-2"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {deptStudents.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className="text-center text-muted-foreground py-8 text-sm"
+                    data-ocid="hod.students.empty_state"
+                  >
+                    No students found
+                  </td>
+                </tr>
+              )}
+              {deptStudents.map((s, i) => {
+                const es = s as any;
+                return (
+                  <tr
+                    key={String(s.id)}
+                    className="border-b border-border/50 hover:bg-muted/30"
+                    data-ocid={`hod.students.item.${i + 1}`}
+                  >
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {i + 1}
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {es.regNo ?? es.jambRegNo ?? "-"}
+                    </td>
+                    <td className="px-3 py-2 text-xs">{s.matricNumber}</td>
+                    <td className="px-3 py-2 text-xs font-medium">{s.name}</td>
+                    <td className="px-3 py-2 text-xs">{es.state ?? "-"}</td>
+                    <td className="px-3 py-2 text-xs">{es.lga ?? "-"}</td>
+                    <td className="px-3 py-2 text-xs">{es.gender ?? "-"}</td>
+                    <td className="px-3 py-2">
+                      <StatusBadge status={s.status} />
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {String(s.level)} Level
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        data-ocid={`hod.students.view_profile.button.${i + 1}`}
+                        onClick={() => setSelectedProfileId(s.id)}
+                        className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        View Profile
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <StudentProfileModal
+        studentId={selectedProfileId}
+        onClose={() => setSelectedProfileId(null)}
+      />
+    </div>
+  );
 }
