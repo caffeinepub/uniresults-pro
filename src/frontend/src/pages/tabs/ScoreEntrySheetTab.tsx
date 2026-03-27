@@ -100,6 +100,7 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
     moderatorNames,
     setModeratorName,
     submitCourseResults,
+    addNotification,
   } = useApp();
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
@@ -323,6 +324,11 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
     setSubmitting(true);
     try {
       submitCourseResults(selectedCourse.id);
+      addNotification(
+        "HOD",
+        `Score sheet submitted for approval: ${selectedCourse.code} by ${currentUser?.name}`,
+        "lecturer_submissions",
+      );
       toast.success("Results submitted for approval!");
     } finally {
       setSubmitting(false);

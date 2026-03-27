@@ -123,6 +123,7 @@ export default function ResultsProcessingTab({ userRole }: Props) {
     rejectResultsByCourse,
     publishResultsByCourse,
     publishResultsBatch,
+    addNotification,
   } = useApp();
 
   const { setActiveTab } = useContext(TabContext);
@@ -286,6 +287,11 @@ export default function ResultsProcessingTab({ userRole }: Props) {
   const handleBatchSubmit = () => {
     if (selected.size === 0) return;
     for (const id of selected) submitCourseResults(BigInt(id));
+    addNotification(
+      "HOD",
+      `${selected.size} course result(s) submitted for approval by ${currentUser?.name}`,
+      "lecturer_submissions",
+    );
     setSelected(new Set());
     toast.success(`Submitted ${selected.size} course(s) for approval`);
   };
@@ -609,6 +615,11 @@ export default function ResultsProcessingTab({ userRole }: Props) {
                                 className="h-7 text-xs"
                                 onClick={() => {
                                   submitCourseResults(row.course.id);
+                                  addNotification(
+                                    "HOD",
+                                    `New results submitted for ${row.course.code} by ${currentUser?.name}`,
+                                    "lecturer_submissions",
+                                  );
                                   toast.success(
                                     `${row.course.code} submitted for approval`,
                                   );

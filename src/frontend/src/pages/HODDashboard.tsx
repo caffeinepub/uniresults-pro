@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -27,6 +28,7 @@ import {
   MessageSquare,
   RefreshCw,
   ScrollText,
+  Send,
   Users,
   XCircle,
 } from "lucide-react";
@@ -55,12 +57,14 @@ import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import { HODTransferTab } from "./tabs/DepartmentTransferTab";
+import DeptAllResultsTab from "./tabs/DeptAllResultsTab";
 import DeptReportTab from "./tabs/DeptReportTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FacultyDeptManagementTab from "./tabs/FacultyDeptManagementTab";
 import GPATrendChart from "./tabs/GPATrendChart";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
+import LecturerSubmissionsTab from "./tabs/LecturerSubmissionsTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
@@ -70,13 +74,24 @@ import StudentProfileModal from "./tabs/StudentProfileModal";
 
 export default function HODDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
-  const { currentUser: hodUser } = useApp();
+  const { currentUser: hodUser, results, courses } = useApp();
+  const hodDeptId = (hodUser as any)?.departmentId;
+  const hodDeptCourseIds = new Set(
+    courses
+      .filter((c) => String(c.departmentId) === String(hodDeptId))
+      .map((c) => String(c.id)),
+  );
+  const submittedCount = results.filter(
+    (r) => r.status === "submitted" && hodDeptCourseIds.has(String(r.courseId)),
+  ).length;
 
   const quickActions = [
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
     { label: "Score Sheet", tab: "score_sheet", icon: ClipboardList },
     { label: "Results Pipeline", tab: "results_processing", icon: BarChart2 },
     { label: "View Analytics", tab: "analytics", icon: BarChart2 },
+    { label: "Submissions", tab: "lecturer_submissions", icon: Send },
+    { label: "All Results", tab: "dept_all_results", icon: ClipboardList },
     { label: "Dept Report", tab: "dept_report", icon: ClipboardList },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
     { label: "Dept. Results", tab: "dept_results", icon: ClipboardList },
@@ -120,6 +135,10 @@ export default function HODDashboard() {
     content = <FacultyDeptManagementTab readOnly={true} />;
   else if (activeTab === "result_amendment")
     content = <ResultAmendmentTab userRole="HOD" />;
+  else if (activeTab === "lecturer_submissions")
+    content = <LecturerSubmissionsTab />;
+  else if (activeTab === "dept_all_results")
+    content = <DeptAllResultsTab userRole="HOD" />;
   else content = <OverviewTab />;
 
   return (
@@ -136,6 +155,11 @@ export default function HODDashboard() {
           >
             <a.icon className="w-3 h-3" />
             {a.label}
+            {a.tab === "lecturer_submissions" && submittedCount > 0 && (
+              <Badge className="ml-1 h-4 w-4 p-0 text-[10px] flex items-center justify-center bg-destructive text-destructive-foreground">
+                {submittedCount}
+              </Badge>
+            )}
           </button>
         ))}
       </div>

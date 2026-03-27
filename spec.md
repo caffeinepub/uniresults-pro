@@ -1,50 +1,58 @@
 # UniResults Pro
 
 ## Current State
-- Full academic management system at Version 41
-- AppContext has `addDepartment`, `addFaculty`, `addCourse`, `updateCourse`, `removeCourse`, `addStudent`, `updateStudent`, `addStaffMember`, `updateStaffMember`, `removeStaffMember`
-- Missing: `updateFaculty`, `deleteFaculty`, `updateDepartment`, `deleteDepartment`, `deleteStudent`
-- No dedicated Faculty/Department management UI with inline edit/delete/search
-- Courses management only in SettingsTab without inline search/edit row mode
-- No shareable program link button visible to admin
+Version 42 is live with full role-based dashboards (SuperAdmin, Registrar, HOD, Dean, Lecturer, Student), score entry sheets, full approval workflow (Lecturer → HOD → Dean → Registrar → Publish), departmental results, senate report, amendment workflow, and biometric attendance. RoleName is `SuperAdmin | Registrar | HOD | Lecturer | Student | Dean | null`.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `updateFaculty(id, updates)` and `deleteFaculty(id)` in AppContext (cascade: delete departments and set students/courses to unassigned)
-- `updateDepartment(id, updates)` and `deleteDepartment(id)` in AppContext (cascade: update students/courses)
-- `deleteStudent(id)` in AppContext with audit log
-- New tab: `FacultyDeptManagementTab.tsx` -- full management for faculties and departments:
-  - Search/filter input for faculties (live)
-  - Faculty table: S/N, Name, Dept Count, Actions (Edit inline, Delete with confirm)
-  - Department table: S/N, Name, Faculty, Course Count, Student Count, Actions (Edit inline, Delete with confirm)
-  - Add Faculty form and Add Department form (with faculty selector)
-  - Toast feedback on all operations
-- New tab: `CourseManagementTab.tsx` -- full management for courses:
-  - Search by code/title/department
-  - Table: S/N, Code, Title, Department, Level, Credit Units, Semester, Actions (Edit inline, Delete)
-  - Add course form
-- `ShareProgramLink` button component -- copies current app URL to clipboard; shown in AdminDashboard header area
-- Student records management improvements in existing Students tab:
-  - Inline search by name/matric/reg no
-  - Inline Edit button on each row → opens EditStudentModal with all fields (S/N, Reg No, Matric, Name, Dept, State, LGA, Sex, Status)
-  - Delete button with confirm dialog
+1. **Examiner / Exam Officer role** (`ExamOfficer` added to `RoleName`)
+   - New `ExamOfficerDashboard` component
+   - Quick actions: Score Sheet, Results Pipeline, View All Results, Exam Schedule
+   - Can enter scores for any course in their assigned department
+   - Can submit results directly to HOD
+   - App.tsx routes `role === 'ExamOfficer'` to `ExamOfficerDashboard`
+   - Login page: "Exam Officer" option in role selector
+   - Demo Exam Officer account pre-created in AppContext
+
+2. **HOD: Lecturer Submissions Inbox** (new tab `lecturer_submissions`)
+   - Shows courses where status = `submitted`, grouped by Lecturer
+   - Each row: Lecturer name, course code/title, number of students, submission date, Approve/Reject buttons
+   - Approve sends to Dean (`hod_approved`); Reject returns to draft with comment
+   - Badge counter on tab showing pending count
+   - HOD gets in-app notification when a lecturer submits results
+
+3. **HOD: View All Results in Department** (new tab `dept_all_results`)
+   - Full flat table: S/N, Matric No, Student Name, Course Code, CA, Exam, Total, Grade, GP, Status
+   - Filters: Level, Session, Semester, Status (draft/submitted/approved/published)
+   - Summary stats: total students, pass rate, grade distribution
+   - CSV export
+   - Print-friendly layout
+
+4. **ExamOfficer: View All Department Results** 
+   - Same as HOD dept_all_results but scoped to their department
+   - Read-only view of all results
+
+5. **Notification trigger on Lecturer submit**
+   - When Lecturer clicks "Submit for Approval" in ScoreEntrySheetTab or ResultsProcessingTab, call `addNotification('HOD', ...)` with course name and lecturer name
 
 ### Modify
-- AppContext interface: add new function signatures
-- AppContext provider: implement new functions
-- AdminDashboard: add "Faculty & Depts" tab and "Courses" tab
-- SettingsTab: add share link button showing current URL
-- HODDashboard and DeanDashboard: add read-only faculty/dept view with search
+- `AppContext.tsx`: Add `ExamOfficer` to `RoleName` type; add demo ExamOfficer user account in DEMO_USERS
+- `App.tsx`: Route ExamOfficer role to ExamOfficerDashboard
+- `HODDashboard.tsx`: Add `lecturer_submissions` and `dept_all_results` tabs with pending badge
+- `ResultsProcessingTab.tsx`: On submit action, fire `addNotification` to HOD
+- `ScoreEntrySheetTab.tsx`: On submit, fire `addNotification` to HOD
+- `LoginPage.tsx`: Add "Exam Officer" in role dropdown
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
-1. Add `updateFaculty`, `deleteFaculty`, `updateDepartment`, `deleteDepartment`, `deleteStudent` to AppContext interface + implementation
-2. Create `FacultyDeptManagementTab.tsx` with search, inline edit (name, faculty assignment), delete with confirmation, add forms
-3. Create `CourseManagementTab.tsx` with search, inline edit, delete, add form
-4. Add `ShareProgramLink` utility button to AdminDashboard top bar (copies window.location.href to clipboard)
-5. Enhance Students tab in AdminDashboard with inline search (name/matric/regNo), Edit modal, Delete with confirm
-6. Wire new tabs into AdminDashboard nav and expose to HOD/Dean as read-only view
-7. Validate and deploy
+1. Update `AppContext.tsx`: add `ExamOfficer` to `RoleName`, add demo ExamOfficer user
+2. Create `ExamOfficerDashboard.tsx` with score entry, results pipeline, dept results view, exam schedule tabs
+3. Create `LecturerSubmissionsTab.tsx` for HOD inbox of submitted results grouped by lecturer
+4. Create `DeptAllResultsTab.tsx` for HOD/ExamOfficer full results table with filters and export
+5. Update `HODDashboard.tsx`: add new tabs, badge counters, quick actions
+6. Update `App.tsx`: add ExamOfficer routing
+7. Update `LoginPage.tsx`: add ExamOfficer role option
+8. Update `ResultsProcessingTab.tsx` and `ScoreEntrySheetTab.tsx`: fire HOD notification on submit

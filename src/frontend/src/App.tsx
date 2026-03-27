@@ -5,6 +5,7 @@ import { AppProvider, useApp } from "./context/AppContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import AdminDashboard from "./pages/AdminDashboard";
 import DeanDashboard from "./pages/DeanDashboard";
+import ExamOfficerDashboard from "./pages/ExamOfficerDashboard";
 import FeedbackPage from "./pages/FeedbackPage";
 import HODDashboard from "./pages/HODDashboard";
 import LecturerDashboard from "./pages/LecturerDashboard";
@@ -32,6 +33,7 @@ function DashboardRouter() {
       {role === "Lecturer" && <LecturerDashboard />}
       {role === "Student" && <StudentDashboard />}
       {role === "Dean" && <DeanDashboard />}
+      {role === "ExamOfficer" && <ExamOfficerDashboard />}
     </Layout>
   );
 }

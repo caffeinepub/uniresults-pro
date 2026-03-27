@@ -16,6 +16,7 @@ export type RoleName =
   | "Lecturer"
   | "Student"
   | "Dean"
+  | "ExamOfficer"
   | null;
 
 export interface AppUser {
