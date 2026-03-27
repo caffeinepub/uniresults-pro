@@ -64,6 +64,7 @@ import FeeStatusTab from "./tabs/FeeStatusTab";
 import GPATrendChart from "./tabs/GPATrendChart";
 import LecturerRatingTab from "./tabs/LecturerRatingTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import { StudentSIWESTab } from "./tabs/SIWESManagementTab";
 import StudentDocumentsTab from "./tabs/StudentDocumentsTab";
 import StudentEvaluationTab from "./tabs/StudentEvaluationTab";
 import StudentIDCardModal from "./tabs/StudentIDCardModal";
@@ -91,6 +92,7 @@ export default function StudentDashboard() {
     { label: "View Progress", tab: "progress", icon: TrendingUp },
     { label: "My Documents", tab: "documents", icon: Award },
     { label: "Course History", tab: "course_history", icon: FileText },
+    { label: "SIWES", tab: "siwes", icon: ClipboardList },
     { label: "Evaluate Lecturers", tab: "evaluate_lecturers", icon: Star },
   ];
 
@@ -120,6 +122,7 @@ export default function StudentDashboard() {
   else if (activeTab === "evaluate_lecturers")
     content = <StudentEvaluationTab />;
   else if (activeTab === "course_history") content = <CourseHistoryTab />;
+  else if (activeTab === "siwes") content = <StudentSIWESTab />;
   else content = <OverviewTab />;
 
   return (
@@ -398,13 +401,8 @@ function OverviewTab() {
   );
 }
 
-function getLevelCreditLimits(level: number): { min: number; max: number } {
-  if (level <= 100) return { min: 12, max: 24 };
-  if (level <= 200) return { min: 15, max: 27 };
-  if (level <= 300) return { min: 15, max: 27 };
-  if (level <= 400) return { min: 15, max: 24 };
-  if (level <= 500) return { min: 15, max: 24 };
-  return { min: 12, max: 24 }; // 600+
+function getLevelCreditLimits(_level: number): { min: number; max: number } {
+  return { min: 16, max: 24 };
 }
 
 function CourseRegistrationTab() {
@@ -568,6 +566,30 @@ function CourseRegistrationTab() {
       return Number(a.creditUnits) - Number(b.creditUnits);
     });
 
+  // Per-semester splits
+  const firstSemCourses = semCourses.filter((c) => c.semester === "First");
+  const secondSemCourses = semCourses.filter((c) => c.semester === "Second");
+  const firstSemRegistered = registeredCourses.filter(
+    (c) => c.semester === "First",
+  );
+  const secondSemRegistered = registeredCourses.filter(
+    (c) => c.semester === "Second",
+  );
+  const firstSemCredits = firstSemRegistered.reduce(
+    (s, c) => s + Number(c.creditUnits),
+    0,
+  );
+  const secondSemCredits = secondSemRegistered.reduce(
+    (s, c) => s + Number(c.creditUnits),
+    0,
+  );
+  const firstSemAvailable = availableCourses.filter(
+    (c) => c.semester === "First",
+  );
+  const secondSemAvailable = availableCourses.filter(
+    (c) => c.semester === "Second",
+  );
+
   const totalCredits = registeredCourses.reduce(
     (sum, c) => sum + Number(c.creditUnits),
     0,
@@ -706,13 +728,22 @@ function CourseRegistrationTab() {
     toast.success(`Dropped ${courseName}`);
   }
 
-  function handleAutoSuggest() {
+  function handleAutoSuggest(sem?: "First" | "Second") {
     if (!me || !selectedCal || !canRegister) return;
-    // Sort by credit units ascending, pick until min credits met
-    const sorted = [...semCourses]
-      .filter((c) => !registeredCourseIds.has(c.id))
-      .sort((a, b) => Number(a.creditUnits) - Number(b.creditUnits));
-    let running = totalCredits;
+    const pool = sem
+      ? semCourses.filter(
+          (c) => c.semester === sem && !registeredCourseIds.has(c.id),
+        )
+      : semCourses.filter((c) => !registeredCourseIds.has(c.id));
+    const sorted = [...pool].sort(
+      (a, b) => Number(a.creditUnits) - Number(b.creditUnits),
+    );
+    const currentCredits = sem
+      ? sem === "First"
+        ? firstSemCredits
+        : secondSemCredits
+      : totalCredits;
+    let running = currentCredits;
     for (const c of sorted) {
       if (running >= MIN_CREDITS) break;
       if (running + Number(c.creditUnits) <= MAX_CREDITS) {
@@ -723,13 +754,22 @@ function CourseRegistrationTab() {
     toast.success("Courses auto-suggested to meet minimum credit units");
   }
 
-  function handleAutoFillRemaining() {
+  function handleAutoFillRemaining(sem?: "First" | "Second") {
     if (!me || !selectedCal || !canRegister) return;
-    // Add non-carryover courses sorted by credit units until min met
-    const sorted = availableCourses
-      .filter((c) => !carryoverCourseIds.has(c.id))
-      .sort((a, b) => Number(a.creditUnits) - Number(b.creditUnits));
-    let running = totalCredits;
+    const pool = sem
+      ? availableCourses.filter(
+          (c) => c.semester === sem && !carryoverCourseIds.has(c.id),
+        )
+      : availableCourses.filter((c) => !carryoverCourseIds.has(c.id));
+    const sorted = [...pool].sort(
+      (a, b) => Number(a.creditUnits) - Number(b.creditUnits),
+    );
+    const currentCredits = sem
+      ? sem === "First"
+        ? firstSemCredits
+        : secondSemCredits
+      : totalCredits;
+    let running = currentCredits;
     for (const c of sorted) {
       if (running >= MIN_CREDITS) break;
       if (running + Number(c.creditUnits) <= MAX_CREDITS) {
@@ -1074,186 +1114,292 @@ function CourseRegistrationTab() {
         )}
       </div>
 
-      {/* Level 100: Full course selection grid */}
+      {/* Level 100: Two-column semester layout */}
       {is100Level && selectedCal && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-base">
-                {selectedCal.semester} Semester Courses &mdash; Level 100
-              </h2>
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                Select courses to register
-              </span>
-            </div>
-            {canRegister && totalCredits < MIN_CREDITS && (
-              <Button
-                size="sm"
-                variant="outline"
-                data-ocid="coursereg.l100.autosuggest_button"
-                onClick={handleAutoSuggest}
-                className="text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                Auto-suggest Courses
-              </Button>
-            )}
-          </div>
-
+        <div className="space-y-6">
           {semCourses.length === 0 && (
             <div className="bg-card rounded-xl border border-border p-8 text-center">
               <BookOpen className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">
-                No courses available for your department this semester
+                No courses available for your department
               </p>
             </div>
           )}
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {semCourses.map((c, i) => {
-              const isReg = registeredCourseIds.has(c.id);
-              const wouldExceed =
-                !isReg && totalCredits + Number(c.creditUnits) > MAX_CREDITS;
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {(["First", "Second"] as const).map((sem) => {
+              const semCourseList =
+                sem === "First" ? firstSemCourses : secondSemCourses;
+              const semCredits =
+                sem === "First" ? firstSemCredits : secondSemCredits;
+              const semRegCount = (
+                sem === "First" ? firstSemRegistered : secondSemRegistered
+              ).length;
+              const coreCount = (
+                sem === "First" ? firstSemRegistered : secondSemRegistered
+              ).filter((c) => (c as any).courseType !== "Elective").length;
+              const electiveCount = semRegCount - coreCount;
+              const semCreditOk =
+                semCredits >= MIN_CREDITS && semCredits <= MAX_CREDITS;
+              const semProgressPct =
+                MAX_CREDITS > 0
+                  ? Math.min((semCredits / MAX_CREDITS) * 100, 100)
+                  : 0;
+              const semProgressColor =
+                semCredits < MIN_CREDITS
+                  ? "bg-destructive"
+                  : semCredits > MAX_CREDITS
+                    ? "bg-warning"
+                    : "bg-success";
               return (
-                <div
-                  key={String(c.id)}
-                  data-ocid={`coursereg.l100.course.${i + 1}`}
-                  className={`relative flex flex-col gap-2 p-4 rounded-xl border transition-all ${
-                    isReg
-                      ? "border-success/40 bg-success/5"
-                      : wouldExceed
-                        ? "border-border/50 bg-muted/20 opacity-60"
-                        : "border-border bg-card hover:border-primary/40 hover:bg-primary/2"
-                  }`}
-                >
-                  {isReg && (
-                    <span className="absolute top-3 right-3">
-                      <CheckCircle2 className="w-4 h-4 text-success" />
-                    </span>
-                  )}
-                  <div>
-                    <p className="text-xs font-mono text-muted-foreground">
-                      {c.code}
-                    </p>
-                    <p className="text-sm font-semibold mt-0.5 pr-6">
-                      {c.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {String(c.creditUnits)} credit units
-                    </p>
-                  </div>
-                  {canRegister ? (
-                    isReg ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs border-destructive/40 text-destructive hover:bg-destructive/5 mt-auto"
-                        data-ocid={`coursereg.l100.drop.${i + 1}`}
-                        onClick={() => handleDrop(c.id, c.code)}
-                      >
-                        <XCircle className="w-3 h-3 mr-1" /> Drop
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        disabled={wouldExceed}
-                        className="h-7 text-xs mt-auto"
-                        data-ocid={`coursereg.l100.select.${i + 1}`}
-                        onClick={() => handleAdd(c.id, c.code)}
-                      >
-                        ✅ Select
-                      </Button>
-                    )
-                  ) : (
+                <div key={sem} className="space-y-4">
+                  {/* Semester header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-semibold text-base">
+                        {sem} Semester
+                      </h2>
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                        Level 100
+                      </span>
+                    </div>
                     <span
-                      className={`text-xs px-2 py-1 rounded mt-auto inline-block ${
-                        isReg
-                          ? "bg-success/10 text-success"
-                          : "bg-muted text-muted-foreground"
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        semCredits === 0
+                          ? "bg-muted text-muted-foreground"
+                          : semCreditOk
+                            ? "bg-success/10 text-success border border-success/20"
+                            : semCredits < MIN_CREDITS
+                              ? "bg-warning/10 text-warning border border-warning/20"
+                              : "bg-destructive/10 text-destructive border border-destructive/20"
                       }`}
                     >
-                      {isReg ? "Registered" : "Not Registered"}
+                      {semCredits}/{MAX_CREDITS} units
                     </span>
+                  </div>
+
+                  {/* Credit progress bar */}
+                  <div className="space-y-1">
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${semProgressColor}`}
+                        style={{ width: `${semProgressPct}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>Min: {MIN_CREDITS}</span>
+                      <span>Max: {MAX_CREDITS}</span>
+                    </div>
+                  </div>
+
+                  {/* Core/Elective summary */}
+                  {semRegCount > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {coreCount} Core{coreCount !== 1 ? "" : ""},{" "}
+                      {electiveCount} Elective registered
+                    </p>
+                  )}
+
+                  {/* Auto-suggest button */}
+                  {canRegister && semCredits < MIN_CREDITS && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      data-ocid={`coursereg.l100.autosuggest_${sem.toLowerCase()}_button`}
+                      onClick={() => handleAutoSuggest(sem)}
+                      className="text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5 w-full"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      Auto-suggest {sem} Semester Courses
+                    </Button>
+                  )}
+
+                  {/* Course cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {semCourseList.map((c, i) => {
+                      const isReg = registeredCourseIds.has(c.id);
+                      const semCreditsForCheck =
+                        sem === "First" ? firstSemCredits : secondSemCredits;
+                      const wouldExceed =
+                        !isReg &&
+                        semCreditsForCheck + Number(c.creditUnits) >
+                          MAX_CREDITS;
+                      const courseType = (c as any).courseType ?? "Core";
+                      return (
+                        <div
+                          key={String(c.id)}
+                          data-ocid={`coursereg.l100.${sem.toLowerCase()}.course.${i + 1}`}
+                          className={`relative flex flex-col gap-2 p-3 rounded-xl border transition-all ${
+                            isReg
+                              ? "border-success/40 bg-success/5"
+                              : wouldExceed
+                                ? "border-border/50 bg-muted/20 opacity-60"
+                                : "border-border bg-card hover:border-primary/40"
+                          }`}
+                        >
+                          {isReg && (
+                            <span className="absolute top-2 right-2">
+                              <CheckCircle2 className="w-4 h-4 text-success" />
+                            </span>
+                          )}
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs font-mono text-muted-foreground">
+                                {c.code}
+                              </p>
+                              <span
+                                className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold border ${
+                                  courseType === "Elective"
+                                    ? "bg-violet-500/10 text-violet-600 border-violet-500/20"
+                                    : "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                                }`}
+                              >
+                                {courseType}
+                              </span>
+                            </div>
+                            <p className="text-sm font-semibold mt-0.5 pr-5 line-clamp-2">
+                              {c.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {String(c.creditUnits)} units
+                            </p>
+                          </div>
+                          {canRegister ? (
+                            isReg ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs border-destructive/40 text-destructive hover:bg-destructive/5 mt-auto"
+                                data-ocid={`coursereg.l100.${sem.toLowerCase()}.drop.${i + 1}`}
+                                onClick={() => handleDrop(c.id, c.code)}
+                              >
+                                <XCircle className="w-3 h-3 mr-1" /> Drop
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                disabled={wouldExceed}
+                                className="h-7 text-xs mt-auto"
+                                data-ocid={`coursereg.l100.${sem.toLowerCase()}.select.${i + 1}`}
+                                onClick={() => handleAdd(c.id, c.code)}
+                              >
+                                ✅ Select
+                              </Button>
+                            )
+                          ) : (
+                            <span
+                              className={`text-xs px-2 py-1 rounded mt-auto inline-block ${isReg ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}
+                            >
+                              {isReg ? "Registered" : "Not Registered"}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Summary table per semester */}
+                  {(sem === "First" ? firstSemRegistered : secondSemRegistered)
+                    .length > 0 && (
+                    <div className="bg-card rounded-xl border border-border p-4">
+                      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-success" />
+                        {sem} Semester Registered (
+                        {
+                          (sem === "First"
+                            ? firstSemRegistered
+                            : secondSemRegistered
+                          ).length
+                        }
+                        )
+                      </h3>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>S/N</TableHead>
+                            <TableHead>Code</TableHead>
+                            <TableHead>Course Title</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Units</TableHead>
+                            {canRegister && <TableHead />}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(sem === "First"
+                            ? firstSemRegistered
+                            : secondSemRegistered
+                          ).map((c, i) => (
+                            <TableRow key={String(c.id)}>
+                              <TableCell className="text-muted-foreground">
+                                {i + 1}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {c.code}
+                              </TableCell>
+                              <TableCell className="font-medium text-sm">
+                                {c.name}
+                              </TableCell>
+                              <TableCell>
+                                <span
+                                  className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold border ${
+                                    (c as any).courseType === "Elective"
+                                      ? "bg-violet-500/10 text-violet-600 border-violet-500/20"
+                                      : "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                                  }`}
+                                >
+                                  {(c as any).courseType ?? "Core"}
+                                </span>
+                              </TableCell>
+                              <TableCell>{String(c.creditUnits)}</TableCell>
+                              {canRegister && (
+                                <TableCell>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="h-7 text-xs"
+                                    onClick={() => handleDrop(c.id, c.code)}
+                                  >
+                                    <MinusCircle className="w-3 h-3 mr-1" />{" "}
+                                    Drop
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))}
+                          <TableRow className="bg-muted/20 font-semibold">
+                            <TableCell
+                              colSpan={4}
+                              className="text-right text-sm"
+                            >
+                              Total:
+                            </TableCell>
+                            <TableCell
+                              className={
+                                semCreditOk
+                                  ? "text-success font-bold"
+                                  : semCredits < MIN_CREDITS
+                                    ? "text-warning font-bold"
+                                    : "text-destructive font-bold"
+                              }
+                            >
+                              {semCredits}
+                            </TableCell>
+                            {canRegister && <TableCell />}
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </div>
               );
             })}
           </div>
-
-          {/* Summary bar for 100 level */}
-          {registeredCourses.length > 0 && (
-            <div className="bg-card rounded-xl border border-border p-4">
-              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-success" />
-                Registered Courses ({registeredCourses.length})
-              </h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>S/N</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Course Title</TableHead>
-                    <TableHead>Units</TableHead>
-                    {canRegister && <TableHead />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {registeredCourses.map((c, i) => (
-                    <TableRow key={String(c.id)}>
-                      <TableCell className="text-muted-foreground">
-                        {i + 1}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {c.code}
-                      </TableCell>
-                      <TableCell className="font-medium text-sm">
-                        {c.name}
-                      </TableCell>
-                      <TableCell>{String(c.creditUnits)}</TableCell>
-                      {canRegister && (
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="h-7 text-xs"
-                            onClick={() => handleDrop(c.id, c.code)}
-                          >
-                            <MinusCircle className="w-3 h-3 mr-1" /> Drop
-                          </Button>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                  <TableRow className="bg-muted/20 font-semibold">
-                    <TableCell
-                      colSpan={canRegister ? 3 : 3}
-                      className="text-right text-sm"
-                    >
-                      Total Credit Units:
-                    </TableCell>
-                    <TableCell
-                      className={
-                        totalCredits < MIN_CREDITS
-                          ? "text-warning font-bold"
-                          : totalCredits > MAX_CREDITS
-                            ? "text-destructive font-bold"
-                            : "text-success font-bold"
-                      }
-                    >
-                      {totalCredits}
-                    </TableCell>
-                    {canRegister && <TableCell />}
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          )}
         </div>
       )}
-
       {/* Level 200+: Carry-over + normal registration */}
       {isCarryoverLevel && selectedCal && (
         <div className="space-y-6">
+          {/* Carry-over panel */}
           {carryoverCourseIds.size > 0 && (
             <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-3">
@@ -1285,6 +1431,9 @@ function CourseRegistrationTab() {
                         <span className="text-[10px] text-muted-foreground">
                           {String(c.creditUnits)} units
                         </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium mt-0.5 inline-block ml-1">
+                          {c.semester} Sem
+                        </span>
                       </div>
                       {isReg ? (
                         <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-full bg-success/10 text-success font-semibold">
@@ -1310,187 +1459,284 @@ function CourseRegistrationTab() {
             </div>
           )}
 
-          {/* Remaining courses to complete min/max */}
-          <div className="grid lg:grid-cols-2 gap-4">
-            {/* Registered list */}
-            <div className="bg-card rounded-xl border border-border">
-              <div className="p-4 border-b border-border flex items-center justify-between">
-                <h3 className="text-sm font-semibold">
-                  Registered Courses ({registeredCourses.length})
-                </h3>
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${creditBadgeClass}`}
-                >
-                  {totalCredits} units{" "}
-                  {creditOk
-                    ? "✓"
-                    : totalCredits < MIN_CREDITS
-                      ? `(need ${MIN_CREDITS - totalCredits} more)`
-                      : `(over max by ${totalCredits - MAX_CREDITS})`}
-                </span>
-              </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Course</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Units</TableHead>
-                    {canRegister && <TableHead />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {registeredCourses.length === 0 && (
-                    <TableRow>
-                      <TableCell
-                        colSpan={canRegister ? 4 : 3}
-                        className="text-center py-6 text-muted-foreground text-sm"
-                        data-ocid="coursereg.200.registered.empty"
-                      >
-                        No courses registered yet
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {registeredCourses.map((c, i) => {
-                    const isCo = carryoverCourseIds.has(c.id);
-                    return (
-                      <TableRow
-                        key={String(c.id)}
-                        data-ocid={`coursereg.200.registered.${i + 1}`}
-                        className={isCo ? "bg-destructive/5" : ""}
-                      >
-                        <TableCell className="font-medium text-sm">
-                          <div className="flex items-center gap-1.5">
-                            {c.name}
-                            {isCo && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-destructive/10 text-destructive border border-destructive/20">
-                                <RefreshCw className="w-2.5 h-2.5" /> CO
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {c.code}
-                        </TableCell>
-                        <TableCell>{String(c.creditUnits)}</TableCell>
-                        {canRegister && (
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="h-7 text-xs"
-                              data-ocid={`coursereg.200.drop.${i + 1}`}
-                              onClick={() => handleDrop(c.id, c.code)}
-                            >
-                              <MinusCircle className="w-3 h-3 mr-1" /> Drop
-                            </Button>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+          {/* Two-column semester layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {(["First", "Second"] as const).map((sem) => {
+              const semRegList =
+                sem === "First" ? firstSemRegistered : secondSemRegistered;
+              const semAvailList =
+                sem === "First" ? firstSemAvailable : secondSemAvailable;
+              const semCredits =
+                sem === "First" ? firstSemCredits : secondSemCredits;
+              const semCreditOk =
+                semCredits >= MIN_CREDITS && semCredits <= MAX_CREDITS;
+              const semProgressPct =
+                MAX_CREDITS > 0
+                  ? Math.min((semCredits / MAX_CREDITS) * 100, 100)
+                  : 0;
+              const semProgressColor =
+                semCredits < MIN_CREDITS
+                  ? "bg-destructive"
+                  : semCredits > MAX_CREDITS
+                    ? "bg-warning"
+                    : "bg-success";
+              const coreCount = semRegList.filter(
+                (c) => (c as any).courseType !== "Elective",
+              ).length;
+              const electiveCount = semRegList.length - coreCount;
+              return (
+                <div key={sem} className="space-y-4">
+                  {/* Semester header */}
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-semibold text-base">
+                      {sem} Semester Courses
+                    </h2>
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        semCredits === 0
+                          ? "bg-muted text-muted-foreground"
+                          : semCreditOk
+                            ? "bg-success/10 text-success border border-success/20"
+                            : semCredits < MIN_CREDITS
+                              ? "bg-warning/10 text-warning border border-warning/20"
+                              : "bg-destructive/10 text-destructive border border-destructive/20"
+                      }`}
+                    >
+                      {semCredits}/{MAX_CREDITS} units
+                    </span>
+                  </div>
 
-            {/* Available courses */}
-            <div className="bg-card rounded-xl border border-border">
-              <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-semibold">
-                    Available Courses ({availableCourses.length})
-                  </h3>
-                  {totalCredits < MIN_CREDITS && (
-                    <p className="text-xs text-warning mt-0.5">
-                      Add {MIN_CREDITS - totalCredits} or more credit units to
-                      meet minimum ({MIN_CREDITS})
+                  {/* Credit progress */}
+                  <div className="space-y-1">
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${semProgressColor}`}
+                        style={{ width: `${semProgressPct}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>Min: {MIN_CREDITS}</span>
+                      <span>Max: {MAX_CREDITS}</span>
+                    </div>
+                  </div>
+
+                  {/* Core/Elective summary */}
+                  {semRegList.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {coreCount} Core, {electiveCount} Elective registered
                     </p>
                   )}
-                </div>
-                {canRegister && totalCredits < MIN_CREDITS && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    data-ocid="coursereg.200.autofill_button"
-                    onClick={handleAutoFillRemaining}
-                    className="text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
-                  >
-                    <PlusCircle className="w-3.5 h-3.5" />
-                    Auto-fill Credits
-                  </Button>
-                )}
-              </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Course</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Units</TableHead>
-                    {canRegister && <TableHead />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {availableCourses.length === 0 && (
-                    <TableRow>
-                      <TableCell
-                        colSpan={canRegister ? 4 : 3}
-                        className="text-center py-6 text-muted-foreground text-sm"
-                      >
-                        All available courses are registered
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {availableCourses.map((c, i) => {
-                    const isCo = carryoverCourseIds.has(c.id);
-                    const wouldExceed =
-                      totalCredits + Number(c.creditUnits) > MAX_CREDITS;
-                    return (
-                      <TableRow
-                        key={String(c.id)}
-                        data-ocid={`coursereg.200.available.${i + 1}`}
-                        className={isCo ? "bg-destructive/5" : ""}
-                      >
-                        <TableCell className="font-medium text-sm">
-                          <div className="flex items-center gap-1.5">
-                            {c.name}
-                            {isCo && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-destructive/10 text-destructive border border-destructive/20">
-                                <RefreshCw className="w-2.5 h-2.5" /> CO
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {c.code}
-                        </TableCell>
-                        <TableCell>{String(c.creditUnits)}</TableCell>
-                        {canRegister && (
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              disabled={wouldExceed}
-                              className={`h-7 text-xs ${
-                                isCo
-                                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  : ""
-                              }`}
-                              data-ocid={`coursereg.200.add.${i + 1}`}
-                              onClick={() => handleAdd(c.id, c.code)}
+
+                  {/* Registered courses */}
+                  <div className="bg-card rounded-xl border border-border">
+                    <div className="p-3 border-b border-border flex items-center justify-between">
+                      <h3 className="text-sm font-semibold">
+                        Registered ({semRegList.length})
+                      </h3>
+                      {semCredits < MIN_CREDITS && (
+                        <span className="text-xs text-warning">
+                          Need {MIN_CREDITS - semCredits} more units
+                        </span>
+                      )}
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Course</TableHead>
+                          <TableHead>Code</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Units</TableHead>
+                          {canRegister && <TableHead />}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {semRegList.length === 0 && (
+                          <TableRow>
+                            <TableCell
+                              colSpan={canRegister ? 5 : 4}
+                              className="text-center py-4 text-muted-foreground text-sm"
+                              data-ocid={`coursereg.200.${sem.toLowerCase()}.registered.empty`}
                             >
-                              <PlusCircle className="w-3 h-3 mr-1" />
-                              {isCo ? "Re-register" : "✅ Add"}
-                            </Button>
-                          </TableCell>
+                              No courses registered yet
+                            </TableCell>
+                          </TableRow>
                         )}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                        {semRegList.map((c, i) => {
+                          const isCo = carryoverCourseIds.has(c.id);
+                          return (
+                            <TableRow
+                              key={String(c.id)}
+                              data-ocid={`coursereg.200.${sem.toLowerCase()}.registered.${i + 1}`}
+                              className={isCo ? "bg-destructive/5" : ""}
+                            >
+                              <TableCell className="font-medium text-sm">
+                                <div className="flex items-center gap-1.5">
+                                  {c.name}
+                                  {isCo && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-destructive/10 text-destructive border border-destructive/20">
+                                      <RefreshCw className="w-2.5 h-2.5" /> CO
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {c.code}
+                              </TableCell>
+                              <TableCell>
+                                <span
+                                  className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold border ${
+                                    (c as any).courseType === "Elective"
+                                      ? "bg-violet-500/10 text-violet-600 border-violet-500/20"
+                                      : "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                                  }`}
+                                >
+                                  {(c as any).courseType ?? "Core"}
+                                </span>
+                              </TableCell>
+                              <TableCell>{String(c.creditUnits)}</TableCell>
+                              {canRegister && (
+                                <TableCell>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="h-7 text-xs"
+                                    onClick={() => handleDrop(c.id, c.code)}
+                                  >
+                                    <MinusCircle className="w-3 h-3 mr-1" />{" "}
+                                    Drop
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })}
+                        <TableRow className="bg-muted/20 font-semibold">
+                          <TableCell colSpan={3} className="text-right text-sm">
+                            Total:
+                          </TableCell>
+                          <TableCell
+                            className={
+                              semCreditOk
+                                ? "text-success font-bold"
+                                : semCredits < MIN_CREDITS
+                                  ? "text-warning font-bold"
+                                  : "text-destructive font-bold"
+                            }
+                          >
+                            {semCredits}
+                          </TableCell>
+                          {canRegister && <TableCell />}
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Available courses */}
+                  <div className="bg-card rounded-xl border border-border">
+                    <div className="p-3 border-b border-border flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold">
+                        Available ({semAvailList.length})
+                      </h3>
+                      {canRegister && semCredits < MIN_CREDITS && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-ocid={`coursereg.200.${sem.toLowerCase()}.autofill_button`}
+                          onClick={() => handleAutoFillRemaining(sem)}
+                          className="text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
+                        >
+                          <PlusCircle className="w-3.5 h-3.5" />
+                          Auto-fill
+                        </Button>
+                      )}
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Course</TableHead>
+                          <TableHead>Code</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Units</TableHead>
+                          {canRegister && <TableHead />}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {semAvailList.length === 0 && (
+                          <TableRow>
+                            <TableCell
+                              colSpan={canRegister ? 5 : 4}
+                              className="text-center py-4 text-muted-foreground text-sm"
+                            >
+                              All courses registered
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {semAvailList.map((c, i) => {
+                          const isCo = carryoverCourseIds.has(c.id);
+                          const semCreditsForCheck =
+                            sem === "First"
+                              ? firstSemCredits
+                              : secondSemCredits;
+                          const wouldExceed =
+                            semCreditsForCheck + Number(c.creditUnits) >
+                            MAX_CREDITS;
+                          return (
+                            <TableRow
+                              key={String(c.id)}
+                              data-ocid={`coursereg.200.${sem.toLowerCase()}.available.${i + 1}`}
+                              className={isCo ? "bg-destructive/5" : ""}
+                            >
+                              <TableCell className="font-medium text-sm">
+                                <div className="flex items-center gap-1.5">
+                                  {c.name}
+                                  {isCo && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-destructive/10 text-destructive border border-destructive/20">
+                                      <RefreshCw className="w-2.5 h-2.5" /> CO
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">
+                                {c.code}
+                              </TableCell>
+                              <TableCell>
+                                <span
+                                  className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold border ${
+                                    (c as any).courseType === "Elective"
+                                      ? "bg-violet-500/10 text-violet-600 border-violet-500/20"
+                                      : "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                                  }`}
+                                >
+                                  {(c as any).courseType ?? "Core"}
+                                </span>
+                              </TableCell>
+                              <TableCell>{String(c.creditUnits)}</TableCell>
+                              {canRegister && (
+                                <TableCell>
+                                  <Button
+                                    size="sm"
+                                    disabled={wouldExceed}
+                                    className={`h-7 text-xs ${isCo ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}`}
+                                    data-ocid={`coursereg.200.${sem.toLowerCase()}.add.${i + 1}`}
+                                    onClick={() => handleAdd(c.id, c.code)}
+                                  >
+                                    <PlusCircle className="w-3 h-3 mr-1" />
+                                    {isCo ? "Re-register" : "✅ Add"}
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
-
       {/* No session selected */}
       {!selectedCal && (
         <div className="bg-card rounded-xl border border-border p-8 text-center">

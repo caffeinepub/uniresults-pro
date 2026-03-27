@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   BarChart2,
   BookOpen,
+  Building2,
   CheckCircle,
   ClipboardList,
   Download,
@@ -80,6 +81,7 @@ import LecturerSubmissionsTab from "./tabs/LecturerSubmissionsTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
+import SIWESManagementTab from "./tabs/SIWESManagementTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
@@ -109,6 +111,7 @@ export default function HODDashboard() {
     { label: "Dept. Results", tab: "dept_results", icon: ClipboardList },
     { label: "Students", tab: "students", icon: Users },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
+    { label: "SIWES", tab: "siwes", icon: Building2 },
     { label: "Faculty & Depts", tab: "faculty_dept_mgmt", icon: Users },
     { label: "Evaluations", tab: "evaluations", icon: Star },
     {
@@ -169,6 +172,7 @@ export default function HODDashboard() {
     );
   else if (activeTab === "attendance_screening")
     content = <AttendanceScreeningTab />;
+  else if (activeTab === "siwes") content = <SIWESManagementTab />;
   else content = <OverviewTab />;
 
   return (

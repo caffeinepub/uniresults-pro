@@ -116,6 +116,7 @@ import GraduationCertificateModal from "./tabs/GraduationCertificateModal";
 import GraduationListTab from "./tabs/GraduationListTab";
 import GraduationRequirementsTab from "./tabs/GraduationRequirementsTab";
 import HostelManagementTab from "./tabs/HostelManagementTab";
+import JAMBImportTab from "./tabs/JAMBImportTab";
 import LecturerEvaluationTab from "./tabs/LecturerEvaluationTab";
 import LibraryClearanceTab from "./tabs/LibraryClearanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
@@ -125,6 +126,7 @@ import QRScannerModal from "./tabs/QRScannerModal";
 import ReportMonitorTab from "./tabs/ReportMonitorTab";
 import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
+import SIWESManagementTab from "./tabs/SIWESManagementTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
@@ -154,6 +156,8 @@ export default function AdminDashboard() {
     { label: "Results Pipeline", tab: "results_processing", icon: BarChart3 },
     { label: "Dept. Results", tab: "dept_results", icon: BarChart3 },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
+    { label: "JAMB Import", tab: "jamb_import", icon: FileUp },
+    { label: "SIWES", tab: "siwes", icon: BookOpen },
   ];
 
   let view: React.ReactNode;
@@ -214,6 +218,8 @@ export default function AdminDashboard() {
   else if (activeTab === "evaluations") view = <LecturerEvaluationTabAdmin />;
   else if (activeTab === "attendance_screening")
     view = <AttendanceScreeningTabAdmin />;
+  else if (activeTab === "jamb_import") view = <JAMBImportTab />;
+  else if (activeTab === "siwes") view = <SIWESManagementTab />;
   else view = <OverviewTab />;
 
   return (
@@ -2286,6 +2292,7 @@ function CoursesTab() {
     deptId: "",
     lecturer: "",
     semester: "First",
+    courseType: "Core",
   });
 
   function handleAdd() {
@@ -2298,7 +2305,8 @@ function CoursesTab() {
       departmentId: BigInt(form.deptId),
       lecturerPrincipal: form.lecturer || "unassigned",
       semester: form.semester,
-    });
+      courseType: form.courseType,
+    } as any);
     setForm({
       name: "",
       code: "",
@@ -2306,6 +2314,7 @@ function CoursesTab() {
       deptId: "",
       lecturer: "",
       semester: "First",
+      courseType: "Core",
     });
     setOpen(false);
     toast.success("Course added");
@@ -2418,6 +2427,23 @@ function CoursesTab() {
                     <SelectContent>
                       <SelectItem value="First">First</SelectItem>
                       <SelectItem value="Second">Second</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Course Type</Label>
+                  <Select
+                    value={form.courseType}
+                    onValueChange={(v) =>
+                      setForm((f) => ({ ...f, courseType: v }))
+                    }
+                  >
+                    <SelectTrigger data-ocid="courses.coursetype.select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Core">Core</SelectItem>
+                      <SelectItem value="Elective">Elective</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -3828,6 +3854,7 @@ function CourseManagementTab() {
     deptId: "",
     lecturer: "",
     semester: "First",
+    courseType: "Core",
   });
 
   function resetForm() {
@@ -3838,6 +3865,7 @@ function CourseManagementTab() {
       deptId: "",
       lecturer: "",
       semester: "First",
+      courseType: "Core",
     });
     setEditing(null);
   }
@@ -3856,6 +3884,7 @@ function CourseManagementTab() {
       deptId: String(course.departmentId),
       lecturer: course.lecturerPrincipal,
       semester: course.semester,
+      courseType: (course as any).courseType ?? "Core",
     });
     setOpen(true);
   }
@@ -3865,7 +3894,7 @@ function CourseManagementTab() {
       toast.error("Name, code, and department are required");
       return;
     }
-    const courseData: Course = {
+    const courseData = {
       id: editing?.id ?? BigInt(Date.now()),
       name: form.name,
       code: form.code,
@@ -3873,7 +3902,8 @@ function CourseManagementTab() {
       departmentId: BigInt(form.deptId),
       lecturerPrincipal: form.lecturer || "unassigned",
       semester: form.semester,
-    };
+      courseType: form.courseType,
+    } as any;
     if (editing) {
       updateCourse(courseData);
       toast.success("Course updated");
@@ -4012,6 +4042,23 @@ function CourseManagementTab() {
                   }
                   placeholder="e.g. lecturer-1"
                 />
+              </div>
+              <div>
+                <Label>Course Type</Label>
+                <Select
+                  value={form.courseType}
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, courseType: v }))
+                  }
+                >
+                  <SelectTrigger data-ocid="coursemgmt.coursetype.select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Core">Core</SelectItem>
+                    <SelectItem value="Elective">Elective</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>

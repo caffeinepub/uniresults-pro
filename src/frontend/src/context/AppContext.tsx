@@ -333,6 +333,22 @@ export interface LecturerEvaluation {
   timestamp: string;
 }
 
+export interface SIWESRecord {
+  id: bigint;
+  studentId: bigint;
+  session: string;
+  companyName: string;
+  supervisorName: string;
+  supervisorPhone: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  status: "Pending Placement" | "Placed" | "Active" | "Completed" | "Failed";
+  logBookSubmitted: boolean;
+  supervisorScore: number | null;
+  coordinatorComment: string;
+}
+
 interface AppState {
   currentUser: AppUser | null;
   departments: ExtendedDepartment[];
@@ -369,6 +385,7 @@ interface AppState {
   practicalAssignments: Record<string, string>;
   lecturerEvaluations: LecturerEvaluation[];
   evaluationWindowOpen: boolean;
+  siwesRecords: SIWESRecord[];
 }
 
 interface AppContextValue extends AppState {
@@ -487,6 +504,8 @@ interface AppContextValue extends AppState {
   setPracticalAssignment: (courseId: string, staffId: string) => void;
   addLecturerEvaluation: (ev: LecturerEvaluation) => void;
   setEvaluationWindowOpen: (open: boolean) => void;
+  addSIWESRecord: (rec: SIWESRecord) => void;
+  updateSIWESRecord: (rec: SIWESRecord) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -2500,9 +2519,876 @@ const FULL_COURSES: Course[] = [
       semester: "First",
     },
   ] as any[]),
+  // =====================================================
+  // NUC COMPLETE CURRICULUM - Added Courses
+  // Science Education Departments (25=CSE, 26=SciEd, 27=BioEd, 28=ChemEd, 29=MthEd)
+  // IDs start at 213
+  // =====================================================
+  ...([] as any[]).concat([
+    // ---- GSE Complete Catalog ---- Biology Education (dept 27) ----
+    {
+      id: BigInt(213),
+      name: "Use of English I",
+      code: "GSE101B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(214),
+      name: "Use of English II",
+      code: "GSE102B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(215),
+      name: "Nigerian Peoples and Culture",
+      code: "GSE103B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(216),
+      name: "History and Philosophy of Science",
+      code: "GSE104B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(217),
+      name: "Philosophy and Logic",
+      code: "GSE201B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(218),
+      name: "Entrepreneurship I",
+      code: "GSE202B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(219),
+      name: "Peace Studies and Conflict Resolution",
+      code: "GSE203B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(220),
+      name: "Introduction to Computer Applications",
+      code: "GSE204B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: false,
+    },
+    {
+      id: BigInt(221),
+      name: "Entrepreneurship II",
+      code: "GSE301B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(222),
+      name: "Environmental and Occupational Health",
+      code: "GSE302B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: false,
+    },
+    // ---- Biology Education Core Courses ----
+    {
+      id: BigInt(223),
+      name: "General Biology I",
+      code: "BIO101",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(224),
+      name: "General Biology II",
+      code: "BIO102",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(225),
+      name: "General Biology Practical I",
+      code: "BIO103",
+      creditUnits: BigInt(1),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(226),
+      name: "General Biology Practical II",
+      code: "BIO104",
+      creditUnits: BigInt(1),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(227),
+      name: "History of Education in Nigeria",
+      code: "EDU102B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(228),
+      name: "Genetics I",
+      code: "BIO201",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(229),
+      name: "Cell Biology",
+      code: "BIO202",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(230),
+      name: "Botany I",
+      code: "BIO203",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(231),
+      name: "Zoology I",
+      code: "BIO204",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(232),
+      name: "Ecology",
+      code: "BIO205",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(233),
+      name: "Microbiology I",
+      code: "BIO206",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(234),
+      name: "Principles of Teaching",
+      code: "EDU202B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(235),
+      name: "Microbiology II",
+      code: "BIO304",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(236),
+      name: "Botany II",
+      code: "BIO305",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(237),
+      name: "SIWES",
+      code: "SIWES301B",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(238),
+      name: "Special Education",
+      code: "EDU402B",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(239),
+      name: "Research Methods in Biology",
+      code: "BIO403",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(240),
+      name: "Teaching Practice (Biology Ed)",
+      code: "EDU404B",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(27),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(241),
+      name: "Research Project (Biology Ed)",
+      code: "EDU403B",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(242),
+      name: "Parasitology",
+      code: "BIO404",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(243),
+      name: "Virology",
+      code: "BIO405",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      semester: "Second",
+      isCore: false,
+    },
+    // ---- GSE for Chemistry Education (dept 28) ----
+    {
+      id: BigInt(244),
+      name: "Use of English I",
+      code: "GSE101C2",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(245),
+      name: "Use of English II",
+      code: "GSE102C",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(28),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(246),
+      name: "Nigerian Peoples and Culture",
+      code: "GSE103C",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(28),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(247),
+      name: "Philosophy and Logic",
+      code: "GSE201C2",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(248),
+      name: "Entrepreneurship I",
+      code: "GSE202C2",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(28),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(249),
+      name: "Entrepreneurship II",
+      code: "GSE301C2",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: true,
+    },
+    // ---- Chemistry Education Core Courses ----
+    {
+      id: BigInt(250),
+      name: "General Chemistry Practical I",
+      code: "CHM103",
+      creditUnits: BigInt(1),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(251),
+      name: "General Chemistry Practical II",
+      code: "CHM104",
+      creditUnits: BigInt(1),
+      departmentId: BigInt(28),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(252),
+      name: "Principles of Teaching",
+      code: "EDU202C",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(28),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(253),
+      name: "Inorganic Chemistry I",
+      code: "CHM203",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(254),
+      name: "Analytical Chemistry I",
+      code: "CHM204",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(255),
+      name: "Physical Chemistry Practical",
+      code: "CHM205",
+      creditUnits: BigInt(1),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(256),
+      name: "Inorganic Chemistry II",
+      code: "CHM303",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(257),
+      name: "Analytical Chemistry II",
+      code: "CHM304",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(258),
+      name: "Industrial Chemistry",
+      code: "CHM305",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      semester: "Second",
+      isCore: false,
+    },
+    {
+      id: BigInt(259),
+      name: "SIWES",
+      code: "SIWES301C",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(260),
+      name: "Special Education",
+      code: "EDU402C",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(261),
+      name: "Research Methods in Chemistry",
+      code: "CHM403",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(262),
+      name: "Teaching Practice (Chemistry Ed)",
+      code: "EDU404C",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(28),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(263),
+      name: "Research Project (Chemistry Ed)",
+      code: "EDU403C",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(28),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(264),
+      name: "Polymer Chemistry",
+      code: "CHM404",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      semester: "Second",
+      isCore: false,
+    },
+    // ---- GSE for Computer Science Education (dept 25) ----
+    {
+      id: BigInt(265),
+      name: "Use of English I",
+      code: "GSE101CSE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(25),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(266),
+      name: "Use of English II",
+      code: "GSE102CSE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(267),
+      name: "Nigerian Peoples and Culture",
+      code: "GSE103CSE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(268),
+      name: "Entrepreneurship I",
+      code: "GSE202CSE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(269),
+      name: "Entrepreneurship II",
+      code: "GSE301CSE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(25),
+      semester: "First",
+      isCore: true,
+    },
+    // ---- Computer Science Education Core Courses ----
+    {
+      id: BigInt(270),
+      name: "Computer Hardware",
+      code: "CSC103",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(271),
+      name: "Principles of Teaching",
+      code: "EDU202CSE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(272),
+      name: "Database Systems I",
+      code: "CSC203",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(273),
+      name: "Systems Analysis and Design",
+      code: "CSC204",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(274),
+      name: "Numerical Methods",
+      code: "CSC205",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: false,
+    },
+    {
+      id: BigInt(275),
+      name: "Computer Networks",
+      code: "CSC303",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(276),
+      name: "Software Engineering I",
+      code: "CSC304",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(277),
+      name: "Database Systems II",
+      code: "CSC305",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(278),
+      name: "SIWES",
+      code: "SIWES301CSE",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(25),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(279),
+      name: "Special Education",
+      code: "EDU402CSE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(25),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(280),
+      name: "Computer Graphics",
+      code: "CSC403",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(281),
+      name: "Research Methods in Computing",
+      code: "CSC404",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(282),
+      name: "Teaching Practice (CSE)",
+      code: "EDU404CSE",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(25),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(283),
+      name: "Research Project (CSE)",
+      code: "EDU403CSE",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(284),
+      name: "Mobile Application Development",
+      code: "CSC405",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      semester: "Second",
+      isCore: false,
+    },
+    // ---- GSE for Mathematics Education (dept 29) ----
+    {
+      id: BigInt(285),
+      name: "Use of English I",
+      code: "GSE101MTE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(29),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(286),
+      name: "Use of English II",
+      code: "GSE102MTE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(29),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(287),
+      name: "Nigerian Peoples and Culture",
+      code: "GSE103MTE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(29),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(288),
+      name: "Entrepreneurship I",
+      code: "GSE202MTE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(29),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(289),
+      name: "Entrepreneurship II",
+      code: "GSE301MTE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(29),
+      semester: "First",
+      isCore: true,
+    },
+    // ---- Mathematics Education Core Courses ----
+    {
+      id: BigInt(290),
+      name: "Logic and Set Theory",
+      code: "MTH103",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(291),
+      name: "Trigonometry and Analytic Geometry",
+      code: "MTH104",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(292),
+      name: "Principles of Teaching",
+      code: "EDU202MTE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(29),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(293),
+      name: "Abstract Algebra I",
+      code: "MTH203",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(294),
+      name: "Probability and Statistics I",
+      code: "MTH204",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(295),
+      name: "Real Analysis",
+      code: "MTH205",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(296),
+      name: "Numerical Analysis",
+      code: "MTH303",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(297),
+      name: "Probability and Statistics II",
+      code: "MTH304",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(298),
+      name: "Differential Equations",
+      code: "MTH305",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(299),
+      name: "SIWES",
+      code: "SIWES301MTE",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(29),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(300),
+      name: "Special Education",
+      code: "EDU402MTE",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(29),
+      semester: "First",
+      isCore: false,
+    },
+    {
+      id: BigInt(301),
+      name: "Research Methods in Mathematics",
+      code: "MTH403",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(302),
+      name: "Teaching Practice (Mathematics Ed)",
+      code: "EDU404MTE",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(29),
+      semester: "First",
+      isCore: true,
+    },
+    {
+      id: BigInt(303),
+      name: "Research Project (Mathematics Ed)",
+      code: "EDU403MTE",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(29),
+      semester: "Second",
+      isCore: true,
+    },
+    {
+      id: BigInt(304),
+      name: "Complex Analysis",
+      code: "MTH404",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      semester: "Second",
+      isCore: true,
+    },
+  ] as any[]),
 ];
 
-const DEMO_COURSES = FULL_COURSES;
+function getCourseType(code: string): "Core" | "Elective" {
+  const prefix = code.replace(/[0-9]/g, "").replace(/E$/, "").toUpperCase();
+  // GSE (General Studies/Education) = Elective
+  if (prefix === "GSE") return "Elective";
+  // Courses ending with E suffix (elective marker in some depts)
+  if (code.endsWith("E")) return "Elective";
+  // TP (Teaching Practice) = Elective
+  if (prefix === "TP") return "Elective";
+  // 300/400 level second-semester courses of non-core depts = Elective (roughly 30%)
+  const num = Number.parseInt(code.replace(/[^0-9]/g, "")) || 100;
+  if (
+    num >= 300 &&
+    code.includes("2") &&
+    !code.startsWith("CSC") &&
+    !code.startsWith("EDU") &&
+    !code.startsWith("PHY") &&
+    !code.startsWith("MTH")
+  )
+    return "Elective";
+  return "Core";
+}
+
+const DEMO_COURSES = FULL_COURSES.map(
+  (c) => ({ ...c, courseType: getCourseType(c.code) }) as any,
+);
 
 // ============================================================
 // ADMISSION 2025/2026 - Faculty of Science Education
@@ -6023,6 +6909,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   >(() => lsGet<LecturerEvaluation[]>("lecturerEvaluations") ?? []);
   const [evaluationWindowOpen, setEvaluationWindowOpenState] =
     useState<boolean>(() => lsGet<boolean>("evaluationWindowOpen") ?? false);
+  const [siwesRecords, setSiwesRecords] = useState<SIWESRecord[]>(
+    () => lsGet<SIWESRecord[]>("siwesRecords") ?? [],
+  );
 
   const DEFAULT_INSTITUTION: InstitutionSettings = {
     name: "Federal University of Education Kontagora, Niger State",
@@ -6161,6 +7050,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     lsSet("evaluationWindowOpen", evaluationWindowOpen);
   }, [evaluationWindowOpen]);
+  useEffect(() => {
+    lsSet("siwesRecords", siwesRecords);
+  }, [siwesRecords]);
 
   const logAudit = useCallback(
     (actorName: string, actorRole: string, action: string, details: string) => {
@@ -6318,6 +7210,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setEvaluationWindowOpen = useCallback((open: boolean) => {
     setEvaluationWindowOpenState(open);
+  }, []);
+
+  const addSIWESRecord = useCallback((rec: SIWESRecord) => {
+    setSiwesRecords((prev) => [...prev, rec]);
+  }, []);
+
+  const updateSIWESRecord = useCallback((rec: SIWESRecord) => {
+    setSiwesRecords((prev) =>
+      prev.map((r) => (String(r.id) === String(rec.id) ? rec : r)),
+    );
   }, []);
 
   const deleteStudent = useCallback(
@@ -7408,6 +8310,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         evaluationWindowOpen,
         addLecturerEvaluation,
         setEvaluationWindowOpen,
+        siwesRecords,
+        addSIWESRecord,
+        updateSIWESRecord,
       }}
     >
       {children}
