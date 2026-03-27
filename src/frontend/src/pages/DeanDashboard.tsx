@@ -50,6 +50,7 @@ import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import FacultyDeptManagementTab from "./tabs/FacultyDeptManagementTab";
 import FacultyReportTab from "./tabs/FacultyReportTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
@@ -69,6 +70,7 @@ export default function DeanDashboard() {
     { label: "Dept. Results", tab: "dept_results", icon: FileText },
     { label: "Students", tab: "students", icon: Users },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
+    { label: "Faculty & Depts", tab: "faculty_dept_mgmt", icon: Users },
   ];
 
   let view: React.ReactNode;
@@ -90,6 +92,8 @@ export default function DeanDashboard() {
     view = <ResultsProcessingTab userRole="Dean" />;
   else if (activeTab === "students") view = <DeanStudentsTab />;
   else if (activeTab === "bulkReg") view = <BulkRegistrationTab />;
+  else if (activeTab === "faculty_dept_mgmt")
+    view = <FacultyDeptManagementTab readOnly={true} />;
   else view = <OverviewTab />;
 
   return (

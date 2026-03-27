@@ -47,6 +47,7 @@ import {
   RefreshCw,
   ScanLine,
   ScrollText,
+  Search,
   Settings2,
   Trash2,
   Upload,
@@ -57,6 +58,7 @@ import {
   Building,
   DollarSign,
   GraduationCap,
+  Link2,
   Mail,
   MessageSquare,
   QrCode,
@@ -105,6 +107,7 @@ import DeferralsTab from "./tabs/DefferralsTab";
 import { AdminTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import FacultyDeptManagementTab from "./tabs/FacultyDeptManagementTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
 import FeedbackManagementTab from "./tabs/FeedbackManagementTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
@@ -203,6 +206,8 @@ export default function AdminDashboard() {
   else if (activeTab === "result_amendment")
     view = <ResultAmendmentTab userRole="Registrar" />;
   else if (activeTab === "feedback") view = <FeedbackManagementTab />;
+  else if (activeTab === "faculty_dept_mgmt")
+    view = <FacultyDeptManagementTab />;
   else view = <OverviewTab />;
 
   return (
@@ -327,7 +332,29 @@ export default function AdminDashboard() {
           Feedback
         </button>
       </div>
-      <div className="flex justify-end mb-2 no-print">
+      <div className="flex justify-end mb-2 gap-2 flex-wrap no-print">
+        <button
+          type="button"
+          data-ocid="admin_quick.faculty_dept_mgmt.button"
+          onClick={() => setActiveTab("faculty_dept_mgmt")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === "faculty_dept_mgmt" ? "bg-primary/10 text-primary border-primary/30" : ""}`}
+        >
+          Faculty &amp; Depts
+        </button>
+        <button
+          type="button"
+          data-ocid="admin_quick.share_link.button"
+          onClick={() => {
+            navigator.clipboard.writeText(window.location.href);
+            toast.success(
+              "Program link copied to clipboard! Share it with testers.",
+            );
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <Link2 className="w-3 h-3" />
+          Share Link
+        </button>
         <SettingsWizardButton />
       </div>
       {view}
@@ -732,6 +759,7 @@ function StudentsTab() {
     departments,
     addStudent,
     updateStudent,
+    deleteStudent,
     results,
     courses,
     deferralApplications,
@@ -798,6 +826,17 @@ function StudentsTab() {
   const [selectedProfileId, setSelectedProfileId] = useState<bigint | null>(
     null,
   );
+  const [editStudent, setEditStudent] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState<{
+    name: string;
+    regNo: string;
+    matric: string;
+    deptId: string;
+    state: string;
+    lga: string;
+    gender: string;
+    status: string;
+  } | null>(null);
 
   const filtered = students.filter((s) => {
     const matchSearch =
@@ -1831,6 +1870,45 @@ function StudentsTab() {
                         <Eye className="w-3 h-3" />
                         Profile
                       </button>
+                      <button
+                        type="button"
+                        data-ocid={`students.edit_button.${i + 1}`}
+                        onClick={() => {
+                          setEditStudent(s);
+                          setEditForm({
+                            name: s.name,
+                            regNo: (s as any).regNo ?? "",
+                            matric: s.matricNumber,
+                            deptId: String(s.departmentId),
+                            state: (s as any).state ?? "",
+                            lga: (s as any).lga ?? "",
+                            gender: s.gender ?? "",
+                            status: s.status ?? "accepted",
+                          });
+                        }}
+                        className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        data-ocid={`students.delete_button.${i + 1}`}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete student ${s.name}? This cannot be undone.`,
+                            )
+                          ) {
+                            deleteStudent(s.id);
+                            toast.success("Student deleted");
+                          }
+                        }}
+                        className="text-xs text-destructive hover:underline inline-flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Delete
+                      </button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -1846,6 +1924,185 @@ function StudentsTab() {
           open={docOpen}
           onOpenChange={setDocOpen}
         />
+      )}
+
+      {/* Edit Student Modal */}
+      {editStudent && editForm && (
+        <Dialog
+          open={!!editStudent}
+          onOpenChange={(v) => {
+            if (!v) {
+              setEditStudent(null);
+              setEditForm(null);
+            }
+          }}
+        >
+          <DialogContent data-ocid="students.dialog" className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Student</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Full Name</Label>
+                  <Input
+                    data-ocid="students.input"
+                    value={editForm.name}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, name: e.target.value } : f,
+                      )
+                    }
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Matric Number</Label>
+                  <Input
+                    data-ocid="students.input"
+                    value={editForm.matric}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, matric: e.target.value } : f,
+                      )
+                    }
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">JAMB Reg No</Label>
+                  <Input
+                    data-ocid="students.input"
+                    value={editForm.regNo}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, regNo: e.target.value } : f,
+                      )
+                    }
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Department</Label>
+                  <select
+                    data-ocid="students.select"
+                    value={editForm.deptId}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, deptId: e.target.value } : f,
+                      )
+                    }
+                    className="w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
+                  >
+                    <option value="">-- Select --</option>
+                    {departments.map((d) => (
+                      <option key={String(d.id)} value={String(d.id)}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs">State</Label>
+                  <Input
+                    data-ocid="students.input"
+                    value={editForm.state}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, state: e.target.value } : f,
+                      )
+                    }
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">LGA</Label>
+                  <Input
+                    data-ocid="students.input"
+                    value={editForm.lga}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, lga: e.target.value } : f,
+                      )
+                    }
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Sex</Label>
+                  <select
+                    data-ocid="students.select"
+                    value={editForm.gender}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, gender: e.target.value } : f,
+                      )
+                    }
+                    className="w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
+                  >
+                    <option value="">-- Select --</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs">Status</Label>
+                  <select
+                    data-ocid="students.select"
+                    value={editForm.status}
+                    onChange={(e) =>
+                      setEditForm((f) =>
+                        f ? { ...f, status: e.target.value } : f,
+                      )
+                    }
+                    className="w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
+                  >
+                    <option value="accepted">Accepted</option>
+                    <option value="active">Active</option>
+                    <option value="deferred">Deferred</option>
+                    <option value="graduated">Graduated</option>
+                    <option value="withdrawn">Withdrawn</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                data-ocid="students.cancel_button"
+                variant="outline"
+                onClick={() => {
+                  setEditStudent(null);
+                  setEditForm(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                data-ocid="students.save_button"
+                onClick={() => {
+                  if (!editForm.name || !editForm.matric) {
+                    toast.error("Name and matric number are required");
+                    return;
+                  }
+                  updateStudent(editStudent.id, {
+                    name: editForm.name,
+                    matricNumber: editForm.matric,
+                    departmentId: editForm.deptId
+                      ? BigInt(editForm.deptId)
+                      : editStudent.departmentId,
+                    status: editForm.status as any,
+                    gender: editForm.gender || undefined,
+                    state: editForm.state || undefined,
+                    lga: editForm.lga || undefined,
+                    regNo: editForm.regNo || undefined,
+                  } as any);
+                  toast.success("Student updated");
+                  setEditStudent(null);
+                  setEditForm(null);
+                }}
+              >
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Student Detail Modal */}
@@ -1914,6 +2171,7 @@ function StudentsTab() {
 
 function CoursesTab() {
   const { courses, departments, addCourse, bulkAddCourses } = useApp();
+  const [courseSearch, setCourseSearch] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkRows, setBulkRows] = useState<
     {
@@ -2224,6 +2482,30 @@ function CoursesTab() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
+      <div className="flex gap-2 mb-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            data-ocid="coursemgmt.search_input"
+            placeholder="Search by code, name, or department..."
+            value={courseSearch}
+            onChange={(e) => setCourseSearch(e.target.value)}
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+      </div>
+      <div className="flex gap-2 mb-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            data-ocid="coursemgmt.search_input"
+            placeholder="Search by code, name, or department..."
+            value={courseSearch}
+            onChange={(e) => setCourseSearch(e.target.value)}
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
       </div>
       <div className="bg-card rounded-xl border border-border shadow-xs">
         <Table>
@@ -3504,6 +3786,7 @@ function RolesTab() {
 function CourseManagementTab() {
   const { courses, departments, addCourse, updateCourse, removeCourse } =
     useApp();
+  const [cmSearch, setCmSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
   const [form, setForm] = useState({
@@ -3721,6 +4004,18 @@ function CourseManagementTab() {
           </DialogContent>
         </Dialog>
       </div>
+      <div className="flex gap-2 mb-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            data-ocid="coursemgmt.search_input"
+            placeholder="Search by code, name, or department..."
+            value={cmSearch}
+            onChange={(e) => setCmSearch(e.target.value)}
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+      </div>
       <div className="bg-card rounded-xl border border-border shadow-xs">
         <Table>
           <TableHeader>
@@ -3746,52 +4041,65 @@ function CourseManagementTab() {
                 </TableCell>
               </TableRow>
             )}
-            {courses.map((c, i) => {
-              const dept = departments.find(
-                (d) => String(d.id) === String(c.departmentId),
-              );
-              return (
-                <TableRow
-                  key={String(c.id)}
-                  data-ocid={`coursemgmt.item.${i + 1}`}
-                >
-                  <TableCell className="font-mono text-sm font-semibold">
-                    {c.code}
-                  </TableCell>
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {dept?.name ?? "-"}
-                  </TableCell>
-                  <TableCell>{String(c.creditUnits)}</TableCell>
-                  <TableCell>{c.semester}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {c.lecturerPrincipal}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        data-ocid={`coursemgmt.edit_button.${i + 1}`}
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEdit(c)}
-                        className="h-7 text-xs"
-                      >
-                        <Pencil className="w-3 h-3 mr-1" /> Edit
-                      </Button>
-                      <Button
-                        data-ocid={`coursemgmt.delete_button.${i + 1}`}
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(c.id)}
-                        className="h-7 text-xs"
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" /> Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {courses
+              .filter((c) => {
+                const dept2 = departments.find(
+                  (d) => String(d.id) === String(c.departmentId),
+                );
+                const q = cmSearch.toLowerCase();
+                return (
+                  !q ||
+                  c.code.toLowerCase().includes(q) ||
+                  c.name.toLowerCase().includes(q) ||
+                  (dept2?.name ?? "").toLowerCase().includes(q)
+                );
+              })
+              .map((c, i) => {
+                const dept = departments.find(
+                  (d) => String(d.id) === String(c.departmentId),
+                );
+                return (
+                  <TableRow
+                    key={String(c.id)}
+                    data-ocid={`coursemgmt.item.${i + 1}`}
+                  >
+                    <TableCell className="font-mono text-sm font-semibold">
+                      {c.code}
+                    </TableCell>
+                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {dept?.name ?? "-"}
+                    </TableCell>
+                    <TableCell>{String(c.creditUnits)}</TableCell>
+                    <TableCell>{c.semester}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {c.lecturerPrincipal}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          data-ocid={`coursemgmt.edit_button.${i + 1}`}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEdit(c)}
+                          className="h-7 text-xs"
+                        >
+                          <Pencil className="w-3 h-3 mr-1" /> Edit
+                        </Button>
+                        <Button
+                          data-ocid={`coursemgmt.delete_button.${i + 1}`}
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(c.id)}
+                          className="h-7 text-xs"
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" /> Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
           </TableBody>
         </Table>
       </div>

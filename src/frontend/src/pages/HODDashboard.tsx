@@ -58,6 +58,7 @@ import { HODTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptReportTab from "./tabs/DeptReportTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import FacultyDeptManagementTab from "./tabs/FacultyDeptManagementTab";
 import GPATrendChart from "./tabs/GPATrendChart";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
@@ -81,6 +82,7 @@ export default function HODDashboard() {
     { label: "Dept. Results", tab: "dept_results", icon: ClipboardList },
     { label: "Students", tab: "students", icon: Users },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
+    { label: "Faculty & Depts", tab: "faculty_dept_mgmt", icon: Users },
   ];
 
   let content: React.ReactNode;
@@ -114,6 +116,8 @@ export default function HODDashboard() {
   else if (activeTab === "results_processing")
     content = <ResultsProcessingTab userRole="HOD" />;
   else if (activeTab === "bulkReg") content = <BulkRegistrationTab />;
+  else if (activeTab === "faculty_dept_mgmt")
+    content = <FacultyDeptManagementTab readOnly={true} />;
   else if (activeTab === "result_amendment")
     content = <ResultAmendmentTab userRole="HOD" />;
   else content = <OverviewTab />;

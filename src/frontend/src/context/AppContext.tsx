@@ -408,6 +408,11 @@ interface AppContextValue extends AppState {
   addGraduationRequirement: (req: Omit<GraduationRequirements, "id">) => void;
   updateGraduationRequirement: (req: GraduationRequirements) => void;
   deleteGraduationRequirement: (id: string) => void;
+  updateFaculty: (id: bigint, updates: Partial<Faculty>) => void;
+  deleteFaculty: (id: bigint) => void;
+  updateDepartment: (id: bigint, updates: Partial<ExtendedDepartment>) => void;
+  deleteDepartment: (id: bigint) => void;
+  deleteStudent: (id: bigint) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -5600,6 +5605,71 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
   }, [logAudit]);
 
+  const updateFaculty = useCallback((id: bigint, updates: Partial<Faculty>) => {
+    setFaculties((prev) =>
+      prev.map((f) => (String(f.id) === String(id) ? { ...f, ...updates } : f)),
+    );
+  }, []);
+
+  const deleteFaculty = useCallback(
+    (id: bigint) => {
+      setFaculties((prev) => prev.filter((f) => String(f.id) !== String(id)));
+      setDepartments((prev) =>
+        prev.filter((d) => String(d.facultyId) !== String(id)),
+      );
+      const u = currentUserRef.current;
+      if (u)
+        logAudit(
+          u.name,
+          u.role ?? "",
+          "Faculty Deleted",
+          `Deleted faculty ID ${id}`,
+        );
+    },
+    [logAudit],
+  );
+
+  const updateDepartment = useCallback(
+    (id: bigint, updates: Partial<ExtendedDepartment>) => {
+      setDepartments((prev) =>
+        prev.map((d) =>
+          String(d.id) === String(id) ? { ...d, ...updates } : d,
+        ),
+      );
+    },
+    [],
+  );
+
+  const deleteDepartment = useCallback(
+    (id: bigint) => {
+      setDepartments((prev) => prev.filter((d) => String(d.id) !== String(id)));
+      const u = currentUserRef.current;
+      if (u)
+        logAudit(
+          u.name,
+          u.role ?? "",
+          "Department Deleted",
+          `Deleted department ID ${id}`,
+        );
+    },
+    [logAudit],
+  );
+
+  const deleteStudent = useCallback(
+    (id: bigint) => {
+      setStudents((prev) => prev.filter((s) => String(s.id) !== String(id)));
+      const u = currentUserRef.current;
+      if (u)
+        logAudit(
+          u.name,
+          u.role ?? "",
+          "Student Deleted",
+          `Deleted student ID ${id}`,
+        );
+    },
+    [logAudit],
+  );
+
   const addDepartment = useCallback(
     (dept: ExtendedDepartment) => setDepartments((prev) => [...prev, dept]),
     [],
@@ -6557,6 +6627,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addGraduationRequirement,
         updateGraduationRequirement,
         deleteGraduationRequirement,
+        updateFaculty,
+        deleteFaculty,
+        updateDepartment,
+        deleteDepartment,
+        deleteStudent,
       }}
     >
       {children}
