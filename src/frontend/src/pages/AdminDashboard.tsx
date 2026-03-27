@@ -58,6 +58,7 @@ import {
   DollarSign,
   GraduationCap,
   Mail,
+  MessageSquare,
   QrCode,
   Shield,
   UserCheck,
@@ -105,6 +106,7 @@ import { AdminTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
+import FeedbackManagementTab from "./tabs/FeedbackManagementTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
 import GraduationListTab from "./tabs/GraduationListTab";
 import GraduationRequirementsTab from "./tabs/GraduationRequirementsTab";
@@ -124,6 +126,7 @@ import StaffTab from "./tabs/StaffTab";
 import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
 import SystemHealthTab from "./tabs/SystemHealthTab";
+import { SettingsWizardButton } from "./tabs/SystemInitWizard";
 
 export default function AdminDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -199,6 +202,7 @@ export default function AdminDashboard() {
   else if (activeTab === "system_health") view = <SystemHealthTab />;
   else if (activeTab === "result_amendment")
     view = <ResultAmendmentTab userRole="Registrar" />;
+  else if (activeTab === "feedback") view = <FeedbackManagementTab />;
   else view = <OverviewTab />;
 
   return (
@@ -309,6 +313,22 @@ export default function AdminDashboard() {
           <Mail className="w-3 h-3" />
           Inbox
         </button>
+        <button
+          type="button"
+          data-ocid="admin_quick.feedback.button"
+          onClick={() => setActiveTab("feedback")}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
+            activeTab === "feedback"
+              ? "bg-primary/10 text-primary border-primary/30"
+              : ""
+          }`}
+        >
+          <MessageSquare className="w-3 h-3" />
+          Feedback
+        </button>
+      </div>
+      <div className="flex justify-end mb-2 no-print">
+        <SettingsWizardButton />
       </div>
       {view}
     </>
@@ -760,6 +780,8 @@ function StudentsTab() {
     state: "",
     lga: "",
     status: "accepted",
+    programmeType: "Undergraduate" as "Undergraduate" | "Postgraduate",
+    pgLevel: "" as "" | "MSc" | "PGDE" | "PhD" | "PGD" | "MBA" | "MEd" | "MA",
   });
 
   const [scanImage, setScanImage] = useState<string | null>(null);
@@ -808,6 +830,8 @@ function StudentsTab() {
       state: "",
       lga: "",
       status: "accepted",
+      programmeType: "Undergraduate",
+      pgLevel: "",
     });
   }
 
@@ -831,6 +855,8 @@ function StudentsTab() {
       regNo: form.regNo || undefined,
       state: form.state || undefined,
       lga: form.lga || undefined,
+      programmeType: form.programmeType,
+      pgLevel: form.pgLevel || undefined,
     } as any);
     resetManualForm();
     setOpen(false);
@@ -1172,6 +1198,57 @@ function StudentsTab() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div>
+                      <Label>Programme Type</Label>
+                      <Select
+                        value={form.programmeType}
+                        onValueChange={(v) =>
+                          setForm((f) => ({
+                            ...f,
+                            programmeType: v as
+                              | "Undergraduate"
+                              | "Postgraduate",
+                            pgLevel: "",
+                          }))
+                        }
+                      >
+                        <SelectTrigger data-ocid="students.programme_type.select">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Undergraduate">
+                            Undergraduate
+                          </SelectItem>
+                          <SelectItem value="Postgraduate">
+                            Postgraduate
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {form.programmeType === "Postgraduate" && (
+                      <div>
+                        <Label>PG Level</Label>
+                        <Select
+                          value={form.pgLevel}
+                          onValueChange={(v) =>
+                            setForm((f) => ({ ...f, pgLevel: v as any }))
+                          }
+                        >
+                          <SelectTrigger data-ocid="students.pg_level.select">
+                            <SelectValue placeholder="Select PG level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MSc">MSc</SelectItem>
+                            <SelectItem value="PGDE">PGDE</SelectItem>
+                            <SelectItem value="PhD">PhD</SelectItem>
+                            <SelectItem value="PGD">PGD</SelectItem>
+                            <SelectItem value="MBA">MBA</SelectItem>
+                            <SelectItem value="MEd">MEd</SelectItem>
+                            <SelectItem value="MA">MA</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                   <DialogFooter>
                     <Button
@@ -3729,13 +3806,19 @@ function AcademicCalendarTab() {
     setActiveCalendar,
     toggleRegistrationOpen,
     toggleAddDropOpen,
+    setAddDropDeadline,
   } = useApp();
   const [open, setOpen] = useState(false);
+  const [deadlineEdit, setDeadlineEdit] = useState<{
+    id: bigint;
+    value: string;
+  } | null>(null);
   const [form, setForm] = useState({
     session: "",
     semester: "First" as "First" | "Second",
     startDate: "",
     endDate: "",
+    addDropDeadline: "",
   });
 
   function handleAdd() {
@@ -3752,9 +3835,16 @@ function AcademicCalendarTab() {
       endDate: form.endDate,
       registrationOpen: false,
       addDropOpen: false,
+      addDropDeadline: form.addDropDeadline || undefined,
     };
     addAcademicCalendar(cal);
-    setForm({ session: "", semester: "First", startDate: "", endDate: "" });
+    setForm({
+      session: "",
+      semester: "First",
+      startDate: "",
+      endDate: "",
+      addDropDeadline: "",
+    });
     setOpen(false);
     toast.success("Academic calendar added");
   }
@@ -3843,6 +3933,17 @@ function AcademicCalendarTab() {
                   />
                 </div>
               </div>
+              <div>
+                <Label>Add/Drop Deadline (Mid-Semester Break, optional)</Label>
+                <Input
+                  data-ocid="calendar.add_drop_deadline.input"
+                  type="date"
+                  value={form.addDropDeadline}
+                  onChange={(e) =>
+                    setForm({ ...form, addDropDeadline: e.target.value })
+                  }
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button
@@ -3863,6 +3964,58 @@ function AcademicCalendarTab() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Portal Status Summary */}
+      {(() => {
+        const activeCal = academicCalendars.find((c) => c.isActive);
+        if (!activeCal) return null;
+        const deadlinePassed = activeCal.addDropDeadline
+          ? new Date() > new Date(activeCal.addDropDeadline)
+          : false;
+        const deadlineFormatted = activeCal.addDropDeadline
+          ? new Date(activeCal.addDropDeadline).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })
+          : null;
+        return (
+          <div
+            className={`rounded-xl border p-4 mb-2 ${activeCal.registrationOpen ? "bg-success/8 border-success/25" : "bg-destructive/8 border-destructive/20"}`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="font-semibold text-sm">
+                Portal Status — {activeCal.session} {activeCal.semester}{" "}
+                Semester (Active)
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <span
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full font-semibold border ${activeCal.registrationOpen ? "bg-success/15 text-success border-success/30" : "bg-destructive/15 text-destructive border-destructive/30"}`}
+                >
+                  {activeCal.registrationOpen
+                    ? "✓ Registration OPEN"
+                    : "✗ Registration CLOSED"}
+                </span>
+                <span
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full font-semibold border ${activeCal.addDropOpen ? "bg-primary/15 text-primary border-primary/30" : "bg-muted/30 text-muted-foreground border-border"}`}
+                >
+                  {activeCal.addDropOpen
+                    ? "✓ Add/Drop OPEN"
+                    : "Add/Drop CLOSED"}
+                </span>
+                {deadlineFormatted && (
+                  <span
+                    className={`text-xs ${deadlinePassed ? "text-destructive font-medium" : "text-muted-foreground"}`}
+                  >
+                    Add/Drop Deadline: {deadlineFormatted}
+                    {deadlinePassed && " ⚠ Passed"}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="bg-card rounded-xl border border-border shadow-xs">
         <Table>
@@ -3930,20 +4083,83 @@ function AcademicCalendarTab() {
                   </Button>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    size="sm"
-                    variant={cal.addDropOpen ? "default" : "outline"}
-                    onClick={() => {
-                      toggleAddDropOpen(cal.id);
-                      toast.success(
-                        cal.addDropOpen ? "Add/Drop closed" : "Add/Drop opened",
-                      );
-                    }}
-                    className={`h-7 text-xs ${cal.addDropOpen ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}`}
-                    data-ocid={`calendar.toggle_add_drop.${i + 1}`}
-                  >
-                    {cal.addDropOpen ? "✓ Open" : "Closed"}
-                  </Button>
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      size="sm"
+                      variant={cal.addDropOpen ? "default" : "outline"}
+                      onClick={() => {
+                        toggleAddDropOpen(cal.id);
+                        toast.success(
+                          cal.addDropOpen
+                            ? "Add/Drop closed"
+                            : "Add/Drop opened",
+                        );
+                      }}
+                      className={`h-7 text-xs ${cal.addDropOpen ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}`}
+                      data-ocid={`calendar.toggle_add_drop.${i + 1}`}
+                    >
+                      {cal.addDropOpen ? "✓ Open" : "Closed"}
+                    </Button>
+                    {cal.addDropDeadline && (
+                      <span
+                        className={`text-[10px] ${new Date() > new Date(cal.addDropDeadline) ? "text-destructive font-semibold" : "text-muted-foreground"}`}
+                      >
+                        {new Date() > new Date(cal.addDropDeadline)
+                          ? "⚠ Deadline Passed"
+                          : `Deadline: ${cal.addDropDeadline}`}
+                      </span>
+                    )}
+                    {deadlineEdit &&
+                    String(deadlineEdit.id) === String(cal.id) ? (
+                      <div className="flex gap-1 items-center mt-1">
+                        <Input
+                          type="date"
+                          className="h-6 text-xs w-28 px-1"
+                          value={deadlineEdit.value}
+                          onChange={(e) =>
+                            setDeadlineEdit({
+                              id: cal.id,
+                              value: e.target.value,
+                            })
+                          }
+                        />
+                        <Button
+                          size="sm"
+                          className="h-6 text-[10px] px-2"
+                          onClick={() => {
+                            setAddDropDeadline(cal.id, deadlineEdit.value);
+                            setDeadlineEdit(null);
+                            toast.success("Add/Drop deadline updated");
+                          }}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[10px] px-2"
+                          onClick={() => setDeadlineEdit(null)}
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-[10px] text-primary hover:underline"
+                        onClick={() =>
+                          setDeadlineEdit({
+                            id: cal.id,
+                            value: cal.addDropDeadline ?? "",
+                          })
+                        }
+                        data-ocid={`calendar.edit_deadline.${i + 1}`}
+                      >
+                        <Pencil className="w-2.5 h-2.5" />{" "}
+                        {cal.addDropDeadline ? "Edit" : "Set"} Deadline
+                      </button>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   {!cal.isActive && (

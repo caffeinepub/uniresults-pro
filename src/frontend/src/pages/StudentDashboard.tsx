@@ -382,6 +382,15 @@ function OverviewTab() {
   );
 }
 
+function getLevelCreditLimits(level: number): { min: number; max: number } {
+  if (level <= 100) return { min: 12, max: 24 };
+  if (level <= 200) return { min: 15, max: 27 };
+  if (level <= 300) return { min: 15, max: 27 };
+  if (level <= 400) return { min: 15, max: 24 };
+  if (level <= 500) return { min: 15, max: 24 };
+  return { min: 12, max: 24 }; // 600+
+}
+
 function CourseRegistrationTab() {
   const [showRegSlip, setShowRegSlip] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<bigint | null>(null);
@@ -396,9 +405,6 @@ function CourseRegistrationTab() {
     dropCourseRegistration,
   } = useApp();
   const me = students.find((s) => s.userPrincipal === currentUser?.principal);
-
-  const MIN_CREDITS = 12;
-  const MAX_CREDITS = 24;
 
   // Get all sessions for selector
   const allSessions = academicCalendars
@@ -432,8 +438,26 @@ function CourseRegistrationTab() {
 
   // Student level
   const level = me ? Number(me.level) : 0;
+  const meEx = me as any;
+  const isPG = meEx?.programmeType === "Postgraduate";
+  const pgLevel = meEx?.pgLevel as string | undefined;
+  // PG credit limits
+  const pgCreditLimits = (() => {
+    if (!isPG) return null;
+    if (pgLevel === "PhD" || pgLevel === "PGD") return { min: 6, max: 12 };
+    return { min: 9, max: 18 }; // MSc, PGDE, MBA, MEd, MA
+  })();
+  const { min: MIN_CREDITS_BASE, max: MAX_CREDITS_BASE } =
+    getLevelCreditLimits(level);
+  const MIN_CREDITS = pgCreditLimits ? pgCreditLimits.min : MIN_CREDITS_BASE;
+  const MAX_CREDITS = pgCreditLimits ? pgCreditLimits.max : MAX_CREDITS_BASE;
   const is100Level = level === 100;
   const isCarryoverLevel = level >= 200;
+  const isFinalYear = level >= 400;
+
+  // Level display label
+  const levelYear = Math.floor(level / 100);
+  const levelLabel = `Year ${levelYear} Course Registration — Level ${level}`;
 
   // Already registered courses for selected session
   const sessionKey = selectedCal
@@ -451,11 +475,10 @@ function CourseRegistrationTab() {
     sessionRegistrations.map((r) => r.courseId),
   );
 
-  // Auto-register carry-over courses for 200+ levels when registration opens
+  // Auto-register carry-over courses for 200+ levels (always, not gated on registrationOpen)
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally runs only when session changes
   useEffect(() => {
     if (!me || !selectedCal || !isCarryoverLevel) return;
-    if (!selectedCal.registrationOpen && !selectedCal.addDropOpen) return;
     for (const cId of carryoverCourseIds) {
       if (!registeredCourseIds.has(cId)) {
         addCourseRegistration(me.id, cId, selectedCal.semester);
@@ -476,7 +499,17 @@ function CourseRegistrationTab() {
   }
 
   // Department courses
-  const deptCourses = courses.filter((c) => c.departmentId === me.departmentId);
+  const deptCourses = isPG
+    ? courses.filter(
+        (c) =>
+          c.departmentId === me.departmentId &&
+          Number((c as any).level ?? 100) >= 700,
+      )
+    : courses.filter(
+        (c) =>
+          c.departmentId === me.departmentId &&
+          Number((c as any).level ?? 100) < 700,
+      );
   const semCourses = selectedCal
     ? deptCourses.filter((c) => c.semester === selectedCal.semester)
     : deptCourses;
@@ -484,9 +517,16 @@ function CourseRegistrationTab() {
   const registeredCourses = semCourses.filter((c) =>
     registeredCourseIds.has(c.id),
   );
-  const availableCourses = semCourses.filter(
-    (c) => !registeredCourseIds.has(c.id),
-  );
+  // Sort available: carryover first, then normal; each group sorted by creditUnits asc
+  const availableCourses = semCourses
+    .filter((c) => !registeredCourseIds.has(c.id))
+    .sort((a, b) => {
+      const aIsCo = carryoverCourseIds.has(a.id) ? 0 : 1;
+      const bIsCo = carryoverCourseIds.has(b.id) ? 0 : 1;
+      if (aIsCo !== bIsCo) return aIsCo - bIsCo;
+      return Number(a.creditUnits) - Number(b.creditUnits);
+    });
+
   const totalCredits = registeredCourses.reduce(
     (sum, c) => sum + Number(c.creditUnits),
     0,
@@ -497,6 +537,44 @@ function CourseRegistrationTab() {
   const regOpen = selectedCal?.registrationOpen ?? false;
   const addDropOpen = selectedCal?.addDropOpen ?? false;
   const canRegister = regOpen || addDropOpen;
+
+  // Graduation eligibility (for final year)
+  const cgpaForGrad = (() => {
+    if (myResults.length === 0) return 0;
+    const totalGP = myResults.reduce((s, r) => {
+      const cu = Number(
+        courses.find((c) => String(c.id) === String(r.courseId))?.creditUnits ??
+          0,
+      );
+      return s + r.gradePoint * cu;
+    }, 0);
+    const totalCU = myResults.reduce((s, r) => {
+      return (
+        s +
+        Number(
+          courses.find((c) => String(c.id) === String(r.courseId))
+            ?.creditUnits ?? 0,
+        )
+      );
+    }, 0);
+    return totalCU > 0 ? totalGP / totalCU : 0;
+  })();
+  const outstandingCount = myResults.filter((r) => r.grade === "F").length;
+  const totalCreditsPassed = myResults
+    .filter((r) => r.grade !== "F")
+    .reduce(
+      (s, r) =>
+        s +
+        Number(
+          courses.find((c) => String(c.id) === String(r.courseId))
+            ?.creditUnits ?? 0,
+        ),
+      0,
+    );
+  const gradEligible =
+    cgpaForGrad > 1.0 &&
+    outstandingCount === 0 &&
+    totalCreditsPassed >= MIN_CREDITS;
 
   // Slip data
   const regSlipSession =
@@ -516,7 +594,9 @@ function CourseRegistrationTab() {
         ) >
       MAX_CREDITS
     ) {
-      toast.error("Adding this course exceeds the maximum credit units (24)");
+      toast.error(
+        `Adding this course exceeds the maximum credit units (${MAX_CREDITS})`,
+      );
       return;
     }
     addCourseRegistration(me.id, courseId, selectedCal.semester);
@@ -529,6 +609,42 @@ function CourseRegistrationTab() {
     toast.success(`Dropped ${courseName}`);
   }
 
+  function handleAutoSuggest() {
+    if (!me || !selectedCal || !canRegister) return;
+    // Sort by credit units ascending, pick until min credits met
+    const sorted = [...semCourses]
+      .filter((c) => !registeredCourseIds.has(c.id))
+      .sort((a, b) => Number(a.creditUnits) - Number(b.creditUnits));
+    let running = totalCredits;
+    for (const c of sorted) {
+      if (running >= MIN_CREDITS) break;
+      if (running + Number(c.creditUnits) <= MAX_CREDITS) {
+        addCourseRegistration(me.id, c.id, selectedCal.semester);
+        running += Number(c.creditUnits);
+      }
+    }
+    toast.success("Courses auto-suggested to meet minimum credit units");
+  }
+
+  function handleAutoFillRemaining() {
+    if (!me || !selectedCal || !canRegister) return;
+    // Add non-carryover courses sorted by credit units until min met
+    const sorted = availableCourses
+      .filter((c) => !carryoverCourseIds.has(c.id))
+      .sort((a, b) => Number(a.creditUnits) - Number(b.creditUnits));
+    let running = totalCredits;
+    for (const c of sorted) {
+      if (running >= MIN_CREDITS) break;
+      if (running + Number(c.creditUnits) <= MAX_CREDITS) {
+        addCourseRegistration(me.id, c.id, selectedCal.semester);
+        running += Number(c.creditUnits);
+      }
+    }
+    toast.success("Credits auto-filled to meet minimum requirement");
+  }
+
+  const creditProgressPct =
+    MAX_CREDITS > 0 ? Math.min((totalCredits / MAX_CREDITS) * 100, 100) : 0;
   const creditBadgeClass =
     totalCredits === 0
       ? "bg-muted text-muted-foreground"
@@ -537,6 +653,13 @@ function CourseRegistrationTab() {
         : totalCredits < MIN_CREDITS
           ? "bg-warning/10 text-warning border border-warning/20"
           : "bg-destructive/10 text-destructive border border-destructive/20";
+
+  const progressBarColor =
+    totalCredits < MIN_CREDITS
+      ? "bg-destructive"
+      : totalCredits > MAX_CREDITS
+        ? "bg-warning"
+        : "bg-success";
 
   return (
     <div className="space-y-6">
@@ -551,16 +674,72 @@ function CourseRegistrationTab() {
         />
       )}
 
+      {/* Graduation Eligibility Panel for Level 400+ */}
+      {isFinalYear && myResults.length > 0 && (
+        <div
+          className={`rounded-xl border p-4 ${gradEligible ? "bg-success/5 border-success/30" : "bg-warning/5 border-warning/30"}`}
+          data-ocid="coursereg.grad_eligibility.panel"
+        >
+          <div className="flex items-start gap-3">
+            <GraduationCap
+              className={`w-5 h-5 mt-0.5 shrink-0 ${gradEligible ? "text-success" : "text-warning"}`}
+            />
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold mb-2">
+                🎓 Graduation Eligibility Check
+              </h3>
+              <div className="flex flex-wrap gap-3 text-xs mb-2">
+                <span className="px-2 py-1 rounded bg-card border border-border">
+                  CGPA: <strong>{cgpaForGrad.toFixed(2)}</strong>
+                </span>
+                <span className="px-2 py-1 rounded bg-card border border-border">
+                  Credits Passed: <strong>{totalCreditsPassed}</strong>
+                </span>
+                <span className="px-2 py-1 rounded bg-card border border-border">
+                  Outstanding: <strong>{outstandingCount}</strong>
+                </span>
+              </div>
+              {gradEligible ? (
+                <p className="text-xs text-success font-medium">
+                  ✅ You meet all graduation requirements for this period.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {outstandingCount > 0 && (
+                    <p className="text-xs text-warning">
+                      ⚠️ You have {outstandingCount} outstanding (F) course
+                      {outstandingCount !== 1 ? "s" : ""} that must be cleared
+                      before graduation.
+                    </p>
+                  )}
+                  {cgpaForGrad <= 1.0 && (
+                    <p className="text-xs text-destructive">
+                      ⚠️ Your CGPA ({cgpaForGrad.toFixed(2)}) is below the
+                      minimum threshold of 1.0.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-primary" />
-            Course Registration
+            {levelLabel}
           </h1>
           <p className="text-sm text-muted-foreground">
             {me.name} &bull; {me.matricNumber} &bull; Level {level}
           </p>
+          {isCarryoverLevel && (
+            <p className="text-xs text-muted-foreground mt-0.5 italic">
+              Carryover courses are automatically pre-selected
+            </p>
+          )}
         </div>
         {registeredCourses.length > 0 && (
           <Button
@@ -609,6 +788,63 @@ function CourseRegistrationTab() {
           </div>
         </div>
 
+        {/* PG Programme Badge */}
+        {isPG && pgLevel && (
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-primary/15 text-primary border border-primary/30">
+            🎓 Postgraduate Programme — {pgLevel}
+          </div>
+        )}
+
+        {selectedCal && (
+          <div className="mt-3 space-y-2">
+            {/* Main Portal Status Banner */}
+            {selectedCal.registrationOpen ? (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-success/10 text-success border border-success/25">
+                <CheckCircle2 className="w-4 h-4" />✓{" "}
+                {isPG ? "Postgraduate" : ""} Course Registration Portal is OPEN
+                — {selectedCal.session} {selectedCal.semester} Semester
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-destructive/10 text-destructive border border-destructive/25">
+                <Lock className="w-4 h-4" />✗ Course Registration Portal is
+                CLOSED. Contact the Registrar to open registration.
+              </div>
+            )}
+            {/* Add/Drop Banner */}
+            {selectedCal.addDropOpen ? (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                <CheckCircle2 className="w-3.5 h-3.5" />✓ Add/Drop Period is
+                OPEN
+                {(selectedCal as any).addDropDeadline && (
+                  <span className="ml-1 text-muted-foreground">
+                    — Deadline:{" "}
+                    {new Date(
+                      (selectedCal as any).addDropDeadline,
+                    ).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                )}
+              </div>
+            ) : (selectedCal as any).addDropDeadline ? (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-muted/30 text-muted-foreground border border-border">
+                <Lock className="w-3.5 h-3.5" />
+                Add/Drop Period is CLOSED. Deadline was{" "}
+                {new Date(
+                  (selectedCal as any).addDropDeadline,
+                ).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+                .
+              </div>
+            ) : null}
+          </div>
+        )}
+
         {selectedCal && (
           <div className="mt-3 flex flex-wrap gap-3">
             {/* Registration Status */}
@@ -635,13 +871,14 @@ function CourseRegistrationTab() {
               }`}
             >
               {selectedCal.addDropOpen ? (
-                <RefreshCw className="w-3.5 h-3.5" />
+                <CheckCircle2 className="w-3.5 h-3.5" />
               ) : (
                 <Lock className="w-3.5 h-3.5" />
               )}
               Add/Drop: {selectedCal.addDropOpen ? "Open" : "Closed"}
             </div>
-            {/* Credit summary */}
+
+            {/* Credit Units Summary Badge */}
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${creditBadgeClass}`}
             >
@@ -650,20 +887,52 @@ function CourseRegistrationTab() {
               {totalCredits > 0 &&
                 !creditOk &&
                 totalCredits < MIN_CREDITS &&
-                " (below min 12)"}
-              {totalCredits > MAX_CREDITS && " (exceeds max 24)"}
+                ` (below min ${MIN_CREDITS})`}
+              {totalCredits > MAX_CREDITS && ` (exceeds max ${MAX_CREDITS})`}
               {creditOk && " ✓"}
             </div>
           </div>
         )}
 
+        {/* Credit Progress Bar */}
+        {selectedCal && (
+          <div className="mt-4 space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Credit Units Progress</span>
+              <span
+                className={
+                  creditOk
+                    ? "text-success font-medium"
+                    : totalCredits < MIN_CREDITS
+                      ? "text-warning font-medium"
+                      : "text-destructive font-medium"
+                }
+              >
+                {totalCredits} units registered &bull; Minimum: {MIN_CREDITS}{" "}
+                &bull; Maximum: {MAX_CREDITS}
+              </span>
+            </div>
+            <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${progressBarColor}`}
+                style={{ width: `${creditProgressPct}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>0</span>
+              <span className="text-warning">Min: {MIN_CREDITS}</span>
+              <span className="text-success">Max: {MAX_CREDITS}</span>
+            </div>
+          </div>
+        )}
+
         {!canRegister && selectedCal && (
-          <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20 text-warning text-xs">
+          <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs">
             <Info className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
-              Course registration and add/drop are currently{" "}
-              <strong>closed</strong> for this session. Contact the Registrar to
-              open registration.
+              Registration is currently <strong>closed</strong> for this
+              session. You can still view and plan your courses below. Contact
+              the Registrar to open registration.
             </span>
           </div>
         )}
@@ -672,13 +941,27 @@ function CourseRegistrationTab() {
       {/* Level 100: Full course selection grid */}
       {is100Level && selectedCal && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-base">
-              {selectedCal.semester} Semester Courses &mdash; Level 100
-            </h2>
-            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-              Select courses to register
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold text-base">
+                {selectedCal.semester} Semester Courses &mdash; Level 100
+              </h2>
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                Select courses to register
+              </span>
+            </div>
+            {canRegister && totalCredits < MIN_CREDITS && (
+              <Button
+                size="sm"
+                variant="outline"
+                data-ocid="coursereg.l100.autosuggest_button"
+                onClick={handleAutoSuggest}
+                className="text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                Auto-suggest Courses
+              </Button>
+            )}
           </div>
 
           {semCourses.length === 0 && (
@@ -881,7 +1164,7 @@ function CourseRegistrationTab() {
                         </Button>
                       ) : (
                         <span className="text-[10px] px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                          Not Registered
+                          Pending
                         </span>
                       )}
                     </div>
@@ -975,15 +1258,29 @@ function CourseRegistrationTab() {
 
             {/* Available courses */}
             <div className="bg-card rounded-xl border border-border">
-              <div className="p-4 border-b border-border">
-                <h3 className="text-sm font-semibold">
-                  Available Courses ({availableCourses.length})
-                </h3>
-                {totalCredits < MIN_CREDITS && (
-                  <p className="text-xs text-warning mt-0.5">
-                    Add {MIN_CREDITS - totalCredits} or more credit units to
-                    meet minimum (12)
-                  </p>
+              <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold">
+                    Available Courses ({availableCourses.length})
+                  </h3>
+                  {totalCredits < MIN_CREDITS && (
+                    <p className="text-xs text-warning mt-0.5">
+                      Add {MIN_CREDITS - totalCredits} or more credit units to
+                      meet minimum ({MIN_CREDITS})
+                    </p>
+                  )}
+                </div>
+                {canRegister && totalCredits < MIN_CREDITS && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    data-ocid="coursereg.200.autofill_button"
+                    onClick={handleAutoFillRemaining}
+                    className="text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    Auto-fill Credits
+                  </Button>
                 )}
               </div>
               <Table>

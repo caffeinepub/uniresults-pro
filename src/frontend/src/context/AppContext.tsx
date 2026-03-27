@@ -37,6 +37,8 @@ export type ExtendedStudent = Student & {
   regNo?: string;
   admissionYear?: number;
   status?: string;
+  programmeType?: "Undergraduate" | "Postgraduate";
+  pgLevel?: "MSc" | "PGDE" | "PhD" | "PGD" | "MBA" | "MEd" | "MA";
 };
 
 export type ExtendedResult = AcademicResult & {
@@ -101,6 +103,7 @@ export interface AcademicCalendar {
   endDate: string;
   registrationOpen: boolean;
   addDropOpen: boolean;
+  addDropDeadline?: string;
 }
 
 export interface GradeAppeal {
@@ -343,6 +346,7 @@ interface AppContextValue extends AppState {
   setActiveCalendar: (id: bigint) => void;
   toggleRegistrationOpen: (id: bigint) => void;
   toggleAddDropOpen: (id: bigint) => void;
+  setAddDropDeadline: (id: bigint, deadline: string) => void;
   submitGradeAppeal: (appeal: GradeAppeal) => void;
   respondToAppeal: (
     id: bigint,
@@ -1851,6 +1855,89 @@ const FULL_COURSES: Course[] = [
     lecturerPrincipal: "lecturer-3",
     semester: "Second",
   },
+  // Postgraduate Courses (level 700-800) - cast as any since Course type doesn't have level field
+  ...([
+    {
+      id: BigInt(153),
+      name: "Advanced Research Methods",
+      code: "GSE701",
+      creditUnits: BigInt(3),
+      level: BigInt(700),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
+    },
+    {
+      id: BigInt(154),
+      name: "Curriculum Theory and Development",
+      code: "EDU703",
+      creditUnits: BigInt(3),
+      level: BigInt(700),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-2",
+      semester: "First",
+    },
+    {
+      id: BigInt(155),
+      name: "Advanced Algorithm Design",
+      code: "CSC701",
+      creditUnits: BigInt(3),
+      level: BigInt(700),
+      departmentId: BigInt(1),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
+    },
+    {
+      id: BigInt(156),
+      name: "Measurement and Evaluation",
+      code: "GSE702",
+      creditUnits: BigInt(3),
+      level: BigInt(700),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    {
+      id: BigInt(157),
+      name: "Teaching Practice Supervision",
+      code: "EDU705",
+      creditUnits: BigInt(3),
+      level: BigInt(700),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(158),
+      name: "Machine Learning Fundamentals",
+      code: "CSC702",
+      creditUnits: BigInt(3),
+      level: BigInt(700),
+      departmentId: BigInt(1),
+      lecturerPrincipal: "lecturer-1",
+      semester: "Second",
+    },
+    {
+      id: BigInt(159),
+      name: "Doctoral Seminar in Education",
+      code: "EDU801",
+      creditUnits: BigInt(3),
+      level: BigInt(800),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-2",
+      semester: "First",
+    },
+    {
+      id: BigInt(160),
+      name: "Thesis Research",
+      code: "EDU802",
+      creditUnits: BigInt(6),
+      level: BigInt(800),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+  ] as any[]),
 ];
 
 const DEMO_COURSES = FULL_COURSES;
@@ -5041,6 +5128,7 @@ const DEMO_CALENDARS: AcademicCalendar[] = [
     endDate: "2025-01-31",
     registrationOpen: true,
     addDropOpen: false,
+    addDropDeadline: "2025-03-15",
   },
   {
     id: BigInt(2),
@@ -5806,6 +5894,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const setAddDropDeadline = useCallback((id: bigint, deadline: string) => {
+    setAcademicCalendars((prev) =>
+      prev.map((c) =>
+        String(c.id) === String(id) ? { ...c, addDropDeadline: deadline } : c,
+      ),
+    );
+  }, []);
+
   const setActiveCalendar = useCallback(
     (id: bigint) => {
       setAcademicCalendars((prev) =>
@@ -6412,6 +6508,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setActiveCalendar,
         toggleRegistrationOpen,
         toggleAddDropOpen,
+        setAddDropDeadline,
         submitGradeAppeal,
         respondToAppeal,
         addNotification,

@@ -5,6 +5,7 @@ import { AppProvider, useApp } from "./context/AppContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import AdminDashboard from "./pages/AdminDashboard";
 import DeanDashboard from "./pages/DeanDashboard";
+import FeedbackPage from "./pages/FeedbackPage";
 import HODDashboard from "./pages/HODDashboard";
 import LecturerDashboard from "./pages/LecturerDashboard";
 import LoginPage from "./pages/LoginPage";
@@ -15,6 +16,12 @@ const queryClient = new QueryClient();
 
 function DashboardRouter() {
   const { currentUser } = useApp();
+
+  // Public feedback page accessible without login
+  if (window.location.pathname === "/feedback") {
+    return <FeedbackPage />;
+  }
+
   if (!currentUser) return <LoginPage />;
   const role = currentUser.role;
   return (

@@ -51,6 +51,7 @@ import type {
 import AttendanceTab from "./tabs/AttendanceTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import LecturerResultsTab from "./tabs/LecturerResultsTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
@@ -69,6 +70,7 @@ export default function LecturerDashboard() {
     },
     { label: "Mark Attendance", tab: "attendance", icon: ClipboardCheck },
     { label: "View Courses", tab: "overview", icon: BookOpen },
+    { label: "My Results", tab: "my_results", icon: ClipboardList },
   ];
 
   return (
@@ -106,6 +108,8 @@ export default function LecturerDashboard() {
         <ResultsProcessingTab userRole="Lecturer" />
       ) : activeTab === "result_amendment" ? (
         <ResultAmendmentTab userRole="Lecturer" />
+      ) : activeTab === "my_results" ? (
+        <LecturerResultsTab />
       ) : (
         <CoursesView />
       )}
