@@ -12,11 +12,14 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   CheckCircle,
   Copy,
+  Eye,
+  EyeOff,
   Fingerprint,
   GraduationCap,
   Loader2,
   Search,
   Shield,
+  UserCheck,
   UserPlus,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -104,11 +107,11 @@ interface VerifyResult {
 }
 
 export default function LoginPage() {
-  const { login, students, courses, results } = useApp();
+  const { login, students, courses, results, staffMembers } = useApp();
   const [selected, setSelected] = useState("");
   const [adminSecret, setAdminSecret] = useState("");
   const [tab, setTab] = useState<
-    "demo" | "admin" | "request" | "student" | "verify"
+    "demo" | "admin" | "request" | "student" | "verify" | "staff"
   >("demo");
   const [submitted, setSubmitted] = useState(false);
 
@@ -129,6 +132,12 @@ export default function LoginPage() {
   const [verifyCode, setVerifyCode] = useState("");
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
   const [verifyError, setVerifyError] = useState("");
+
+  // Staff login
+  const [staffUsername, setStaffUsername] = useState("");
+  const [staffPassword, setStaffPassword] = useState("");
+  const [staffError, setStaffError] = useState("");
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
 
   const {
     login: iiLogin,
@@ -293,6 +302,39 @@ export default function LoginPage() {
     toast.success(`Welcome back, ${foundStudent.name}!`);
   }
 
+  function handleStaffLogin() {
+    setStaffError("");
+    const uname = staffUsername.trim();
+    const pwd = staffPassword.trim();
+    if (!uname || !pwd) {
+      setStaffError("Please enter your username and password.");
+      return;
+    }
+    const found = staffMembers.find((s) => (s.username ?? s.staffId) === uname);
+    if (!found) {
+      setStaffError("Staff username not found. Please check and try again.");
+      return;
+    }
+    const _parts = found.name.split(" ");
+    const _fn =
+      _parts.find(
+        (p: string) =>
+          !["Dr.", "Prof.", "Mr.", "Mrs.", "Miss", "Engr."].includes(p),
+      ) ?? _parts[0];
+    const storedPwd = found.password ?? `${_fn}@123`;
+    if (storedPwd !== pwd) {
+      setStaffError("Incorrect password. Please try again.");
+      return;
+    }
+    const role = found.role ?? "Lecturer";
+    login({
+      name: found.name,
+      role,
+      principal: `staff-${found.staffId}`,
+      departmentId: found.departmentId,
+    });
+  }
+
   function handleVerifyResult() {
     setVerifyError("");
     setVerifyResult(null);
@@ -359,6 +401,7 @@ export default function LoginPage() {
     { key: "demo" as const, label: "Demo Login" },
     { key: "admin" as const, label: "Admin Setup" },
     { key: "request" as const, label: "Request Access" },
+    { key: "staff" as const, label: "Staff Login" },
     { key: "student" as const, label: "Student Login" },
     { key: "verify" as const, label: "Verify Result" },
   ];
@@ -664,6 +707,89 @@ export default function LoginPage() {
                   Complete your registration
                 </a>
               </p>
+            </div>
+          )}
+
+          {tab === "staff" && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                <UserCheck className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-foreground">
+                    Staff / Lecturer Login
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Log in with your Staff ID (username) and password. Default
+                    password is your first name followed by @123 (e.g.
+                    Emeka@123).
+                  </p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">
+                  Username (Staff ID)
+                </Label>
+                <Input
+                  placeholder="e.g. CSC/STF/001"
+                  value={staffUsername}
+                  onChange={(e) => {
+                    setStaffUsername(e.target.value);
+                    setStaffError("");
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleStaffLogin()}
+                  className={staffError ? "border-destructive" : ""}
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    type={showStaffPassword ? "text" : "password"}
+                    placeholder="Your password"
+                    value={staffPassword}
+                    onChange={(e) => {
+                      setStaffPassword(e.target.value);
+                      setStaffError("");
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && handleStaffLogin()}
+                    className={
+                      staffError ? "border-destructive pr-10" : "pr-10"
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowStaffPassword((v) => !v)}
+                  >
+                    {showStaffPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                {staffError && (
+                  <p className="text-xs text-destructive mt-1">{staffError}</p>
+                )}
+              </div>
+              <Button
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={handleStaffLogin}
+              >
+                Sign In as Staff
+              </Button>
+              <div className="p-3 bg-muted/50 rounded-lg border text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">
+                  Default Credentials Format:
+                </p>
+                <p>Username: Your Staff ID (e.g. CSC/STF/001)</p>
+                <p>Password: FirstName@123 (e.g. Emeka@123)</p>
+                <p className="text-primary">
+                  Contact Admin if you need your credentials reset.
+                </p>
+              </div>
             </div>
           )}
 

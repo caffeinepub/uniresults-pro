@@ -16,6 +16,7 @@ export type RoleName =
   | "Lecturer"
   | "Student"
   | "Dean"
+  | "ExamOfficer"
   | null;
 
 export interface AppUser {
@@ -297,6 +298,9 @@ export interface StaffMember {
   email?: string;
   phone?: string;
   photoUrl?: string;
+  username?: string;
+  password?: string;
+  role?: RoleName;
 }
 
 export interface SemesterSeal {
@@ -3865,6 +3869,9 @@ const DEMO_STAFF: StaffMember[] = [
     dateJoined: "2015-03-01",
     email: "e.obi@university.edu",
     phone: "08011111111",
+    username: "CSC/STF/001",
+    password: "Emeka@123",
+    role: "Lecturer",
   },
   {
     id: BigInt(2),
@@ -3878,6 +3885,9 @@ const DEMO_STAFF: StaffMember[] = [
     dateJoined: "2018-09-01",
     email: "c.eze@university.edu",
     phone: "08022222222",
+    username: "CSC/STF/002",
+    password: "Chioma@123",
+    role: "Lecturer",
   },
   {
     id: BigInt(3),
@@ -3891,6 +3901,9 @@ const DEMO_STAFF: StaffMember[] = [
     dateJoined: "2010-01-15",
     email: "a.balogun@university.edu",
     phone: "08033333333",
+    username: "EEE/STF/001",
+    password: "Adewale@123",
+    role: "Lecturer",
   },
   {
     id: BigInt(4),
@@ -3904,6 +3917,25 @@ const DEMO_STAFF: StaffMember[] = [
     dateJoined: "2022-01-10",
     email: "t.adesanya@university.edu",
     phone: "08044444444",
+    username: "CSC/STF/003",
+    password: "Tunde@123",
+    role: "Lecturer",
+  },
+  {
+    id: BigInt(5),
+    name: "Mr. Suleiman Idris",
+    staffId: "CSC/STF/004",
+    departmentId: BigInt(1),
+    facultyId: BigInt(1),
+    qualification: "M.Sc Computer Science",
+    designation: "Lecturer II",
+    courseIds: [],
+    dateJoined: "2020-08-01",
+    email: "s.idris@university.edu",
+    phone: "08055555555",
+    username: "CSC/STF/004",
+    password: "Suleiman@123",
+    role: "ExamOfficer",
   },
 ];
 

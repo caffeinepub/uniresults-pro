@@ -24,12 +24,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Camera, Pencil, Plus, Printer, Trash2, Users } from "lucide-react";
+import {
+  Camera,
+  KeyRound,
+  Pencil,
+  Plus,
+  Printer,
+  Trash2,
+  Users,
+} from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useCamera } from "../../camera/useCamera";
-import type { StaffMember } from "../../context/AppContext";
+import type { RoleName, StaffMember } from "../../context/AppContext";
 import { useApp } from "../../context/AppContext";
 import StaffIDCardModal from "./StaffIDCardModal";
 
@@ -129,8 +137,18 @@ export default function StaffTab() {
     dateJoined: "",
     email: "",
     phone: "",
+    role: "Lecturer" as RoleName,
+    username: "",
+    password: "",
   };
   const [form, setForm] = useState(emptyForm);
+  const [newCredentials, setNewCredentials] = useState<{
+    name: string;
+    username: string;
+    password: string;
+  } | null>(null);
+  const [credentialsModalOpen, setCredentialsModalOpen] = useState(false);
+  const [showCredentialsPwd, setShowCredentialsPwd] = useState(false);
 
   const filtered = useMemo(() => {
     return staffMembers.filter((s) => {
@@ -164,6 +182,9 @@ export default function StaffTab() {
       dateJoined: m.dateJoined,
       email: m.email ?? "",
       phone: m.phone ?? "",
+      role: (m.role ?? "Lecturer") as RoleName,
+      username: m.username ?? m.staffId,
+      password: m.password ?? "",
     });
     setOpen(true);
   }
@@ -173,6 +194,16 @@ export default function StaffTab() {
       toast.error("Name, Staff ID, and Department are required");
       return;
     }
+    const firstName =
+      form.name
+        .split(" ")
+        .find(
+          (p) =>
+            p.length > 0 &&
+            !["Dr.", "Prof.", "Mr.", "Mrs.", "Miss", "Engr."].includes(p),
+        ) ?? form.name.split(" ")[0];
+    const autoUsername = form.username || form.staffId;
+    const autoPassword = form.password || `${firstName}@123`;
     const member: StaffMember = {
       id: editMember?.id ?? BigInt(Date.now()),
       name: form.name,
@@ -185,13 +216,22 @@ export default function StaffTab() {
       dateJoined: form.dateJoined || new Date().toISOString().slice(0, 10),
       email: form.email || undefined,
       phone: form.phone || undefined,
+      role: form.role,
+      username: autoUsername,
+      password: autoPassword,
     };
     if (editMember) {
       updateStaffMember(member);
       toast.success("Staff record updated");
     } else {
       addStaffMember(member);
-      toast.success("Staff member added");
+      setNewCredentials({
+        name: member.name,
+        username: autoUsername,
+        password: autoPassword,
+      });
+      setCredentialsModalOpen(true);
+      toast.success("Staff member added — credentials generated");
     }
     setOpen(false);
   }
@@ -274,6 +314,7 @@ export default function StaffTab() {
               <TableHead>Faculty</TableHead>
               <TableHead>Courses</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Login</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead />
             </TableRow>
@@ -340,6 +381,14 @@ export default function StaffTab() {
                     </TableCell>
                     <TableCell className="text-sm">{courseCount}</TableCell>
                     <TableCell className="text-sm">{m.email ?? "-"}</TableCell>
+                    <TableCell className="text-xs font-mono">
+                      <div className="space-y-0.5">
+                        <div className="text-foreground">
+                          {m.username ?? m.staffId}
+                        </div>
+                        <div className="text-muted-foreground">••••••••</div>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm">{m.dateJoined}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -351,6 +400,36 @@ export default function StaffTab() {
                           onClick={() => setIdCardMember(m)}
                         >
                           <Printer className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          title="View Credentials"
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700"
+                          onClick={() => {
+                            const parts = m.name.split(" ");
+                            const fn =
+                              parts.find(
+                                (p: string) =>
+                                  ![
+                                    "Dr.",
+                                    "Prof.",
+                                    "Mr.",
+                                    "Mrs.",
+                                    "Miss",
+                                    "Engr.",
+                                  ].includes(p),
+                              ) ?? parts[0];
+                            setNewCredentials({
+                              name: m.name,
+                              username: m.username ?? m.staffId,
+                              password: m.password ?? `${fn}@123`,
+                            });
+                            setShowCredentialsPwd(false);
+                            setCredentialsModalOpen(true);
+                          }}
+                        >
+                          <KeyRound className="w-3 h-3" />
                         </Button>
                         <Button
                           data-ocid={`staff.edit_button.${i + 1}`}
@@ -531,6 +610,55 @@ export default function StaffTab() {
                 }
               />
             </div>
+            <div>
+              <Label>Portal Role</Label>
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                value={form.role ?? "Lecturer"}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    role: e.target.value as RoleName,
+                  }))
+                }
+              >
+                <option value="Lecturer">Lecturer</option>
+                <option value="HOD">HOD (Head of Department)</option>
+                <option value="Dean">Dean</option>
+                <option value="ExamOfficer">Exam Officer</option>
+                <option value="Registrar">Registrar</option>
+                <option value="SuperAdmin">Super Admin</option>
+              </select>
+            </div>
+            <div className="border rounded-lg p-3 bg-muted/40 space-y-3">
+              <p className="text-xs font-semibold text-foreground">
+                Login Credentials
+              </p>
+              <div>
+                <Label>Username (defaults to Staff ID)</Label>
+                <Input
+                  placeholder="e.g. CSC/STF/001"
+                  value={form.username}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, username: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <Label>Password (leave blank for auto-generate)</Label>
+                <Input
+                  type="text"
+                  placeholder="e.g. FirstName@123"
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, password: e.target.value }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Auto-generated as FirstName@123 if left blank.
+                </p>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -544,6 +672,65 @@ export default function StaffTab() {
               Save
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Credentials Modal */}
+      <Dialog
+        open={credentialsModalOpen}
+        onOpenChange={setCredentialsModalOpen}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Staff Credentials Created</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-green-600 dark:text-green-400 font-semibold text-sm">
+                  ✓ Account created for {newCredentials?.name}
+                </span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Username:</span>
+                  <span className="font-mono font-bold">
+                    {newCredentials?.username}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Password:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold">
+                      {showCredentialsPwd
+                        ? newCredentials?.password
+                        : "••••••••"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCredentialsPwd((v) => !v)}
+                      className="text-muted-foreground hover:text-foreground text-xs underline"
+                    >
+                      {showCredentialsPwd ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Share these credentials with the staff member. They can log in
+                via the <strong>Staff Login</strong> tab on the login page.
+              </p>
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setCredentialsModalOpen(false);
+                setShowCredentialsPwd(false);
+              }}
+            >
+              Done
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
