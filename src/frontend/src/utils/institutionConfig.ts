@@ -19,6 +19,16 @@ export interface InstitutionConfig {
   semesterLabel: string;
   useGPA: boolean;
   useCGPA: boolean;
+  // New fields for module-level control
+  showSIWES: boolean;
+  showJAMBImport: boolean;
+  showGPA: boolean;
+  showCGPA: boolean;
+  showTP: boolean;
+  showGraduation: boolean;
+  showPostgraduate: boolean;
+  showCreditUnits: boolean;
+  creditRules: { minPerSem: number; maxPerSem: number };
 }
 
 export interface GradeEntry {
@@ -51,6 +61,15 @@ export function getInstitutionConfig(type?: string): InstitutionConfig {
         semesterLabel: "Semester",
         useGPA: true,
         useCGPA: true,
+        showSIWES: false,
+        showJAMBImport: true,
+        showGPA: true,
+        showCGPA: true,
+        showTP: true,
+        showGraduation: true,
+        showPostgraduate: false,
+        showCreditUnits: true,
+        creditRules: { minPerSem: 12, maxPerSem: 21 },
       };
     case "polytechnic":
       return {
@@ -72,11 +91,20 @@ export function getInstitutionConfig(type?: string): InstitutionConfig {
         semesterLabel: "Semester",
         useGPA: true,
         useCGPA: true,
+        showSIWES: true,
+        showJAMBImport: true,
+        showGPA: true,
+        showCGPA: true,
+        showTP: false,
+        showGraduation: true,
+        showPostgraduate: false,
+        showCreditUnits: true,
+        creditRules: { minPerSem: 12, maxPerSem: 20 },
       };
     case "secondary":
       return {
         type: "secondary",
-        label: "Secondary School (JS1–SS3)",
+        label: "Secondary School (JS1\u2013SS3)",
         shortLabel: "Secondary",
         levels: ["JS1", "JS2", "JS3", "SS1", "SS2", "SS3"],
         levelLabel: "Class",
@@ -97,11 +125,20 @@ export function getInstitutionConfig(type?: string): InstitutionConfig {
         semesterLabel: "Term",
         useGPA: false,
         useCGPA: false,
+        showSIWES: false,
+        showJAMBImport: false,
+        showGPA: false,
+        showCGPA: false,
+        showTP: false,
+        showGraduation: false,
+        showPostgraduate: false,
+        showCreditUnits: false,
+        creditRules: { minPerSem: 0, maxPerSem: 0 },
       };
     case "primary":
       return {
         type: "primary",
-        label: "Primary School (P1–P6)",
+        label: "Primary School (P1\u2013P6)",
         shortLabel: "Primary",
         levels: ["P1", "P2", "P3", "P4", "P5", "P6"],
         levelLabel: "Class",
@@ -118,11 +155,20 @@ export function getInstitutionConfig(type?: string): InstitutionConfig {
         semesterLabel: "Term",
         useGPA: false,
         useCGPA: false,
+        showSIWES: false,
+        showJAMBImport: false,
+        showGPA: false,
+        showCGPA: false,
+        showTP: false,
+        showGraduation: false,
+        showPostgraduate: false,
+        showCreditUnits: false,
+        creditRules: { minPerSem: 0, maxPerSem: 0 },
       };
     case "pre_nursery":
       return {
         type: "pre_nursery",
-        label: "Pre-Nursery / Nursery (N1–N3)",
+        label: "Pre-Nursery / Nursery (N1\u2013N3)",
         shortLabel: "Nursery",
         levels: ["Pre-Nursery", "Nursery 1", "Nursery 2", "Nursery 3"],
         levelLabel: "Class",
@@ -139,11 +185,20 @@ export function getInstitutionConfig(type?: string): InstitutionConfig {
         semesterLabel: "Term",
         useGPA: false,
         useCGPA: false,
+        showSIWES: false,
+        showJAMBImport: false,
+        showGPA: false,
+        showCGPA: false,
+        showTP: false,
+        showGraduation: false,
+        showPostgraduate: false,
+        showCreditUnits: false,
+        creditRules: { minPerSem: 0, maxPerSem: 0 },
       };
     default: // university
       return {
         type: "university",
-        label: "University (100–600 Level)",
+        label: "University (100\u2013600 Level)",
         shortLabel: "University",
         levels: ["100", "200", "300", "400", "500", "600", "700", "800"],
         levelLabel: "Level",
@@ -161,6 +216,15 @@ export function getInstitutionConfig(type?: string): InstitutionConfig {
         semesterLabel: "Semester",
         useGPA: true,
         useCGPA: true,
+        showSIWES: true,
+        showJAMBImport: true,
+        showGPA: true,
+        showCGPA: true,
+        showTP: false,
+        showGraduation: true,
+        showPostgraduate: true,
+        showCreditUnits: true,
+        creditRules: { minPerSem: 16, maxPerSem: 24 },
       };
   }
 }
@@ -169,10 +233,10 @@ export const INSTITUTION_TYPE_OPTIONS: {
   value: InstitutionType;
   label: string;
 }[] = [
-  { value: "university", label: "University (100–600 Level)" },
-  { value: "nce", label: "College of Education – NCE (100–300)" },
-  { value: "polytechnic", label: "Polytechnic – OND/HND (ND1–HND2)" },
-  { value: "secondary", label: "Secondary School (JS1–SS3)" },
-  { value: "primary", label: "Primary School (P1–P6)" },
-  { value: "pre_nursery", label: "Pre-Nursery / Nursery (N1–N3)" },
+  { value: "university", label: "University (100\u2013600 Level)" },
+  { value: "nce", label: "College of Education \u2013 NCE (100\u2013300)" },
+  { value: "polytechnic", label: "Polytechnic \u2013 OND/HND (ND1\u2013HND2)" },
+  { value: "secondary", label: "Secondary School (JS1\u2013SS3)" },
+  { value: "primary", label: "Primary School (P1\u2013P6)" },
+  { value: "pre_nursery", label: "Pre-Nursery / Nursery (N1\u2013N3)" },
 ];

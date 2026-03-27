@@ -25,11 +25,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useInstitutionConfig } from "@/hooks/useInstitutionConfig";
 import { Download, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { calcGradePoint, useApp } from "../../context/AppContext";
 
-const LEVELS = [100, 200, 300, 400, 500];
+// LEVELS moved to config
 
 export default function DeptReportTab() {
   const {
@@ -43,6 +44,10 @@ export default function DeptReportTab() {
     institutionSettings,
     logAudit,
   } = useApp();
+  const _instConfig = useInstitutionConfig();
+  const LEVELS = _instConfig.levels
+    .map(Number)
+    .filter((n) => !Number.isNaN(n) && n < 700);
   const deptId = currentUser?.departmentId ?? BigInt(1);
   const dept = departments.find((d) => String(d.id) === String(deptId));
   const faculty = faculties.find(
@@ -82,6 +87,7 @@ export default function DeptReportTab() {
   );
 
   // Group students by level
+  // biome-ignore lint/correctness/useExhaustiveDependencies: LEVELS is stable config value
   const levelGroups = useMemo(() => {
     const map: Record<number, typeof deptStudents> = {};
     for (const lvl of LEVELS) map[lvl] = [];
@@ -91,7 +97,8 @@ export default function DeptReportTab() {
       map[key].push(s);
     }
     return map;
-  }, [deptStudents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deptStudents, LEVELS.join(",")]);
 
   const activeLevel = filterLevel === "all" ? null : Number(filterLevel);
   const visibleLevels = LEVELS.filter(
@@ -315,7 +322,7 @@ export default function DeptReportTab() {
             <SelectItem value="all">All Levels</SelectItem>
             {LEVELS.map((l) => (
               <SelectItem key={l} value={String(l)}>
-                Level {l}
+                {_instConfig.levelLabel} {l}
               </SelectItem>
             ))}
           </SelectContent>

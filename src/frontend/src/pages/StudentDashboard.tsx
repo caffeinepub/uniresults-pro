@@ -53,6 +53,7 @@ import {
   getAcademicStanding,
   useApp,
 } from "../context/AppContext";
+import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import { CarryOverBanner } from "./tabs/CarryOverAutoTab";
 import CourseEvaluationTab from "./tabs/CourseEvaluationTab";
 import CourseRegSlipModal from "./tabs/CourseRegSlipModal";
@@ -169,6 +170,7 @@ function getStudentData() {
 }
 
 function OverviewTab() {
+  const _instConfig = useInstitutionConfig();
   const { me, myResults, cgpa } = getStudentData();
   const [showIDCard, setShowIDCard] = useState(false);
   // Get advisor
@@ -239,7 +241,9 @@ function OverviewTab() {
           value={myResults.length}
           icon={BookOpen}
         />
-        <StatCard label="CGPA" value={cgpa.toFixed(2)} icon={TrendingUp} />
+        {_instConfig.showCGPA && (
+          <StatCard label="CGPA" value={cgpa.toFixed(2)} icon={TrendingUp} />
+        )}
         <StatCard
           label="Classification"
           value={classification.label}
@@ -334,8 +338,9 @@ function CourseRegistrationTab() {
   } = useApp();
   const me = students.find((s) => s.userPrincipal === currentUser?.principal);
 
-  const MIN_CREDITS = 12;
-  const MAX_CREDITS = 24;
+  const _instConfig = useInstitutionConfig();
+  const MIN_CREDITS = _instConfig.creditRules.minPerSem || 12;
+  const MAX_CREDITS = _instConfig.creditRules.maxPerSem || 24;
 
   // Get all sessions for selector
   const allSessions = academicCalendars

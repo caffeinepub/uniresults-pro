@@ -1,56 +1,60 @@
 # UniResults Pro
 
 ## Current State
-Version 51 — Full academic management system for Federal University of Education Kontagora. Has University-only mode with 600-level support, role-based dashboards (SuperAdmin, Registrar, HOD, Dean, Lecturer, Exam Officer, Student), results pipeline, score sheets, course registration, JAMB import, AI scanner for bulk student upload, and all major admin features.
-
-`JambAdmissionScannerTab.tsx` was just created at `src/frontend/src/pages/tabs/JambAdmissionScannerTab.tsx` but not yet wired into any dashboard.
-
-`InstitutionSettings` in AppContext has: name, address, phone, email, website, logoText — no `institutionType` field yet.
+Version 53 is a full-stack academic management system for Nigerian institutions. It has:
+- Multi-institution support (University, NCE, Polytechnic, Secondary, Primary, Pre-Nursery)
+- Role-based dashboards: SuperAdmin, Registrar, HOD, Dean, Lecturer, Exam Officer, Student
+- Student login via matric number from LoginPage
+- JAMB Admission Import (CSV/Excel and AI Scanner) in JAMBImportTab.tsx
+- Full student records with JAMB Reg No, Matric No, Name, Department, State, LGA, Sex, Status
+- Course registration portal for students
+- AppContext.tsx manages all state including students array with fields: id, matricNo, regNo, name, dept, state, lga, sex, status, password, etc.
+- App.tsx handles routing with paths: /, /feedback, and role-based views
+- FeedbackPage.tsx is an existing public page accessible without login
 
 ## Requested Changes (Diff)
 
 ### Add
-- `institutionType` field to `InstitutionSettings` interface and state (values: `"university"` | `"nce"` | `"polytechnic"` | `"secondary"` | `"primary"` | `"pre_nursery"`)
-- Institution Type Selector dropdown in SettingsTab (prominent, at the top of institution settings card) and in System Init Wizard
-- `InstitutionTypeConfig` helper that returns level range, terminology, grading scale, and report labels based on selected type:
-  - **University**: Levels 100–600, degrees (B.Sc, B.Ed, B.A etc.), CGPA 0–5, GPA grading
-  - **NCE (College of Education)**: Levels 100–300, NCE certificates, Grade Point 0–5
-  - **Polytechnic**: Levels ND1/ND2, HND1/HND2 (mapped as 100/200/300/400), OND/HND certificates
-  - **Secondary (SS1–SS3 + JS1–JS3)**: Classes SS1, SS2, SS3, JS1, JS2, JS3 — percentage grading (A1–F9 WAEC scale)
-  - **Primary (Primary 1–6)**: Classes P1–P6, percentage grading
-  - **Pre-Nursery/Nursery (Nursery 1–3)**: Classes N1–N3, developmental assessment (Excellent/Good/Fair/Needs Improvement)
-- `LevelSelector` component reused across dashboards — shows appropriate class/level options based `institutionType`
-- Dashboard header shows institution type badge
-- All level dropdowns (student form, course form, course registration, reports) use `institutionType` config for their options
-- JAMB Admission Scanner tab wired into AdminDashboard (`tab: "jamb_import"`) with quick action button
-- JAMB Admission Scanner tab also wired into HODDashboard and DeanDashboard
-- For NCE: report terminology changes to "NCE Certificate Results" instead of "Senate Report"
-- For Polytechnic: levels shown as ND1, ND2, HND1, HND2 in UI
-- For Secondary: grading A1–F9 with subject-based results; no CGPA, use percentage and position
-- For Primary/Pre-Nursery: simple grade remarks system
-- `InstitutionTypeBanner` component in all dashboard headers showing the active institution type with a change link
+- New public page `/student-register` -- StudentRegisterPage.tsx
+- Student self-registration flow:
+  - Step 1: Enter JAMB Reg Number
+    - If found in system: show pre-filled form to confirm details, set password, activate account
+    - If not found: show full registration form with JAMB number as ID
+  - Step 2: Full registration form fields:
+    - JAMB Registration Number (pre-filled/required)
+    - NIN (National Identification Number)
+    - Full Name (first, middle, last)
+    - Sex (Male/Female)
+    - Date of Birth
+    - State of Origin, LGA
+    - Department / Programme (dropdown from departments list)
+    - O-Level / GCSE results (subject + grade rows, add/remove)
+    - Passport Photo: webcam capture OR file upload
+    - Password + Confirm Password
+  - On submit: save student record to AppContext students array; if existing record found, update it with new fields and set password
+  - Redirect to student portal after successful registration
+- Login enhancement: students can log in with JAMB reg number OR matric number (whichever matches)
+- Registrar portal: toggle to open/close self-registration portal (stored in AppContext settings)
+- Share link for `/student-register` in Admin/Registrar header or Settings
+- Route `/student-register` added to App.tsx
 
 ### Modify
-- `InstitutionSettings` type — add `institutionType` field
-- `SettingsTab` — add institution type dropdown at top of institution settings card
-- `AppContext` default settings — keep `university` as default
-- Student form level dropdown — driven by `institutionType` config
-- Course form level dropdown — driven by `institutionType` config
-- AdminDashboard — add JAMB Import tab + Institution Type Banner
-- HODDashboard — add JAMB Import tab + Institution Type Banner
-- DeanDashboard — add JAMB Import tab + Institution Type Banner
-- All reports (Senate, Dept, Faculty) — show appropriate title based on institution type
+- LoginPage.tsx: student login (matric number tab) should also accept JAMB reg number -- check both fields when authenticating
+- AppContext.tsx: add `selfRegistrationOpen` boolean to settings; add `nin` and `dateOfBirth` and `oLevelResults` and `photoUrl` fields to student type; ensure password field exists on student records
+- App.tsx: add `/student-register` route pointing to StudentRegisterPage
+- AdminDashboard.tsx / SettingsTab.tsx: add toggle for self-registration portal open/close and share link button for `/student-register`
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
-1. Add `institutionType` to `InstitutionSettings` interface and default in AppContext
-2. Create `src/frontend/src/utils/institutionConfig.ts` — exports `getInstitutionConfig(type)` returning levels, levelLabels, gradeScale, reportTitle, certificateTitle, semesterLabel
-3. Update `SettingsTab.tsx` — add institution type `<select>` at top of institution settings form
-4. Update student add/edit form level dropdown to use `institutionConfig.levels`
-5. Update course form level dropdown similarly
-6. Add `InstitutionTypeBanner` in AdminDashboard, HODDashboard, DeanDashboard headers
-7. Wire `JambAdmissionScannerTab` into AdminDashboard (import + tab route `jamb_import` + quick action)
-8. Wire `JambAdmissionScannerTab` into HODDashboard and DeanDashboard
-9. Update Senate/Faculty report titles to use institution config label
+1. Update AppContext: add `selfRegistrationOpen` to settings, add `nin`, `dateOfBirth`, `oLevelResults`, `photoUrl` fields to student type
+2. Create `src/frontend/src/pages/StudentRegisterPage.tsx` with:
+   - JAMB number lookup step
+   - Full multi-step form with webcam/upload photo capture
+   - O-Level results table (add rows)
+   - Password setup
+   - Save to AppContext on submit and redirect to student portal
+3. Update `App.tsx`: add `/student-register` route
+4. Update `LoginPage.tsx`: student authentication checks JAMB reg number OR matric number
+5. Update `SettingsTab.tsx` or `AdminDashboard.tsx`: self-registration portal toggle + share link

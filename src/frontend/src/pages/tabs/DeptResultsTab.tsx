@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useInstitutionConfig } from "@/hooks/useInstitutionConfig";
 import { Database, Download, Printer, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -267,6 +268,7 @@ interface DeptSection {
 export default function DeptResultsTab({ userRole }: Props) {
   const { students, results, courses, departments, faculties } =
     useApp() as any;
+  const _instConfig = useInstitutionConfig();
   const [filterFaculty, setFilterFaculty] = useState("all");
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [pendingExportFn, setPendingExportFn] = useState<(() => void) | null>(
@@ -644,12 +646,14 @@ export default function DeptResultsTab({ userRole }: Props) {
               <SelectValue placeholder="All Levels" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              {["100", "200", "300", "400", "500", "600"].map((l) => (
-                <SelectItem key={l} value={l}>
-                  Level {l}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">All {_instConfig.levelLabel}s</SelectItem>
+              {_instConfig.levels
+                .filter((l) => !["700", "800"].includes(l))
+                .map((l) => (
+                  <SelectItem key={l} value={l}>
+                    {_instConfig.levelLabel} {l}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>

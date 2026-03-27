@@ -25,10 +25,12 @@ import {
   Building2,
   Database,
   Download,
+  Link,
   Lock,
   Save,
   Shield,
   Trash2,
+  UserPlus,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -118,6 +120,8 @@ export default function SettingsTab() {
     syncStatus,
     updateInstitutionSettings,
     logAudit,
+    selfRegistrationOpen,
+    setSelfRegistrationOpen,
   } = useApp();
 
   const isSuperAdmin = currentUser?.role === "SuperAdmin";
@@ -177,6 +181,7 @@ export default function SettingsTab() {
   }
 
   function handleConfirmSave() {
+    const prevType = institutionSettings.institutionType;
     updateInstitutionSettings(form);
     logAudit(
       currentUser?.name ?? "Admin",
@@ -186,7 +191,15 @@ export default function SettingsTab() {
     );
     setDirty(false);
     setConfirmOpen(false);
-    toast.success("Institution settings saved successfully.");
+    if (form.institutionType && form.institutionType !== prevType) {
+      const cfg = getInstitutionConfig(form.institutionType);
+      toast.success(
+        `Institution type changed to ${cfg.label}. All modules will now use ${cfg.label} level structure and grading.`,
+        { duration: 5000 },
+      );
+    } else {
+      toast.success("Institution settings saved successfully.");
+    }
   }
 
   function handleSecurityChange(field: keyof SecuritySettings, value: boolean) {
@@ -624,6 +637,66 @@ export default function SettingsTab() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+          </div>
+        </CardContent>
+      </Card>
+      {/* Student Self-Registration Portal */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <UserPlus className="w-4 h-4" />
+            Student Self-Registration Portal
+          </CardTitle>
+          <CardDescription>
+            Allow students to self-register using their JAMB registration
+            number. When open, students can access the registration portal via a
+            public link.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+            <div>
+              <p className="text-sm font-medium">Registration Portal</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {selfRegistrationOpen
+                  ? "Students can currently self-register"
+                  : "Self-registration is currently closed"}
+              </p>
+            </div>
+            <Switch
+              data-ocid="settings.self_reg.toggle"
+              checked={selfRegistrationOpen}
+              onCheckedChange={(v) => {
+                setSelfRegistrationOpen(v);
+                toast.success(
+                  v
+                    ? "Self-registration portal opened."
+                    : "Self-registration portal closed.",
+                );
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              readOnly
+              value={`${window.location.origin}/student-register`}
+              className="text-xs bg-muted"
+              data-ocid="settings.self_reg.input"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1"
+              data-ocid="settings.self_reg.button"
+              onClick={() => {
+                navigator.clipboard.writeText(
+                  `${window.location.origin}/student-register`,
+                );
+                toast.success("Registration link copied to clipboard!");
+              }}
+            >
+              <Link className="w-3.5 h-3.5" /> Copy Link
+            </Button>
           </div>
         </CardContent>
       </Card>

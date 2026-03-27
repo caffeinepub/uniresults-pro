@@ -25,13 +25,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useInstitutionConfig } from "@/hooks/useInstitutionConfig";
 import { Download, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useApp } from "../../context/AppContext";
 
-const LEVELS = [100, 200, 300, 400, 500];
+// LEVELS moved to config
 
 export default function FacultyReportTab() {
+  const _instConfig = useInstitutionConfig();
+  const LEVELS = _instConfig.levels
+    .map(Number)
+    .filter((n) => !Number.isNaN(n) && n < 700);
   const {
     faculties,
     departments,
@@ -296,10 +301,10 @@ export default function FacultyReportTab() {
             <SelectValue placeholder="All Levels" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Levels</SelectItem>
+            <SelectItem value="all">All {_instConfig.levelLabel}s</SelectItem>
             {LEVELS.map((l) => (
               <SelectItem key={l} value={String(l)}>
-                Level {l}
+                {_instConfig.levelLabel} {l}
               </SelectItem>
             ))}
           </SelectContent>

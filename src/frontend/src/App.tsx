@@ -9,11 +9,14 @@ import HODDashboard from "./pages/HODDashboard";
 import LecturerDashboard from "./pages/LecturerDashboard";
 import LoginPage from "./pages/LoginPage";
 import StudentDashboard from "./pages/StudentDashboard";
+import StudentRegisterPage from "./pages/StudentRegisterPage";
 
 const queryClient = new QueryClient();
 
 function DashboardRouter() {
   const { currentUser } = useApp();
+  if (window.location.pathname === "/student-register")
+    return <StudentRegisterPage />;
   if (!currentUser) return <LoginPage />;
   const role = currentUser.role;
   return (

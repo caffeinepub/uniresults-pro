@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useInstitutionConfig } from "@/hooks/useInstitutionConfig";
 import { Award, Printer } from "lucide-react";
 import {
   getDegreeClassification,
@@ -34,6 +35,7 @@ export default function GraduationCertificateModal({
     currentUser,
     staffMembers,
   } = useApp();
+  const _instConfig = useInstitutionConfig();
 
   const deptObj = getStudentDepartment(student, departments);
   const facultyObj = getStudentFaculty(student, departments, faculties);
@@ -55,15 +57,20 @@ export default function GraduationCertificateModal({
   const classification = getDegreeClassification(cgpa);
 
   const deptName = deptObj?.name ?? "";
-  let degreeTitle = "Bachelor of Science";
-  if (deptName.toLowerCase().includes("education"))
-    degreeTitle = "Bachelor of Education";
-  else if (deptName.toLowerCase().includes("engineering"))
-    degreeTitle = "Bachelor of Engineering";
-  else if (deptName.toLowerCase().includes("law"))
-    degreeTitle = "Bachelor of Laws";
-  else if (deptName.toLowerCase().includes("arts"))
-    degreeTitle = "Bachelor of Arts";
+  let degreeTitle =
+    _instConfig.type === "university"
+      ? "Bachelor of Science"
+      : _instConfig.certificateTitle;
+  if (_instConfig.type === "university") {
+    if (deptName.toLowerCase().includes("education"))
+      degreeTitle = "Bachelor of Education";
+    else if (deptName.toLowerCase().includes("engineering"))
+      degreeTitle = "Bachelor of Engineering";
+    else if (deptName.toLowerCase().includes("law"))
+      degreeTitle = "Bachelor of Laws";
+    else if (deptName.toLowerCase().includes("arts"))
+      degreeTitle = "Bachelor of Arts";
+  }
 
   const gradDate = new Date().toLocaleDateString("en-GB", {
     day: "numeric",

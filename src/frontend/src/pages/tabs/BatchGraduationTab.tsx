@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useInstitutionConfig } from "@/hooks/useInstitutionConfig";
 import { CheckCircle, Download, GraduationCap, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -26,7 +27,7 @@ import {
 } from "../../context/AppContext";
 import GraduationCertificateModal from "./GraduationCertificateModal";
 
-const FINAL_LEVELS = [400, 500, 600];
+// FINAL_LEVELS is now derived from config
 
 export default function BatchGraduationTab() {
   const {
@@ -41,6 +42,16 @@ export default function BatchGraduationTab() {
     currentUser,
     graduationApplications,
   } = useApp();
+  const _instConfig = useInstitutionConfig();
+  // Final levels: numeric levels >= 400 for university, or last 2 levels for other types
+  const FINAL_LEVELS = _instConfig.levels
+    .map((l) => Number(l))
+    .filter((n) => !Number.isNaN(n) && n >= 400);
+  // If no numeric levels (e.g. polytechnic has ND1/ND2/HND1/HND2), use last 2 string levels
+  const FINAL_LEVEL_STRINGS =
+    FINAL_LEVELS.length > 0
+      ? FINAL_LEVELS.map(String)
+      : _instConfig.levels.slice(-2);
 
   const [filterSession, setFilterSession] = useState("all");
   const [filterDept, setFilterDept] = useState("all");
@@ -55,11 +66,22 @@ export default function BatchGraduationTab() {
     [academicCalendars],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: FINAL_LEVELS/FINAL_LEVEL_STRINGS are stable
   const finalLevelStudents = useMemo(() => {
     return students.filter((s) => {
       if (s.status === "Graduated") return false;
       const lvl = Number(s.level);
-      if (!FINAL_LEVELS.includes(lvl)) return false;
+      if (
+        FINAL_LEVELS.length > 0 &&
+        !FINAL_LEVELS.includes(lvl) &&
+        !FINAL_LEVEL_STRINGS.includes(String(s.level))
+      )
+        return false;
+      if (
+        FINAL_LEVELS.length === 0 &&
+        !FINAL_LEVEL_STRINGS.includes(String(s.level))
+      )
+        return false;
       if (filterLevel !== "all" && String(lvl) !== filterLevel) return false;
       if (filterDept !== "all" && String(s.departmentId) !== filterDept)
         return false;
@@ -282,10 +304,13 @@ export default function BatchGraduationTab() {
             <SelectValue placeholder="All Levels" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Levels</SelectItem>
-            {FINAL_LEVELS.map((l) => (
-              <SelectItem key={l} value={String(l)}>
-                Level {l}
+            <SelectItem value="all">All {_instConfig.levelLabel}s</SelectItem>
+            {(FINAL_LEVELS.length > 0
+              ? FINAL_LEVELS.map(String)
+              : FINAL_LEVEL_STRINGS
+            ).map((l) => (
+              <SelectItem key={l} value={l}>
+                {_instConfig.levelLabel} {l}
               </SelectItem>
             ))}
           </SelectContent>

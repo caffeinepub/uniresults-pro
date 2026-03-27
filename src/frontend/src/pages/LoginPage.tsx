@@ -121,6 +121,7 @@ export default function LoginPage() {
 
   // Student login
   const [matricInput, setMatricInput] = useState("");
+  const [matricPassword, setMatricPassword] = useState("");
   const [matricError, setMatricError] = useState("");
 
   // Verify result
@@ -239,21 +240,48 @@ export default function LoginPage() {
       setMatricError("Please enter your matric number.");
       return;
     }
-    // Look up student in localStorage first, then fallback to context
+    // Look up student by matric number, JAMB reg number, or regNo
     let foundStudent = students.find(
-      (s) => s.matricNumber.toUpperCase() === matric,
+      (s) =>
+        s.matricNumber.toUpperCase() === matric ||
+        (s.regNo && s.regNo.toUpperCase() === matric) ||
+        (s.jambRegNo && s.jambRegNo.toUpperCase() === matric),
     );
     if (!foundStudent) {
       // Also check localStorage directly in case context hasn't loaded
       try {
         const stored = JSON.parse(localStorage.getItem("students") || "[]");
         foundStudent = stored.find(
-          (s: any) => s.matricNumber?.toUpperCase() === matric,
+          (s: any) =>
+            s.matricNumber?.toUpperCase() === matric ||
+            (s.regNo && s.regNo.toUpperCase() === matric) ||
+            (s.jambRegNo && s.jambRegNo.toUpperCase() === matric),
         );
       } catch {}
     }
     if (!foundStudent) {
-      setMatricError("Matric number not found. Please contact the Registrar.");
+      setMatricError(
+        "Student record not found. Please check your matric number or JAMB registration number.",
+      );
+      return;
+    }
+    // If student has a password set, require it
+    if (foundStudent.password && !matricPassword) {
+      setMatricError("Please enter your password.");
+      return;
+    }
+    if (foundStudent.password && foundStudent.password !== matricPassword) {
+      setMatricError("Incorrect password. Please try again.");
+      return;
+    }
+    if (!foundStudent.password) {
+      // No password set yet — redirect to registration
+      setMatricError(
+        "Please complete your registration first to set a password.",
+      );
+      setTimeout(() => {
+        window.location.href = "/student-register";
+      }, 1500);
       return;
     }
     login({
@@ -581,14 +609,31 @@ export default function LoginPage() {
               </div>
               <div>
                 <Label className="text-sm font-medium mb-2 block">
-                  Matric Number
+                  Matric / JAMB Registration Number
                 </Label>
                 <Input
                   data-ocid="student_login.input"
-                  placeholder="e.g. CSC/2021/001"
+                  placeholder="e.g. CSC/2021/001 or JAMB Reg No"
                   value={matricInput}
                   onChange={(e) => {
                     setMatricInput(e.target.value);
+                    setMatricError("");
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleStudentLogin()}
+                  className={matricError ? "border-destructive" : ""}
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">
+                  Password
+                </Label>
+                <Input
+                  type="password"
+                  data-ocid="student_login.password_input"
+                  placeholder="Your registration password"
+                  value={matricPassword}
+                  onChange={(e) => {
+                    setMatricPassword(e.target.value);
                     setMatricError("");
                   }}
                   onKeyDown={(e) => e.key === "Enter" && handleStudentLogin()}
@@ -610,6 +655,15 @@ export default function LoginPage() {
               >
                 Sign In
               </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                New student?{" "}
+                <a
+                  href="/student-register"
+                  className="text-primary font-medium hover:underline"
+                >
+                  Complete your registration
+                </a>
+              </p>
             </div>
           )}
 

@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useInstitutionConfig } from "@/hooks/useInstitutionConfig";
 import {
   Calendar,
   Download,
@@ -58,7 +59,7 @@ const TIME_SLOTS = [
   "17:00",
   "18:00",
 ];
-const LEVELS = ["100", "200", "300", "400", "500", "600", "700", "800"];
+// LEVELS moved to config
 
 function downloadCsv(rows: ClassroomTimetableEntry[]) {
   const header =
@@ -105,6 +106,9 @@ export default function ClassroomTimetableTab({
     departments,
     academicCalendars,
   } = useApp();
+  const _instConfig = useInstitutionConfig();
+  const LEVELS = _instConfig.levels;
+  const semLabel = _instConfig.semesterLabel;
 
   const activeCalendar = academicCalendars.find((c) => c.isActive);
 
@@ -312,10 +316,10 @@ export default function ClassroomTimetableTab({
               <SelectValue placeholder="All Levels" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
+              <SelectItem value="all">All {_instConfig.levelLabel}s</SelectItem>
               {LEVELS.map((l) => (
                 <SelectItem key={l} value={l}>
-                  Level {l}
+                  {_instConfig.levelLabel} {l}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -536,7 +540,7 @@ export default function ClassroomTimetableTab({
                   <SelectContent>
                     {LEVELS.map((l) => (
                       <SelectItem key={l} value={l}>
-                        Level {l}
+                        {_instConfig.levelLabel} {l}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -606,7 +610,7 @@ export default function ClassroomTimetableTab({
                 />
               </div>
               <div>
-                <Label>Semester</Label>
+                <Label>{semLabel}</Label>
                 <Select
                   value={form.semester}
                   onValueChange={(v) =>

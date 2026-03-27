@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useInstitutionConfig } from "@/hooks/useInstitutionConfig";
 import {
   Calendar,
   Download,
@@ -81,6 +82,8 @@ export default function ExamScheduleTab({
     courses,
     academicCalendars,
   } = useApp();
+  const _instConfig = useInstitutionConfig();
+  const semLabel = _instConfig.semesterLabel;
   const [open, setOpen] = useState(false);
   const [editEntry, setEditEntry] = useState<ExamScheduleEntry | null>(null);
   const [form, setForm] = useState({
@@ -277,7 +280,7 @@ export default function ExamScheduleTab({
                       />
                     </div>
                     <div>
-                      <Label>Semester</Label>
+                      <Label>{semLabel}</Label>
                       <Select
                         value={form.semester}
                         onValueChange={(v) =>
@@ -326,7 +329,7 @@ export default function ExamScheduleTab({
               <TableHead>Time</TableHead>
               <TableHead>Venue</TableHead>
               <TableHead>Invigilator</TableHead>
-              <TableHead>Semester</TableHead>
+              <TableHead>{semLabel}</TableHead>
               {isAdmin && <TableHead>Actions</TableHead>}
             </TableRow>
           </TableHeader>

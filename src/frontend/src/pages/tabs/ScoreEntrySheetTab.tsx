@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { useApp } from "@/context/AppContext";
 import type { ExtendedResult } from "@/context/AppContext";
+import { useInstitutionConfig } from "@/hooks/useInstitutionConfig";
 import {
   AlertTriangle,
   Download,
@@ -37,11 +38,31 @@ interface Props {
   readonly?: boolean;
 }
 
-function calcGrade(total: number): {
+function calcGrade(
+  total: number,
+  gradeScale?: Array<{
+    min: number;
+    max: number;
+    grade: string;
+    remark: string;
+    points?: number;
+  }>,
+): {
   grade: string;
   gradePoint: number;
   remarks: string;
 } {
+  if (gradeScale && gradeScale.length > 0) {
+    const entry = gradeScale.find((g) => total >= g.min && total <= g.max);
+    if (entry) {
+      return {
+        grade: entry.grade,
+        gradePoint: entry.points ?? 0,
+        remarks: entry.remark,
+      };
+    }
+    return { grade: "F", gradePoint: 0, remarks: "Fail" };
+  }
   if (total >= 70) return { grade: "A", gradePoint: 5, remarks: "Distinction" };
   if (total >= 60) return { grade: "B", gradePoint: 4, remarks: "Credit" };
   if (total >= 50) return { grade: "C", gradePoint: 3, remarks: "Merit" };
@@ -101,6 +122,8 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
     setModeratorName,
     submitCourseResults,
   } = useApp();
+  const _institutionConfig = useInstitutionConfig();
+  const gradeScale = _institutionConfig.gradeScale;
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [rows, setRows] = useState<RowData[]>([]);
@@ -161,6 +184,7 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
   }, [selectedCourseId, moderatorNames]);
 
   // Build rows when course changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: gradeScale is stable
   useEffect(() => {
     if (!selectedCourse) {
       setRows([]);
@@ -188,7 +212,7 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
       const ca = existing ? existing.caScore.toString() : "";
       const exam = existing ? existing.examScore.toString() : "";
       const total = existing ? existing.totalScore : 0;
-      const { grade, gradePoint, remarks } = calcGrade(total);
+      const { grade, gradePoint, remarks } = calcGrade(total, gradeScale);
       return {
         studentId: s.id,
         matricNumber: s.matricNumber,
@@ -214,7 +238,7 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
       const next = [...prev];
       const exam = Number(next[idx].exam) || 0;
       const total = ca + exam;
-      const { grade, gradePoint, remarks } = calcGrade(total);
+      const { grade, gradePoint, remarks } = calcGrade(total, gradeScale);
       next[idx] = {
         ...next[idx],
         ca: val === "" ? "" : ca.toString(),
@@ -233,7 +257,7 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
       const next = [...prev];
       const ca = Number(next[idx].ca) || 0;
       const total = ca + exam;
-      const { grade, gradePoint, remarks } = calcGrade(total);
+      const { grade, gradePoint, remarks } = calcGrade(total, gradeScale);
       next[idx] = {
         ...next[idx],
         exam: val === "" ? "" : exam.toString(),
@@ -246,6 +270,7 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
     });
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: gradeScale is stable config
   const handleSave = useCallback(async () => {
     if (!selectedCourse) return;
     setSaving(true);
@@ -255,7 +280,7 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
         const ca = Number(row.ca) || 0;
         const exam = Number(row.exam) || 0;
         const total = ca + exam;
-        const { grade, gradePoint, remarks } = calcGrade(total);
+        const { grade, gradePoint, remarks } = calcGrade(total, gradeScale);
         const result: ExtendedResult = {
           id: row.existingResultId ?? BigInt(Date.now() + Math.random() * 1000),
           studentId: row.studentId,
@@ -412,7 +437,7 @@ export default function ScoreEntrySheetTab({ readonly = false }: Props) {
           const ca = Math.min(40, Math.max(0, Number(cols[caIdx]) || 0));
           const exam = Math.min(60, Math.max(0, Number(cols[examIdx]) || 0));
           const total = ca + exam;
-          const { grade, gradePoint, remarks } = calcGrade(total);
+          const { grade, gradePoint, remarks } = calcGrade(total, gradeScale);
           next[rowIdx] = {
             ...next[rowIdx],
             ca: ca.toString(),

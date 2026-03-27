@@ -89,6 +89,7 @@ import {
   getAcademicStanding,
   useApp,
 } from "../context/AppContext";
+import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import { getPendingRegistrations, savePendingRegistrations } from "./LoginPage";
 import type { PendingRegistration } from "./LoginPage";
 import AdminInboxTab from "./tabs/AdminInboxTab";
@@ -126,11 +127,12 @@ export default function AdminDashboard() {
   const { currentUser: adminUser } = useApp();
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
 
+  const _instConfig = useInstitutionConfig();
   const pendingCount = getPendingRegistrations().filter(
     (r) => r.status === "pending",
   ).length;
 
-  const quickActions = [
+  const allQuickActions = [
     { label: "Add Student", tab: "students", icon: Users },
     { label: "Publish Results", tab: "results", icon: CheckCircle },
     { label: "Fee Reports", tab: "fee_management", icon: BarChart3 },
@@ -141,8 +143,15 @@ export default function AdminDashboard() {
     { label: "Results Pipeline", tab: "results_processing", icon: BarChart3 },
     { label: "Dept. Results", tab: "dept_results", icon: BarChart3 },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
-    { label: "JAMB Import", tab: "jamb_import", icon: ScanLine },
+    {
+      label: "JAMB Import",
+      tab: "jamb_import",
+      icon: ScanLine,
+      show: _instConfig.showJAMBImport,
+    },
   ];
+
+  const quickActions = allQuickActions.filter((a) => a.show !== false);
 
   let view: React.ReactNode;
   if (activeTab === "overview") view = <OverviewTab />;

@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useInstitutionConfig } from "@/hooks/useInstitutionConfig";
 import { Download, Printer } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 import type { ExtendedDepartment, Faculty } from "../../context/AppContext";
@@ -217,6 +218,7 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
     faculties,
     loadSenateSampleData,
   } = useApp();
+  const _instConfig = useInstitutionConfig();
 
   const [sessionFilter, setSessionFilter] = useState("all");
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -641,12 +643,14 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="100">Level 100</SelectItem>
-              <SelectItem value="200">Level 200</SelectItem>
-              <SelectItem value="300">Level 300</SelectItem>
-              <SelectItem value="400">Level 400</SelectItem>
-              <SelectItem value="500">Level 500</SelectItem>
+              <SelectItem value="all">All {_instConfig.levelLabel}s</SelectItem>
+              {_instConfig.levels
+                .filter((l) => !["700", "800"].includes(l))
+                .map((l) => (
+                  <SelectItem key={l} value={l}>
+                    {_instConfig.levelLabel} {l}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>

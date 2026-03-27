@@ -51,6 +51,7 @@ import StatusBadge from "../components/StatusBadge";
 import { calcGradePoint, useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
 import type { ExtendedResult, GradeAppeal } from "../context/AppContext";
+import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
@@ -71,8 +72,9 @@ import StudentProfileModal from "./tabs/StudentProfileModal";
 export default function HODDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
   const { currentUser: hodUser } = useApp();
+  const _instConfig = useInstitutionConfig();
 
-  const quickActions = [
+  const allQuickActions = [
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
     { label: "Score Sheet", tab: "score_sheet", icon: ClipboardList },
     { label: "Results Pipeline", tab: "results_processing", icon: BarChart2 },
@@ -82,8 +84,15 @@ export default function HODDashboard() {
     { label: "Dept. Results", tab: "dept_results", icon: ClipboardList },
     { label: "Students", tab: "students", icon: Users },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
-    { label: "JAMB Import", tab: "jamb_import", icon: FileUp },
+    {
+      label: "JAMB Import",
+      tab: "jamb_import",
+      icon: FileUp,
+      show: _instConfig.showJAMBImport,
+    },
   ];
+
+  const quickActions = allQuickActions.filter((a) => a.show !== false);
 
   let content: React.ReactNode;
   if (activeTab === "approvals") content = <ApprovalsTab />;

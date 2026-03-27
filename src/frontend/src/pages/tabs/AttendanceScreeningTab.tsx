@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useInstitutionConfig } from "@/hooks/useInstitutionConfig";
 import { Download, Printer, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ export default function AttendanceScreeningTab() {
     academicCalendars,
     courseRegistrations,
   } = useApp();
+  const _instConfig = useInstitutionConfig();
   const [filterCourse, setFilterCourse] = useState("all");
   const [filterDept, setFilterDept] = useState("all");
   const [filterLevel, setFilterLevel] = useState("all");
@@ -41,7 +43,7 @@ export default function AttendanceScreeningTab() {
       [...new Set(academicCalendars.map((c) => c.session))].sort().reverse(),
     [academicCalendars],
   );
-  const levels = ["100", "200", "300", "400", "500", "600"];
+  const levels = _instConfig.levels.filter((l) => !["700", "800"].includes(l));
 
   const records = useMemo(() => {
     const out: {
@@ -217,10 +219,10 @@ export default function AttendanceScreeningTab() {
             <SelectValue placeholder="All Levels" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Levels</SelectItem>
+            <SelectItem value="all">All {_instConfig.levelLabel}s</SelectItem>
             {levels.map((l) => (
               <SelectItem key={l} value={l}>
-                Level {l}
+                {_instConfig.levelLabel} {l}
               </SelectItem>
             ))}
           </SelectContent>

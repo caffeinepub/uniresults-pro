@@ -46,6 +46,7 @@ import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
+import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
@@ -61,8 +62,9 @@ import StudentProfileModal from "./tabs/StudentProfileModal";
 
 export default function DeanDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
+  const _instConfig = useInstitutionConfig();
 
-  const quickActions = [
+  const allQuickActions = [
     { label: "Faculty Report", tab: "faculty_report", icon: FileText },
     { label: "Score Sheet", tab: "score_sheet", icon: FileText },
     { label: "Results Pipeline", tab: "results_processing", icon: FileText },
@@ -71,8 +73,15 @@ export default function DeanDashboard() {
     { label: "Dept. Results", tab: "dept_results", icon: FileText },
     { label: "Students", tab: "students", icon: Users },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
-    { label: "JAMB Import", tab: "jamb_import", icon: FileUp },
+    {
+      label: "JAMB Import",
+      tab: "jamb_import",
+      icon: FileUp,
+      show: _instConfig.showJAMBImport,
+    },
   ];
+
+  const quickActions = allQuickActions.filter((a) => a.show !== false);
 
   let view: React.ReactNode;
   if (activeTab === "approvals") view = <ApprovalsTab />;

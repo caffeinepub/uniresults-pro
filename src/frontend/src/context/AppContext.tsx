@@ -41,6 +41,11 @@ export type ExtendedStudent = Student & {
   department?: string;
   admissionDate?: string;
   programme?: string;
+  nin?: string;
+  dateOfBirth?: string;
+  photoUrl?: string;
+  oLevelResults?: Array<{ subject: string; grade: string }>;
+  password?: string;
 };
 
 export type ExtendedResult = AcademicResult & {
@@ -389,6 +394,7 @@ interface AppState {
   lecturerRatings: LecturerRating[];
   siwesRecords: SIWESRecord[];
   evaluationWindowOpen: boolean;
+  selfRegistrationOpen: boolean;
 }
 
 interface AppContextValue extends AppState {
@@ -504,6 +510,7 @@ interface AppContextValue extends AppState {
   addSIWESRecord: (record: SIWESRecord) => void;
   updateSIWESRecord: (record: SIWESRecord) => void;
   setEvaluationWindowOpen: (open: boolean) => void;
+  setSelfRegistrationOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -4053,6 +4060,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
   const [evaluationWindowOpen, setEvaluationWindowOpenState] =
     useState<boolean>(() => lsGet<boolean>("unirp_evalWindowOpen") ?? false);
+  const [selfRegistrationOpen, setSelfRegistrationOpenState] =
+    useState<boolean>(() => lsGet<boolean>("unirp_selfRegOpen") ?? true);
 
   const DEFAULT_INSTITUTION: InstitutionSettings = {
     name: "Federal University of Education Kontagora, Niger State",
@@ -5052,6 +5061,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEvaluationWindowOpenState(open);
     lsSet("unirp_evalWindowOpen", open);
   }, []);
+  const setSelfRegistrationOpen = useCallback((open: boolean) => {
+    setSelfRegistrationOpenState(open);
+    lsSet("unirp_selfRegOpen", open);
+  }, []);
 
   const submitCourseResults = useCallback(
     (courseId: bigint) => {
@@ -5303,6 +5316,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addSIWESRecord,
         updateSIWESRecord,
         setEvaluationWindowOpen,
+        selfRegistrationOpen,
+        setSelfRegistrationOpen,
       }}
     >
       {children}
