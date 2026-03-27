@@ -24,6 +24,8 @@ import {
   FileText,
   FileUp,
   ScrollText,
+  ShieldCheck,
+  Star,
   Users,
   XCircle,
 } from "lucide-react";
@@ -45,6 +47,7 @@ import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
+import AttendanceScreeningTab from "./tabs/AttendanceScreeningTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
@@ -52,6 +55,7 @@ import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FacultyDeptManagementTab from "./tabs/FacultyDeptManagementTab";
 import FacultyReportTab from "./tabs/FacultyReportTab";
+import LecturerEvaluationTab from "./tabs/LecturerEvaluationTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
@@ -71,6 +75,12 @@ export default function DeanDashboard() {
     { label: "Students", tab: "students", icon: Users },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
     { label: "Faculty & Depts", tab: "faculty_dept_mgmt", icon: Users },
+    { label: "Evaluations", tab: "evaluations", icon: Star },
+    {
+      label: "Attendance Screen",
+      tab: "attendance_screening",
+      icon: ShieldCheck,
+    },
   ];
 
   let view: React.ReactNode;
@@ -94,6 +104,10 @@ export default function DeanDashboard() {
   else if (activeTab === "bulkReg") view = <BulkRegistrationTab />;
   else if (activeTab === "faculty_dept_mgmt")
     view = <FacultyDeptManagementTab readOnly={true} />;
+  else if (activeTab === "evaluations")
+    view = <LecturerEvaluationTab userRole="Dean" />;
+  else if (activeTab === "attendance_screening")
+    view = <AttendanceScreeningTab />;
   else view = <OverviewTab />;
 
   return (

@@ -96,6 +96,7 @@ import type { PendingRegistration } from "./LoginPage";
 import AdminInboxTab from "./tabs/AdminInboxTab";
 import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
 import AlumniManagementTab from "./tabs/AlumniManagementTab";
+import AttendanceScreeningTab from "./tabs/AttendanceScreeningTab";
 import BatchGraduationTab from "./tabs/BatchGraduationTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
@@ -111,9 +112,11 @@ import FacultyDeptManagementTab from "./tabs/FacultyDeptManagementTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
 import FeedbackManagementTab from "./tabs/FeedbackManagementTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
+import GraduationCertificateModal from "./tabs/GraduationCertificateModal";
 import GraduationListTab from "./tabs/GraduationListTab";
 import GraduationRequirementsTab from "./tabs/GraduationRequirementsTab";
 import HostelManagementTab from "./tabs/HostelManagementTab";
+import LecturerEvaluationTab from "./tabs/LecturerEvaluationTab";
 import LibraryClearanceTab from "./tabs/LibraryClearanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import NoticeManagementTab from "./tabs/NoticeManagementTab";
@@ -208,6 +211,9 @@ export default function AdminDashboard() {
   else if (activeTab === "feedback") view = <FeedbackManagementTab />;
   else if (activeTab === "faculty_dept_mgmt")
     view = <FacultyDeptManagementTab />;
+  else if (activeTab === "evaluations") view = <LecturerEvaluationTabAdmin />;
+  else if (activeTab === "attendance_screening")
+    view = <AttendanceScreeningTabAdmin />;
   else view = <OverviewTab />;
 
   return (
@@ -837,6 +843,8 @@ function StudentsTab() {
     gender: string;
     status: string;
   } | null>(null);
+  const [certStudent, setCertStudent] = useState<ExtendedStudent | null>(null);
+  const [certOpen, setCertOpen] = useState(false);
 
   const filtered = students.filter((s) => {
     const matchSearch =
@@ -1870,6 +1878,20 @@ function StudentsTab() {
                         <Eye className="w-3 h-3" />
                         Profile
                       </button>
+                      {(s.status === "Graduated" ||
+                        s.status === "graduated") && (
+                        <button
+                          type="button"
+                          data-ocid={`students.cert.button.${i + 1}`}
+                          onClick={() => {
+                            setCertStudent(s);
+                            setCertOpen(true);
+                          }}
+                          className="text-xs text-green-600 hover:underline inline-flex items-center gap-1"
+                        >
+                          🎓 Certificate
+                        </button>
+                      )}
                       <button
                         type="button"
                         data-ocid={`students.edit_button.${i + 1}`}
@@ -2165,6 +2187,16 @@ function StudentsTab() {
         studentId={selectedProfileId}
         onClose={() => setSelectedProfileId(null)}
       />
+      {certStudent && (
+        <GraduationCertificateModal
+          student={certStudent}
+          open={certOpen}
+          onClose={() => {
+            setCertOpen(false);
+            setCertStudent(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -4487,6 +4519,40 @@ function AcademicCalendarTab() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Evaluation Window Control */}
+      <EvaluationWindowControl />
+    </div>
+  );
+}
+
+function EvaluationWindowControl() {
+  const { evaluationWindowOpen, setEvaluationWindowOpen } = useApp();
+  return (
+    <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4">
+      <div>
+        <p className="font-semibold text-sm">Lecturer Evaluation Window</p>
+        <p className="text-xs text-muted-foreground">
+          Allow students to submit lecturer evaluations for the active semester
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <span
+          className={`text-xs font-medium ${evaluationWindowOpen ? "text-green-600" : "text-muted-foreground"}`}
+        >
+          {evaluationWindowOpen ? "Open" : "Closed"}
+        </span>
+        <button
+          type="button"
+          data-ocid="calendar.eval_window.toggle"
+          onClick={() => setEvaluationWindowOpen(!evaluationWindowOpen)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${evaluationWindowOpen ? "bg-primary" : "bg-muted-foreground/30"}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${evaluationWindowOpen ? "translate-x-6" : "translate-x-1"}`}
+          />
+        </button>
+      </div>
     </div>
   );
 }
@@ -5768,4 +5834,12 @@ function PendingRegistrationsTab() {
       )}
     </div>
   );
+}
+
+function LecturerEvaluationTabAdmin() {
+  return <LecturerEvaluationTab userRole="Registrar" />;
+}
+
+function AttendanceScreeningTabAdmin() {
+  return <AttendanceScreeningTab />;
 }

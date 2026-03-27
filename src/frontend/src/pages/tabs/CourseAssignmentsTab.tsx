@@ -1,4 +1,6 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -20,15 +22,21 @@ import { toast } from "sonner";
 import { useApp } from "../../context/AppContext";
 
 export default function CourseAssignmentsTab() {
-  const { courses, staffMembers, departments, currentUser, updateStaffMember } =
-    useApp();
+  const {
+    courses,
+    staffMembers,
+    departments,
+    currentUser,
+    updateStaffMember,
+    practicalAssignments,
+    setPracticalAssignment,
+  } = useApp();
 
   const deptId = currentUser?.departmentId ?? BigInt(1);
   const deptCourses = courses.filter((c) => c.departmentId === deptId);
   const deptStaff = staffMembers.filter((s) => s.departmentId === deptId);
 
   const [assignments, setAssignments] = useState<Record<string, string>>(() => {
-    // Pre-populate from current staff courseIds
     const map: Record<string, string> = {};
     for (const course of deptCourses) {
       const assigned = deptStaff.find((s) =>
@@ -39,18 +47,36 @@ export default function CourseAssignmentsTab() {
     return map;
   });
 
+  const [practicals, setPracticals] = useState<Record<string, boolean>>(() => {
+    const map: Record<string, boolean> = {};
+    for (const course of deptCourses) {
+      map[String(course.id)] = !!practicalAssignments[String(course.id)];
+    }
+    return map;
+  });
+
+  const [practicalStaff, setPracticalStaff] = useState<Record<string, string>>(
+    () => {
+      const map: Record<string, string> = {};
+      for (const course of deptCourses) {
+        if (practicalAssignments[String(course.id)]) {
+          map[String(course.id)] = practicalAssignments[String(course.id)];
+        }
+      }
+      return map;
+    },
+  );
+
   function getStaffLoad(staffId: string) {
     return deptCourses.filter((c) => assignments[String(c.id)] === staffId)
       .length;
   }
 
   function handleSave() {
-    // Apply all assignments to staff members
     for (const staff of deptStaff) {
       const assignedCourseIds = deptCourses
         .filter((c) => assignments[String(c.id)] === String(staff.id))
         .map((c) => c.id);
-      // Keep non-dept courses unchanged
       const otherCourseIds = staff.courseIds.filter(
         (cid) => !deptCourses.some((c) => c.id === cid),
       );
@@ -58,6 +84,14 @@ export default function CourseAssignmentsTab() {
         ...staff,
         courseIds: [...otherCourseIds, ...assignedCourseIds],
       });
+    }
+    for (const course of deptCourses) {
+      if (practicals[String(course.id)] && practicalStaff[String(course.id)]) {
+        setPracticalAssignment(
+          String(course.id),
+          practicalStaff[String(course.id)],
+        );
+      }
     }
     toast.success("Course assignments saved");
   }
@@ -68,7 +102,8 @@ export default function CourseAssignmentsTab() {
         <div>
           <h1 className="text-xl font-bold">Course Assignments</h1>
           <p className="text-sm text-muted-foreground">
-            Assign lecturers to courses for your department
+            Assign lecturers to courses for your department. Mark practical
+            courses and assign technical staff.
           </p>
         </div>
         <Button
@@ -98,6 +133,8 @@ export default function CourseAssignmentsTab() {
                 <TableHead>Credits</TableHead>
                 <TableHead>Semester</TableHead>
                 <TableHead>Assigned Lecturer</TableHead>
+                <TableHead>Practical</TableHead>
+                <TableHead>Tech Staff</TableHead>
                 <TableHead>Load Warning</TableHead>
               </TableRow>
             </TableHeader>
@@ -105,7 +142,7 @@ export default function CourseAssignmentsTab() {
               {deptCourses.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={8}
                     className="text-center py-8 text-muted-foreground"
                     data-ocid="course_assignments.empty_state"
                   >
@@ -122,6 +159,7 @@ export default function CourseAssignmentsTab() {
                   ? getStaffLoad(selectedStaffId)
                   : 0;
                 const overloaded = load >= 4;
+                const isPractical = practicals[String(course.id)] ?? false;
 
                 return (
                   <TableRow
@@ -168,6 +206,55 @@ export default function CourseAssignmentsTab() {
                       </Select>
                     </TableCell>
                     <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          data-ocid={`course_assignments.checkbox.${i + 1}`}
+                          checked={isPractical}
+                          onCheckedChange={(checked) =>
+                            setPracticals((prev) => ({
+                              ...prev,
+                              [String(course.id)]: !!checked,
+                            }))
+                          }
+                        />
+                        {isPractical && (
+                          <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
+                            PRACTICAL
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {isPractical && (
+                        <Select
+                          value={practicalStaff[String(course.id)] ?? ""}
+                          onValueChange={(val) =>
+                            setPracticalStaff((prev) => ({
+                              ...prev,
+                              [String(course.id)]: val,
+                            }))
+                          }
+                        >
+                          <SelectTrigger
+                            className="w-44 h-8 text-xs"
+                            data-ocid={`course_assignments.tech.select.${i + 1}`}
+                          >
+                            <SelectValue placeholder="Tech staff..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {staffMembers.map((staff) => (
+                              <SelectItem
+                                key={String(staff.id)}
+                                value={String(staff.id)}
+                              >
+                                {staff.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       {overloaded && (
                         <span
                           className="inline-flex items-center gap-1 text-xs text-warning font-medium"
@@ -193,6 +280,11 @@ export default function CourseAssignmentsTab() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {deptStaff.map((staff) => {
               const load = getStaffLoad(String(staff.id));
+              const techLoad = deptCourses.filter(
+                (c) =>
+                  practicals[String(c.id)] &&
+                  practicalStaff[String(c.id)] === String(staff.id),
+              ).length;
               return (
                 <div
                   key={String(staff.id)}
@@ -223,6 +315,11 @@ export default function CourseAssignmentsTab() {
                       {load}/4
                     </span>
                   </div>
+                  {techLoad > 0 && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      {techLoad} practical course{techLoad !== 1 ? "s" : ""}
+                    </p>
+                  )}
                 </div>
               );
             })}

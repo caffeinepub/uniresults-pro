@@ -278,6 +278,60 @@ export interface GraduationRequirements {
   minDuration: number;
   maxDuration: number;
 }
+export interface ClassroomTimetableEntry {
+  id: bigint;
+  courseCode: string;
+  courseName: string;
+  lecturerId: string;
+  room: string;
+  day: string;
+  startTime: string;
+  endTime: string;
+  level: string;
+  departmentId: bigint;
+  session: string;
+  semester: string;
+}
+
+export interface LecturerDocument {
+  id: bigint;
+  staffId: string;
+  name: string;
+  type: string;
+  url: string;
+  uploadedAt: string;
+  size: string;
+}
+
+export interface LecturerRating {
+  id: bigint;
+  staffId: string;
+  studentId: bigint;
+  courseCode: string;
+  session: string;
+  semester: string;
+  rating: number;
+  comment: string;
+  submittedAt: string;
+}
+
+export interface LecturerEvaluation {
+  id: string;
+  studentId: string;
+  lecturerId: string;
+  courseId: string;
+  session: string;
+  semester: string;
+  scores: {
+    teaching: number;
+    punctuality: number;
+    delivery: number;
+    accessibility: number;
+    overall: number;
+  };
+  comment: string;
+  timestamp: string;
+}
 
 interface AppState {
   currentUser: AppUser | null;
@@ -307,6 +361,14 @@ interface AppState {
   seeded: boolean;
   moderatorNames: Record<string, string>;
   graduationRequirements: GraduationRequirements[];
+  classroomTimetable: ClassroomTimetableEntry[];
+  lecturerDocuments: LecturerDocument[];
+  lecturerRatings: LecturerRating[];
+  lateRegFineAmount: number;
+  registrationDeadline: string;
+  practicalAssignments: Record<string, string>;
+  lecturerEvaluations: LecturerEvaluation[];
+  evaluationWindowOpen: boolean;
 }
 
 interface AppContextValue extends AppState {
@@ -414,6 +476,17 @@ interface AppContextValue extends AppState {
   updateDepartment: (id: bigint, updates: Partial<ExtendedDepartment>) => void;
   deleteDepartment: (id: bigint) => void;
   deleteStudent: (id: bigint) => void;
+  addClassroomTimetableEntry: (entry: ClassroomTimetableEntry) => void;
+  updateClassroomTimetableEntry: (entry: ClassroomTimetableEntry) => void;
+  removeClassroomTimetableEntry: (id: bigint) => void;
+  addLecturerDocument: (doc: LecturerDocument) => void;
+  removeLecturerDocument: (id: bigint) => void;
+  addLecturerRating: (rating: LecturerRating) => void;
+  setLateRegFineAmount: (amount: number) => void;
+  setRegistrationDeadline: (date: string) => void;
+  setPracticalAssignment: (courseId: string, staffId: string) => void;
+  addLecturerEvaluation: (ev: LecturerEvaluation) => void;
+  setEvaluationWindowOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -1942,6 +2015,489 @@ const FULL_COURSES: Course[] = [
       departmentId: BigInt(25),
       lecturerPrincipal: "lecturer-3",
       semester: "Second",
+    },
+  ] as any[]),
+  // 300-level and 400-level courses for Science Education departments
+  ...([
+    // Computer Science Education (dept 25) - 300 level
+    {
+      id: BigInt(161),
+      name: "Educational Psychology",
+      code: "EDU301",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-2",
+      semester: "First",
+    },
+    {
+      id: BigInt(162),
+      name: "Curriculum Development",
+      code: "EDU302",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    {
+      id: BigInt(163),
+      name: "Computer Networks",
+      code: "CSC301E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(164),
+      name: "Database Systems for Education",
+      code: "CSC302E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(165),
+      name: "General Studies III",
+      code: "GSE301",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
+    },
+    {
+      id: BigInt(166),
+      name: "Research Methods in Education",
+      code: "EDU303",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    // Computer Science Education (dept 25) - 400 level
+    {
+      id: BigInt(167),
+      name: "Teaching Practice",
+      code: "TP401",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(168),
+      name: "Project Work",
+      code: "CSC401E",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(169),
+      name: "Software Engineering for Education",
+      code: "CSC402E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
+    },
+    {
+      id: BigInt(170),
+      name: "ICT in Education",
+      code: "EDU401",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(25),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    // Science Education (dept 26) - 300 level
+    {
+      id: BigInt(171),
+      name: "Educational Psychology",
+      code: "EDU301S",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(26),
+      lecturerPrincipal: "lecturer-2",
+      semester: "First",
+    },
+    {
+      id: BigInt(172),
+      name: "Curriculum Development",
+      code: "EDU302S",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(26),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    {
+      id: BigInt(173),
+      name: "Physical Science III",
+      code: "SCI301",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(26),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(174),
+      name: "Laboratory Methods",
+      code: "SCI302",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(26),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(175),
+      name: "Research Methods",
+      code: "EDU303S",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(26),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
+    },
+    // Science Education (dept 26) - 400 level
+    {
+      id: BigInt(176),
+      name: "Teaching Practice",
+      code: "TP401S",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(26),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(177),
+      name: "Project Work",
+      code: "SCI401",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(26),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(178),
+      name: "Environmental Science",
+      code: "SCI402",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(26),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    // Biology Education (dept 27) - 300 level
+    {
+      id: BigInt(179),
+      name: "Cell Biology & Genetics",
+      code: "BIO301",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      lecturerPrincipal: "lecturer-2",
+      semester: "First",
+    },
+    {
+      id: BigInt(180),
+      name: "Ecology & Evolution",
+      code: "BIO302",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    {
+      id: BigInt(181),
+      name: "Educational Psychology",
+      code: "EDU301B",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(182),
+      name: "Curriculum Development",
+      code: "EDU302B",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(183),
+      name: "Microbiology",
+      code: "BIO303",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
+    },
+    {
+      id: BigInt(184),
+      name: "Research Methods in Education",
+      code: "EDU303B",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    // Biology Education (dept 27) - 400 level
+    {
+      id: BigInt(185),
+      name: "Teaching Practice",
+      code: "TP401B",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(27),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(186),
+      name: "Project Work",
+      code: "BIO401",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(27),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(187),
+      name: "Physiology",
+      code: "BIO402",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(27),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
+    },
+    // Chemistry Education (dept 28) - 100 level
+    {
+      id: BigInt(188),
+      name: "General Chemistry I",
+      code: "CHM101E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-2",
+      semester: "First",
+    },
+    {
+      id: BigInt(189),
+      name: "General Chemistry II",
+      code: "CHM102E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    {
+      id: BigInt(190),
+      name: "Foundation of Education",
+      code: "EDU101C",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(191),
+      name: "General Studies I",
+      code: "GSE101C",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-1",
+      semester: "Second",
+    },
+    // Chemistry Education (dept 28) - 200 level
+    {
+      id: BigInt(192),
+      name: "Organic Chemistry",
+      code: "CHM201E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-2",
+      semester: "First",
+    },
+    {
+      id: BigInt(193),
+      name: "Inorganic Chemistry",
+      code: "CHM202E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    {
+      id: BigInt(194),
+      name: "Foundation of Education II",
+      code: "EDU201C",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(195),
+      name: "General Studies II",
+      code: "GSE201C",
+      creditUnits: BigInt(2),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
+    },
+    // Chemistry Education (dept 28) - 300 level
+    {
+      id: BigInt(196),
+      name: "Physical Chemistry",
+      code: "CHM301E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-2",
+      semester: "First",
+    },
+    {
+      id: BigInt(197),
+      name: "Analytical Chemistry",
+      code: "CHM302E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    {
+      id: BigInt(198),
+      name: "Educational Psychology",
+      code: "EDU301C",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(199),
+      name: "Curriculum Development",
+      code: "EDU302C",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(200),
+      name: "Research Methods",
+      code: "EDU303C",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-1",
+      semester: "Second",
+    },
+    // Chemistry Education (dept 28) - 400 level
+    {
+      id: BigInt(201),
+      name: "Teaching Practice",
+      code: "TP401C",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(202),
+      name: "Project Work",
+      code: "CHM401E",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(203),
+      name: "Industrial Chemistry",
+      code: "CHM402E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(28),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
+    },
+    // Mathematics Education (dept 29) - 300 level
+    {
+      id: BigInt(204),
+      name: "Abstract Algebra",
+      code: "MAT301E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      lecturerPrincipal: "lecturer-2",
+      semester: "First",
+    },
+    {
+      id: BigInt(205),
+      name: "Real Analysis",
+      code: "MAT302E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      lecturerPrincipal: "lecturer-2",
+      semester: "Second",
+    },
+    {
+      id: BigInt(206),
+      name: "Educational Psychology",
+      code: "EDU301M",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(207),
+      name: "Curriculum Development",
+      code: "EDU302M",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(208),
+      name: "Numerical Methods",
+      code: "MAT303E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
+    },
+    {
+      id: BigInt(209),
+      name: "Research Methods",
+      code: "EDU303M",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      lecturerPrincipal: "lecturer-1",
+      semester: "Second",
+    },
+    // Mathematics Education (dept 29) - 400 level
+    {
+      id: BigInt(210),
+      name: "Teaching Practice",
+      code: "TP401M",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(29),
+      lecturerPrincipal: "lecturer-3",
+      semester: "First",
+    },
+    {
+      id: BigInt(211),
+      name: "Project Work",
+      code: "MAT401E",
+      creditUnits: BigInt(6),
+      departmentId: BigInt(29),
+      lecturerPrincipal: "lecturer-3",
+      semester: "Second",
+    },
+    {
+      id: BigInt(212),
+      name: "Operations Research",
+      code: "MAT402E",
+      creditUnits: BigInt(3),
+      departmentId: BigInt(29),
+      lecturerPrincipal: "lecturer-1",
+      semester: "First",
     },
   ] as any[]),
 ];
@@ -5443,6 +5999,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  const [classroomTimetable, setClassroomTimetable] = useState<
+    ClassroomTimetableEntry[]
+  >(() => lsGet<ClassroomTimetableEntry[]>("classroomTimetable") ?? []);
+  const [lecturerDocuments, setLecturerDocuments] = useState<
+    LecturerDocument[]
+  >(() => lsGet<LecturerDocument[]>("lecturerDocuments") ?? []);
+  const [lecturerRatings, setLecturerRatings] = useState<LecturerRating[]>(
+    () => lsGet<LecturerRating[]>("lecturerRatings") ?? [],
+  );
+  const [lateRegFineAmount, setLateRegFineAmountState] = useState<number>(
+    () => lsGet<number>("lateRegFineAmount") ?? 5000,
+  );
+  const [registrationDeadline, setRegistrationDeadlineState] = useState<string>(
+    () => lsGet<string>("registrationDeadline") ?? "",
+  );
+  const [practicalAssignments, setPracticalAssignmentsState] = useState<
+    Record<string, string>
+  >(() => lsGet<Record<string, string>>("practicalAssignments") ?? {});
+
+  const [lecturerEvaluations, setLecturerEvaluations] = useState<
+    LecturerEvaluation[]
+  >(() => lsGet<LecturerEvaluation[]>("lecturerEvaluations") ?? []);
+  const [evaluationWindowOpen, setEvaluationWindowOpenState] =
+    useState<boolean>(() => lsGet<boolean>("evaluationWindowOpen") ?? false);
+
   const DEFAULT_INSTITUTION: InstitutionSettings = {
     name: "Federal University of Education Kontagora, Niger State",
     address: "P.M.B. 39, Kontagora, Niger State",
@@ -5556,6 +6137,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     lsSet("graduationRequirements", graduationRequirements);
   }, [graduationRequirements]);
+  useEffect(() => {
+    lsSet("classroomTimetable", classroomTimetable);
+  }, [classroomTimetable]);
+  useEffect(() => {
+    lsSet("lecturerDocuments", lecturerDocuments);
+  }, [lecturerDocuments]);
+  useEffect(() => {
+    lsSet("lecturerRatings", lecturerRatings);
+  }, [lecturerRatings]);
+  useEffect(() => {
+    lsSet("lateRegFineAmount", lateRegFineAmount);
+  }, [lateRegFineAmount]);
+  useEffect(() => {
+    lsSet("registrationDeadline", registrationDeadline);
+  }, [registrationDeadline]);
+  useEffect(() => {
+    lsSet("practicalAssignments", practicalAssignments);
+  }, [practicalAssignments]);
+  useEffect(() => {
+    lsSet("lecturerEvaluations", lecturerEvaluations);
+  }, [lecturerEvaluations]);
+  useEffect(() => {
+    lsSet("evaluationWindowOpen", evaluationWindowOpen);
+  }, [evaluationWindowOpen]);
 
   const logAudit = useCallback(
     (actorName: string, actorRole: string, action: string, details: string) => {
@@ -5655,6 +6260,65 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     [logAudit],
   );
+
+  const addClassroomTimetableEntry = useCallback(
+    (entry: ClassroomTimetableEntry) =>
+      setClassroomTimetable((prev) => [...prev, entry]),
+    [],
+  );
+  const updateClassroomTimetableEntry = useCallback(
+    (entry: ClassroomTimetableEntry) =>
+      setClassroomTimetable((prev) =>
+        prev.map((e) => (String(e.id) === String(entry.id) ? entry : e)),
+      ),
+    [],
+  );
+  const removeClassroomTimetableEntry = useCallback(
+    (id: bigint) =>
+      setClassroomTimetable((prev) =>
+        prev.filter((e) => String(e.id) !== String(id)),
+      ),
+    [],
+  );
+  const addLecturerDocument = useCallback(
+    (doc: LecturerDocument) => setLecturerDocuments((prev) => [...prev, doc]),
+    [],
+  );
+  const removeLecturerDocument = useCallback(
+    (id: bigint) =>
+      setLecturerDocuments((prev) =>
+        prev.filter((d) => String(d.id) !== String(id)),
+      ),
+    [],
+  );
+  const addLecturerRating = useCallback(
+    (rating: LecturerRating) => setLecturerRatings((prev) => [...prev, rating]),
+    [],
+  );
+  const setLateRegFineAmount = useCallback(
+    (amount: number) => setLateRegFineAmountState(amount),
+    [],
+  );
+  const setRegistrationDeadline = useCallback(
+    (date: string) => setRegistrationDeadlineState(date),
+    [],
+  );
+  const setPracticalAssignment = useCallback(
+    (courseId: string, staffId: string) =>
+      setPracticalAssignmentsState((prev) => ({
+        ...prev,
+        [courseId]: staffId,
+      })),
+    [],
+  );
+
+  const addLecturerEvaluation = useCallback((ev: LecturerEvaluation) => {
+    setLecturerEvaluations((prev) => [...prev, ev]);
+  }, []);
+
+  const setEvaluationWindowOpen = useCallback((open: boolean) => {
+    setEvaluationWindowOpenState(open);
+  }, []);
 
   const deleteStudent = useCallback(
     (id: bigint) => {
@@ -6371,6 +7035,98 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const toAdd = SENATE_SAMPLE_RESULTS.filter((r) => !existingIds.has(r.id));
       return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
     });
+    // Add sample evaluations
+    setLecturerEvaluations((prev) => {
+      if (prev.length > 0) return prev;
+      const SAMPLE_EVALS: LecturerEvaluation[] = [
+        {
+          id: "eval-1",
+          studentId: "student-demo-1",
+          lecturerId: "lec-001",
+          courseId: "1",
+          session: "2024/2025",
+          semester: "First",
+          scores: {
+            teaching: 4,
+            punctuality: 5,
+            delivery: 4,
+            accessibility: 3,
+            overall: 4,
+          },
+          comment: "Very engaging and knowledgeable lecturer.",
+          timestamp: new Date().toISOString(),
+        },
+        {
+          id: "eval-2",
+          studentId: "student-demo-2",
+          lecturerId: "lec-001",
+          courseId: "1",
+          session: "2024/2025",
+          semester: "First",
+          scores: {
+            teaching: 3,
+            punctuality: 4,
+            delivery: 3,
+            accessibility: 4,
+            overall: 3,
+          },
+          comment: "Could improve on content delivery speed.",
+          timestamp: new Date().toISOString(),
+        },
+        {
+          id: "eval-3",
+          studentId: "student-demo-3",
+          lecturerId: "lec-002",
+          courseId: "2",
+          session: "2024/2025",
+          semester: "First",
+          scores: {
+            teaching: 5,
+            punctuality: 5,
+            delivery: 5,
+            accessibility: 5,
+            overall: 5,
+          },
+          comment: "Excellent! Best lecturer in the department.",
+          timestamp: new Date().toISOString(),
+        },
+        {
+          id: "eval-4",
+          studentId: "student-demo-4",
+          lecturerId: "lec-002",
+          courseId: "2",
+          session: "2024/2025",
+          semester: "First",
+          scores: {
+            teaching: 4,
+            punctuality: 3,
+            delivery: 4,
+            accessibility: 3,
+            overall: 4,
+          },
+          comment: "",
+          timestamp: new Date().toISOString(),
+        },
+        {
+          id: "eval-5",
+          studentId: "student-demo-5",
+          lecturerId: "lec-001",
+          courseId: "3",
+          session: "2024/2025",
+          semester: "Second",
+          scores: {
+            teaching: 2,
+            punctuality: 2,
+            delivery: 3,
+            accessibility: 2,
+            overall: 2,
+          },
+          comment: "Lecturer is often late and sometimes unprepared.",
+          timestamp: new Date().toISOString(),
+        },
+      ];
+      return SAMPLE_EVALS;
+    });
   }, []);
 
   const submitCourseResults = useCallback(
@@ -6633,6 +7389,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateDepartment,
         deleteDepartment,
         deleteStudent,
+        classroomTimetable,
+        lecturerDocuments,
+        lecturerRatings,
+        lateRegFineAmount,
+        registrationDeadline,
+        practicalAssignments,
+        addClassroomTimetableEntry,
+        updateClassroomTimetableEntry,
+        removeClassroomTimetableEntry,
+        addLecturerDocument,
+        removeLecturerDocument,
+        addLecturerRating,
+        setLateRegFineAmount,
+        setRegistrationDeadline,
+        setPracticalAssignment,
+        lecturerEvaluations,
+        evaluationWindowOpen,
+        addLecturerEvaluation,
+        setEvaluationWindowOpen,
       }}
     >
       {children}

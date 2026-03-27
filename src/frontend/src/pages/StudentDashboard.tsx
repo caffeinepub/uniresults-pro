@@ -54,14 +54,18 @@ import {
   useApp,
 } from "../context/AppContext";
 import { CarryOverBanner } from "./tabs/CarryOverAutoTab";
+import ClassroomTimetableTab from "./tabs/ClassroomTimetableTab";
 import CourseEvaluationTab from "./tabs/CourseEvaluationTab";
+import CourseHistoryTab from "./tabs/CourseHistoryTab";
 import CourseRegSlipModal from "./tabs/CourseRegSlipModal";
 import { StudentTransferTab } from "./tabs/DepartmentTransferTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FeeStatusTab from "./tabs/FeeStatusTab";
 import GPATrendChart from "./tabs/GPATrendChart";
+import LecturerRatingTab from "./tabs/LecturerRatingTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import StudentDocumentsTab from "./tabs/StudentDocumentsTab";
+import StudentEvaluationTab from "./tabs/StudentEvaluationTab";
 import StudentIDCardModal from "./tabs/StudentIDCardModal";
 import StudentInboxTab, { InboxUnreadBadge } from "./tabs/StudentInboxTab";
 import StudentProgressTab from "./tabs/StudentProgressTab";
@@ -86,6 +90,8 @@ export default function StudentDashboard() {
     { label: "Submit Appeal", tab: "appeals", icon: MessageSquare },
     { label: "View Progress", tab: "progress", icon: TrendingUp },
     { label: "My Documents", tab: "documents", icon: Award },
+    { label: "Course History", tab: "course_history", icon: FileText },
+    { label: "Evaluate Lecturers", tab: "evaluate_lecturers", icon: Star },
   ];
 
   let content: React.ReactNode;
@@ -105,11 +111,21 @@ export default function StudentDashboard() {
   else if (activeTab === "course_eval") content = <CourseEvaluationTab />;
   else if (activeTab === "transfer") content = <StudentTransferTab />;
   else if (activeTab === "inbox") content = <StudentInboxTab />;
+  else if (activeTab === "class_timetable")
+    content = <StudentClassTimetableTab />;
+  else if (activeTab === "student_exam_timetable")
+    content = <StudentExamTimetableTab />;
+  else if (activeTab === "rate_lecturers")
+    content = <LecturerRatingTab studentView={true} />;
+  else if (activeTab === "evaluate_lecturers")
+    content = <StudentEvaluationTab />;
+  else if (activeTab === "course_history") content = <CourseHistoryTab />;
   else content = <OverviewTab />;
 
   return (
     <>
       <NoticeBoardPanel userRole="Student" />
+      <StudentStatusBanners />
       <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
           <button
@@ -403,7 +419,17 @@ function CourseRegistrationTab() {
     academicCalendars,
     addCourseRegistration,
     dropCourseRegistration,
+    feeRecords,
+    registrationDeadline,
+    lateRegFineAmount,
+    upsertFeeRecord,
   } = useApp();
+
+  const [showLateRegDialog, setShowLateRegDialog] = useState(false);
+  const [pendingCourseReg, setPendingCourseReg] = useState<{
+    courseId: bigint;
+    courseName: string;
+  } | null>(null);
   const me = students.find((s) => s.userPrincipal === currentUser?.principal);
 
   // Get all sessions for selector
@@ -499,20 +525,35 @@ function CourseRegistrationTab() {
   }
 
   // Department courses
+  // FIXED: use String() comparisons to avoid BigInt/number mismatch
   const deptCourses = isPG
     ? courses.filter(
         (c) =>
-          c.departmentId === me.departmentId &&
+          String(c.departmentId) === String(me.departmentId) &&
           Number((c as any).level ?? 100) >= 700,
       )
     : courses.filter(
         (c) =>
-          c.departmentId === me.departmentId &&
+          String(c.departmentId) === String(me.departmentId) &&
           Number((c as any).level ?? 100) < 700,
       );
-  const semCourses = selectedCal
-    ? deptCourses.filter((c) => c.semester === selectedCal.semester)
-    : deptCourses;
+  // Derive course level from code (e.g. CSC301 -> 300, BIO201 -> 200)
+  const getCourseLevel = (code: string): number => {
+    if (!code) return 100;
+    const m = code.match(/[A-Za-z]+([0-9])/);
+    return m ? Number.parseInt(m[1]) * 100 : 100;
+  };
+  // For 200+ level students, show courses at their level + carryover courses from any level
+  const deptCoursesForLevel = isPG
+    ? deptCourses
+    : is100Level
+      ? deptCourses
+      : deptCourses.filter(
+          (c) =>
+            getCourseLevel(c.code) === level || carryoverCourseIds.has(c.id),
+        );
+  // Show ALL courses for the year (both semesters) so students can register for the full year
+  const semCourses = deptCoursesForLevel;
 
   const registeredCourses = semCourses.filter((c) =>
     registeredCourseIds.has(c.id),
@@ -599,8 +640,64 @@ function CourseRegistrationTab() {
       );
       return;
     }
+    // Check outstanding fees
+    const feeRec = feeRecords.find(
+      (f) =>
+        String(f.studentId) === String(me.id) &&
+        f.session === selectedCal.session,
+    );
+    if (feeRec?.status === "outstanding" || feeRec?.status === "partial") {
+      toast.error("Fee payment required before course registration.");
+      return;
+    }
+    // Check late registration deadline
+    if (registrationDeadline && new Date() > new Date(registrationDeadline)) {
+      setPendingCourseReg({ courseId, courseName });
+      setShowLateRegDialog(true);
+      return;
+    }
     addCourseRegistration(me.id, courseId, selectedCal.semester);
     toast.success(`Registered for ${courseName}`);
+  }
+
+  function confirmLateReg() {
+    if (!pendingCourseReg || !me || !selectedCal) return;
+    addCourseRegistration(
+      me.id,
+      pendingCourseReg.courseId,
+      selectedCal.semester,
+    );
+    const existing = feeRecords.find(
+      (f) =>
+        String(f.studentId) === String(me.id) &&
+        f.session === selectedCal.session,
+    );
+    if (existing) {
+      upsertFeeRecord({
+        ...existing,
+        tuitionAmount: existing.tuitionAmount + lateRegFineAmount,
+        status:
+          existing.amountPaid < existing.tuitionAmount + lateRegFineAmount
+            ? "outstanding"
+            : existing.status,
+        notes: `${existing.notes ? `${existing.notes}; ` : ""}Late Registration Fine: ₦${lateRegFineAmount.toLocaleString()}`,
+      });
+    } else {
+      upsertFeeRecord({
+        id: BigInt(Date.now()),
+        studentId: me.id,
+        session: selectedCal.session,
+        tuitionAmount: lateRegFineAmount,
+        amountPaid: 0,
+        status: "outstanding",
+        notes: `Late Registration Fine: ₦${lateRegFineAmount.toLocaleString()}`,
+      });
+    }
+    toast.success(
+      `Registered for ${pendingCourseReg.courseName}. Late fine of ₦${lateRegFineAmount.toLocaleString()} added.`,
+    );
+    setPendingCourseReg(null);
+    setShowLateRegDialog(false);
   }
 
   function handleDrop(courseId: bigint, courseName: string) {
@@ -672,6 +769,45 @@ function CourseRegistrationTab() {
           open={showRegSlip}
           onClose={() => setShowRegSlip(false)}
         />
+      )}
+
+      {/* Late Registration Fine Dialog */}
+      {showLateRegDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div
+            className="bg-card rounded-xl border border-border shadow-xl p-6 max-w-sm w-full mx-4"
+            data-ocid="late_reg.dialog"
+          >
+            <h2 className="text-base font-bold mb-2">Late Registration Fine</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              The registration deadline has passed. A late registration fine of{" "}
+              <span className="font-semibold text-foreground">
+                ₦{lateRegFineAmount.toLocaleString()}
+              </span>{" "}
+              will be added to your account. Do you wish to proceed?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowLateRegDialog(false);
+                  setPendingCourseReg(null);
+                }}
+                data-ocid="late_reg.cancel_button"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={confirmLateReg}
+                data-ocid="late_reg.confirm_button"
+              >
+                Proceed & Pay Fine
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Graduation Eligibility Panel for Level 400+ */}
@@ -3193,6 +3329,128 @@ function StudentExamScheduleTab() {
   const myCourseIds = myRegistrations.map((r) => r.courseId);
   const myCourseCodes = courses
     .filter((c) => myCourseIds.includes(c.id))
+    .map((c) => c.code);
+  return <ExamScheduleTab filterCourseCodes={myCourseCodes} isAdmin={false} />;
+}
+
+function StudentStatusBanners() {
+  const {
+    currentUser,
+    students,
+    feeRecords,
+    courseRegistrations,
+    academicCalendars,
+  } = useApp();
+  const me = students.find((s) => s.userPrincipal === currentUser?.principal);
+  const activeCalendar = academicCalendars.find((c) => c.isActive);
+  if (!me || !activeCalendar) return null;
+
+  const feeRecord = feeRecords.find(
+    (f) =>
+      String(f.studentId) === String(me.id) &&
+      f.session === activeCalendar.session,
+  );
+  const hasOutstandingFees =
+    feeRecord?.status === "outstanding" || feeRecord?.status === "partial";
+  const registeredCourses = courseRegistrations.filter(
+    (r) =>
+      String(r.studentId) === String(me.id) &&
+      r.semester === activeCalendar.semester,
+  );
+  const hasRegistered = registeredCourses.length > 0;
+
+  if (hasOutstandingFees && !hasRegistered) {
+    return (
+      <div
+        className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+        data-ocid="student.status.error_state"
+      >
+        <AlertCircle className="mt-0.5 w-4 h-4 shrink-0" />
+        <div>
+          <p className="font-semibold">Account Restricted</p>
+          <p className="text-xs mt-0.5">
+            You have unpaid school fees and have not registered courses for this
+            session. Please visit the Bursary and register your courses to
+            restore full access.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (hasOutstandingFees) {
+    return (
+      <div
+        className="mb-4 flex items-start gap-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800"
+        data-ocid="student.status.panel"
+      >
+        <AlertCircle className="mt-0.5 w-4 h-4 shrink-0 text-orange-500" />
+        <div>
+          <p className="font-semibold">Fee Payment Required</p>
+          <p className="text-xs mt-0.5">
+            You have an outstanding balance for {activeCalendar.session}{" "}
+            session. Course registration submit is disabled until fees are
+            cleared.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (!hasRegistered) {
+    return (
+      <div
+        className="mb-4 flex items-start gap-2 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800"
+        data-ocid="student.status.panel"
+      >
+        <AlertCircle className="mt-0.5 w-4 h-4 shrink-0 text-yellow-500" />
+        <div>
+          <p className="font-semibold">Course Registration Pending</p>
+          <p className="text-xs mt-0.5">
+            You have not registered any courses for this session.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+function StudentClassTimetableTab() {
+  const { currentUser, students } = useApp();
+  const me = students.find((s) => s.userPrincipal === currentUser?.principal);
+  if (!me)
+    return (
+      <div className="p-6 text-muted-foreground">Student record not found.</div>
+    );
+  const level = String((me as any).level ?? "100");
+  return (
+    <ClassroomTimetableTab
+      isAdmin={false}
+      filterForStudent={{ departmentId: me.departmentId, level }}
+    />
+  );
+}
+
+function StudentExamTimetableTab() {
+  const {
+    currentUser,
+    students,
+    courseRegistrations,
+    courses,
+    academicCalendars,
+  } = useApp();
+  const me = students.find((s) => s.userPrincipal === currentUser?.principal);
+  const activeCalendar = academicCalendars.find((c) => c.isActive);
+  const myCourseIds = me
+    ? courseRegistrations
+        .filter(
+          (r) =>
+            String(r.studentId) === String(me.id) &&
+            r.semester === activeCalendar?.semester,
+        )
+        .map((r) => r.courseId)
+    : [];
+  const myCourseCodes = courses
+    .filter((c) => myCourseIds.some((id) => String(id) === String(c.id)))
     .map((c) => c.code);
   return <ExamScheduleTab filterCourseCodes={myCourseCodes} isAdmin={false} />;
 }

@@ -24,11 +24,19 @@ import {
   CheckCircle,
   ClipboardList,
   Download,
+  Eye,
+  FileText,
   FileUp,
+  GraduationCap,
   MessageSquare,
+  Pencil,
+  Plus,
   RefreshCw,
   ScrollText,
   Send,
+  ShieldCheck,
+  Star,
+  Trash2,
   Users,
   XCircle,
 } from "lucide-react";
@@ -52,8 +60,10 @@ import StatusBadge from "../components/StatusBadge";
 import { calcGradePoint, useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
 import type { ExtendedResult, GradeAppeal } from "../context/AppContext";
+import AttendanceScreeningTab from "./tabs/AttendanceScreeningTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
+import ClassroomTimetableTab from "./tabs/ClassroomTimetableTab";
 import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import { HODTransferTab } from "./tabs/DepartmentTransferTab";
@@ -63,7 +73,9 @@ import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FacultyDeptManagementTab from "./tabs/FacultyDeptManagementTab";
 import GPATrendChart from "./tabs/GPATrendChart";
+import LecturerEvaluationTab from "./tabs/LecturerEvaluationTab";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
+import LecturerRatingTab from "./tabs/LecturerRatingTab";
 import LecturerSubmissionsTab from "./tabs/LecturerSubmissionsTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
@@ -98,6 +110,12 @@ export default function HODDashboard() {
     { label: "Students", tab: "students", icon: Users },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
     { label: "Faculty & Depts", tab: "faculty_dept_mgmt", icon: Users },
+    { label: "Evaluations", tab: "evaluations", icon: Star },
+    {
+      label: "Attendance Screen",
+      tab: "attendance_screening",
+      icon: ShieldCheck,
+    },
   ];
 
   let content: React.ReactNode;
@@ -137,8 +155,20 @@ export default function HODDashboard() {
     content = <ResultAmendmentTab userRole="HOD" />;
   else if (activeTab === "lecturer_submissions")
     content = <LecturerSubmissionsTab />;
+  else if (activeTab === "class_timetable") content = <HODClassTimetableTab />;
+  else if (activeTab === "lecturer_ratings")
+    content = <LecturerRatingTab studentView={false} />;
   else if (activeTab === "dept_all_results")
     content = <DeptAllResultsTab userRole="HOD" />;
+  else if (activeTab === "evaluations")
+    content = (
+      <LecturerEvaluationTab
+        userRole="HOD"
+        departmentId={(hodUser as any)?.departmentId}
+      />
+    );
+  else if (activeTab === "attendance_screening")
+    content = <AttendanceScreeningTab />;
   else content = <OverviewTab />;
 
   return (
@@ -2138,5 +2168,15 @@ function HODStudentsTab() {
         onClose={() => setSelectedProfileId(null)}
       />
     </div>
+  );
+}
+
+function HODClassTimetableTab() {
+  const { currentUser } = useApp();
+  return (
+    <ClassroomTimetableTab
+      isAdmin={true}
+      filterForStudent={currentUser?.departmentId ? undefined : undefined}
+    />
   );
 }

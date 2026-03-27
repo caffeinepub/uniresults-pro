@@ -24,6 +24,7 @@ import {
   getStudentDepartment,
   useApp,
 } from "../../context/AppContext";
+import GraduationCertificateModal from "./GraduationCertificateModal";
 
 const FINAL_LEVELS = [400, 500, 600];
 
@@ -45,6 +46,8 @@ export default function BatchGraduationTab() {
   const [filterDept, setFilterDept] = useState("all");
   const [filterLevel, setFilterLevel] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [certStudent, setCertStudent] = useState<any | null>(null);
+  const [certOpen, setCertOpen] = useState(false);
 
   const sessions = useMemo(
     () =>
@@ -398,6 +401,19 @@ export default function BatchGraduationTab() {
                         {p.clearance ? "Cleared" : "Pending"}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        data-ocid={`batch_grad.cert.button.${i + 1}`}
+                        onClick={() => {
+                          setCertStudent(p.student);
+                          setCertOpen(true);
+                        }}
+                        className="text-xs text-green-600 hover:underline inline-flex items-center gap-1"
+                      >
+                        🎓 Certificate
+                      </button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -405,6 +421,17 @@ export default function BatchGraduationTab() {
           </Table>
         </div>
       </div>
+
+      {certStudent && (
+        <GraduationCertificateModal
+          student={certStudent}
+          open={certOpen}
+          onClose={() => {
+            setCertOpen(false);
+            setCertStudent(null);
+          }}
+        />
+      )}
 
       {/* Ineligible */}
       {ineligible.length > 0 && (
