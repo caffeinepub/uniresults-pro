@@ -52,6 +52,7 @@ import AttendanceTab from "./tabs/AttendanceTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import PhotoAvatar from "./tabs/PhotoAvatar";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 
@@ -129,10 +130,16 @@ function CoursesView() {
     updateResultStatus,
     addAmendmentRequest,
     amendmentRequests,
+    staffMembers,
+    departments,
   } = useApp();
   const myCourses = courses.filter(
     (c) => c.lecturerPrincipal === currentUser?.principal,
   );
+  const myStaff = staffMembers.find((s) => s.name === currentUser?.name);
+  const myDept = myStaff
+    ? departments.find((d) => String(d.id) === String(myStaff.departmentId))
+    : undefined;
   const [selectedCourse, setSelectedCourse] = useState<bigint | null>(null);
   const [entryOpen, setEntryOpen] = useState(false);
   const [editResult, setEditResult] = useState<ExtendedResult | null>(null);
@@ -298,6 +305,34 @@ function CoursesView() {
 
   return (
     <div className="space-y-6">
+      {/* Lecturer Profile Card */}
+      <div
+        className="bg-card border border-border rounded-xl p-4 flex items-center gap-4"
+        data-ocid="lecturer.profile.card"
+      >
+        <PhotoAvatar
+          photoKey={`staff_photo_url_${myStaff?.staffId ?? currentUser?.principal ?? "unknown"}`}
+          name={currentUser?.name ?? "Lecturer"}
+          size="lg"
+          editable
+        />
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold truncate">
+            {currentUser?.name ?? "Lecturer"}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {myStaff?.designation ?? "Lecturer"}
+          </p>
+          {myDept && (
+            <p className="text-xs text-muted-foreground">{myDept.name}</p>
+          )}
+          {myStaff?.staffId && (
+            <p className="text-xs text-muted-foreground font-mono">
+              {myStaff.staffId}
+            </p>
+          )}
+        </div>
+      </div>
       <div>
         <h1 className="text-xl font-bold">My Courses</h1>
         <p className="text-sm text-muted-foreground">

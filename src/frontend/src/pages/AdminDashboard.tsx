@@ -95,18 +95,23 @@ import type { PendingRegistration } from "./LoginPage";
 import AdminInboxTab from "./tabs/AdminInboxTab";
 import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
 import AlumniManagementTab from "./tabs/AlumniManagementTab";
+import AuditLogTabFile from "./tabs/AuditLogTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CameraSecurityTab from "./tabs/CameraSecurityTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
+import DataBackupTab from "./tabs/DataBackupTab";
 import DeferralsTab from "./tabs/DefferralsTab";
 import { AdminTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
+import FinancialClearanceTab from "./tabs/FinancialClearanceTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
+import GraduationListTab from "./tabs/GraduationListTab";
 import HostelManagementTab from "./tabs/HostelManagementTab";
+import IDCardTab from "./tabs/IDCardTab";
 import JambAdmissionScannerTab from "./tabs/JambAdmissionScannerTab";
 import LibraryClearanceTab from "./tabs/LibraryClearanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
@@ -114,6 +119,7 @@ import NoticeManagementTab from "./tabs/NoticeManagementTab";
 import PayrollTab from "./tabs/PayrollTab";
 import QRScannerModal from "./tabs/QRScannerModal";
 import ReportMonitorTab from "./tabs/ReportMonitorTab";
+import ResultStatsDashboard from "./tabs/ResultStatsDashboard";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
@@ -121,6 +127,7 @@ import SettingsTab from "./tabs/SettingsTab";
 import StaffTab from "./tabs/StaffTab";
 import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
+import SystemHealthTab from "./tabs/SystemHealthTab";
 
 export default function AdminDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -149,6 +156,11 @@ export default function AdminDashboard() {
       icon: ScanLine,
       show: _instConfig.showJAMBImport,
     },
+    { label: "System Health", tab: "system_health", icon: BarChart3 },
+    { label: "Fin. Clearance", tab: "financial_clearance", icon: BarChart3 },
+    { label: "ID Cards", tab: "id_cards", icon: BarChart3 },
+    { label: "Graduation List", tab: "graduation_list", icon: GraduationCap },
+    { label: "Data Backup", tab: "data_backup", icon: Shield },
   ];
 
   const quickActions = allQuickActions.filter((a) => a.show !== false);
@@ -198,6 +210,14 @@ export default function AdminDashboard() {
   else if (activeTab === "admin_inbox") view = <AdminInboxTab />;
   else if (activeTab === "bulkReg") view = <BulkRegistrationTab />;
   else if (activeTab === "jamb_import") view = <JambAdmissionScannerTab />;
+  else if (activeTab === "data_backup") view = <DataBackupTab />;
+  else if (activeTab === "financial_clearance")
+    view = <FinancialClearanceTab />;
+  else if (activeTab === "id_cards") view = <IDCardTab mode="admin" />;
+  else if (activeTab === "result_stats") view = <ResultStatsDashboard />;
+  else if (activeTab === "audit_log") view = <AuditLogTabFile />;
+  else if (activeTab === "graduation_list") view = <GraduationListTab />;
+  else if (activeTab === "system_health") view = <SystemHealthTab />;
   else view = <OverviewTab />;
 
   return (

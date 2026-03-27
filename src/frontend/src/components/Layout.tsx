@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   Bell,
   BookOpen,
@@ -11,7 +12,9 @@ import {
   FileCheck,
   FileText,
   GraduationCap,
+  HardDrive,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Megaphone,
   MessageSquare,
@@ -28,6 +31,7 @@ import { AnimatePresence, motion } from "motion/react";
 import React, { useEffect, useRef, useState } from "react";
 import { getActiveCalendar, useApp } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
+import HelpCenter from "./HelpCenter";
 
 interface NavItem {
   id: string;
@@ -52,6 +56,17 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "timetable", label: "Timetable", icon: CalendarDays },
     { id: "calendar", label: "Academic Calendar", icon: CalendarDays },
     { id: "audit", label: "Audit Log", icon: ScrollText },
+    { id: "system_health", label: "System Health", icon: Activity },
+    { id: "graduation_list", label: "Graduation List", icon: ListChecks },
+    { id: "data_backup", label: "Data Backup", icon: HardDrive },
+    {
+      id: "financial_clearance",
+      label: "Financial Clearance",
+      icon: DollarSign,
+    },
+    { id: "id_cards", label: "ID Cards", icon: ClipboardList },
+    { id: "result_stats", label: "Result Stats", icon: BarChart3 },
+    { id: "audit_log", label: "Audit Log (New)", icon: ScrollText },
     { id: "roles", label: "User Roles", icon: Settings },
     { id: "benchmarking", label: "Benchmarking", icon: BarChart3 },
     { id: "settings", label: "Settings", icon: Settings },
@@ -85,6 +100,17 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "timetable", label: "Timetable", icon: CalendarDays },
     { id: "calendar", label: "Academic Calendar", icon: CalendarDays },
     { id: "deferrals", label: "Deferrals", icon: Users },
+    { id: "system_health", label: "System Health", icon: Activity },
+    { id: "graduation_list", label: "Graduation List", icon: ListChecks },
+    { id: "data_backup", label: "Data Backup", icon: HardDrive },
+    {
+      id: "financial_clearance",
+      label: "Financial Clearance",
+      icon: DollarSign,
+    },
+    { id: "id_cards", label: "ID Cards", icon: ClipboardList },
+    { id: "result_stats", label: "Result Stats", icon: BarChart3 },
+    { id: "audit_log", label: "Audit Log (New)", icon: ScrollText },
     { id: "benchmarking", label: "Benchmarking", icon: BarChart3 },
     { id: "settings", label: "Settings", icon: Settings },
     { id: "grade_scale", label: "Grade Scale", icon: Settings },
@@ -140,6 +166,7 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "transfer", label: "Transfer", icon: ChevronRight },
     { id: "exam_schedule", label: "Exam Schedule", icon: CalendarDays },
     { id: "course_eval", label: "Course Eval", icon: FileCheck },
+    { id: "id_card", label: "My ID Card", icon: ClipboardList },
   ],
   Dean: [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -639,6 +666,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </p>
         </footer>
       </div>
+      <HelpCenter role={role} />
     </TabContext.Provider>
   );
 }

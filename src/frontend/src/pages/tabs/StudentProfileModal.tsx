@@ -16,6 +16,7 @@ import {
   getStudentFaculty,
   useApp,
 } from "../../context/AppContext";
+import PhotoAvatar from "./PhotoAvatar";
 
 interface Props {
   studentId: bigint | null;
@@ -129,9 +130,11 @@ export default function StudentProfileModal({ studentId, onClose }: Props) {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-border print:pb-2">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <User className="w-6 h-6 text-primary" />
-            </div>
+            <PhotoAvatar
+              photoKey={`student_photo_url_${String(student.id)}`}
+              name={student.name}
+              size="md"
+            />
             <div>
               <DialogTitle className="text-lg font-bold">
                 {student.name}

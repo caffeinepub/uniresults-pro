@@ -296,6 +296,7 @@ export interface StaffMember {
   dateJoined: string;
   email?: string;
   phone?: string;
+  photoUrl?: string;
 }
 
 export interface SemesterSeal {

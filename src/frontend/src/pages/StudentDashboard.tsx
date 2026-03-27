@@ -51,6 +51,8 @@ import {
   type GradeAppeal,
   type GraduationApplication,
   getAcademicStanding,
+  getStudentDepartment,
+  getStudentFaculty,
   useApp,
 } from "../context/AppContext";
 import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
@@ -60,8 +62,11 @@ import CourseRegSlipModal from "./tabs/CourseRegSlipModal";
 import { StudentTransferTab } from "./tabs/DepartmentTransferTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FeeStatusTab from "./tabs/FeeStatusTab";
+import { FeesOutstandingBanner } from "./tabs/FinancialClearanceTab";
 import GPATrendChart from "./tabs/GPATrendChart";
+import IDCardTab from "./tabs/IDCardTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import PhotoAvatar from "./tabs/PhotoAvatar";
 import StudentDocumentsTab from "./tabs/StudentDocumentsTab";
 import StudentIDCardModal from "./tabs/StudentIDCardModal";
 import StudentInboxTab, { InboxUnreadBadge } from "./tabs/StudentInboxTab";
@@ -106,6 +111,7 @@ export default function StudentDashboard() {
   else if (activeTab === "course_eval") content = <CourseEvaluationTab />;
   else if (activeTab === "transfer") content = <StudentTransferTab />;
   else if (activeTab === "inbox") content = <StudentInboxTab />;
+  else if (activeTab === "id_card") content = <IDCardTab mode="student" />;
   else content = <OverviewTab />;
 
   return (
@@ -182,7 +188,7 @@ function OverviewTab() {
         return [];
       }
     })();
-  const { staffMembers } = useApp();
+  const { staffMembers, departments, faculties } = useApp();
   const myAdvisorAssignment = me
     ? advisorAssignments.find((a) => a.studentMatric === me.matricNumber)
     : null;
@@ -199,6 +205,7 @@ function OverviewTab() {
   return (
     <div className="space-y-6">
       <CarryOverBanner />
+      <FeesOutstandingBanner />
       {me && showIDCard && (
         <StudentIDCardModal
           student={me}
@@ -207,22 +214,41 @@ function OverviewTab() {
         />
       )}
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold">Student Portal</h1>
-          <p className="text-sm text-muted-foreground">
-            {me?.name} &middot; {me?.matricNumber}
-          </p>
-          {myResults.length > 0 &&
-            (() => {
-              const standing = getAcademicStanding(cgpa);
-              return (
-                <span
-                  className={`inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${standing.badgeClass}`}
-                >
-                  {standing.label}
-                </span>
-              );
-            })()}
+        <div className="flex items-center gap-4">
+          {me && (
+            <PhotoAvatar
+              photoKey={`student_photo_url_${String(me.id)}`}
+              name={me.name}
+              size="lg"
+              editable
+            />
+          )}
+          <div>
+            <h1 className="text-2xl font-bold">Student Portal</h1>
+            <p className="text-sm text-muted-foreground">
+              {me?.name} &middot; {me?.matricNumber}
+            </p>
+            {me &&
+              (() => {
+                const dept = getStudentDepartment(me, departments);
+                return (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Level {String(me.level)} &middot; {dept?.name ?? "—"}
+                  </p>
+                );
+              })()}
+            {myResults.length > 0 &&
+              (() => {
+                const standing = getAcademicStanding(cgpa);
+                return (
+                  <span
+                    className={`inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${standing.badgeClass}`}
+                  >
+                    {standing.label}
+                  </span>
+                );
+              })()}
+          </div>
         </div>
         {me && (
           <Button
@@ -264,6 +290,116 @@ function OverviewTab() {
           />
         )}
       </div>
+      {/* My Profile Card */}
+      {me &&
+        (() => {
+          const dept = getStudentDepartment(me, departments);
+          const fac = getStudentFaculty(me, departments, faculties);
+          return (
+            <div
+              className="bg-card border border-border rounded-xl p-5 shadow-xs"
+              data-ocid="student.profile.card"
+            >
+              <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
+                My Profile
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2.5 text-sm">
+                <div>
+                  <span className="text-xs text-muted-foreground block">
+                    Full Name
+                  </span>
+                  <span className="font-medium">{me.name}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">
+                    Matric No.
+                  </span>
+                  <span className="font-medium">{me.matricNumber}</span>
+                </div>
+                {me.jambRegNo && (
+                  <div>
+                    <span className="text-xs text-muted-foreground block">
+                      JAMB Reg No.
+                    </span>
+                    <span className="font-medium">{me.jambRegNo}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-xs text-muted-foreground block">
+                    Level
+                  </span>
+                  <span className="font-medium">{String(me.level)}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">
+                    Department
+                  </span>
+                  <span className="font-medium">{dept?.name ?? "—"}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">
+                    Faculty
+                  </span>
+                  <span className="font-medium">{fac?.name ?? "—"}</span>
+                </div>
+                {me.state && (
+                  <div>
+                    <span className="text-xs text-muted-foreground block">
+                      State of Origin
+                    </span>
+                    <span className="font-medium">{me.state}</span>
+                  </div>
+                )}
+                {me.lga && (
+                  <div>
+                    <span className="text-xs text-muted-foreground block">
+                      LGA
+                    </span>
+                    <span className="font-medium">{me.lga}</span>
+                  </div>
+                )}
+                {me.gender && (
+                  <div>
+                    <span className="text-xs text-muted-foreground block">
+                      Gender
+                    </span>
+                    <span className="font-medium">{me.gender}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-xs text-muted-foreground block">
+                    Status
+                  </span>
+                  <span className="font-medium">{me.status ?? "Active"}</span>
+                </div>
+                {me.nin && (
+                  <div>
+                    <span className="text-xs text-muted-foreground block">
+                      NIN
+                    </span>
+                    <span className="font-medium">{me.nin}</span>
+                  </div>
+                )}
+                {me.dateOfBirth && (
+                  <div>
+                    <span className="text-xs text-muted-foreground block">
+                      Date of Birth
+                    </span>
+                    <span className="font-medium">{me.dateOfBirth}</span>
+                  </div>
+                )}
+                {me.programmeType && (
+                  <div>
+                    <span className="text-xs text-muted-foreground block">
+                      Programme
+                    </span>
+                    <span className="font-medium">{me.programmeType}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       {carryoverCount > 0 && (
         <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-1">
