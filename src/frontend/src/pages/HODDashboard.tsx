@@ -61,6 +61,7 @@ import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import GPATrendChart from "./tabs/GPATrendChart";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
@@ -113,6 +114,8 @@ export default function HODDashboard() {
   else if (activeTab === "results_processing")
     content = <ResultsProcessingTab userRole="HOD" />;
   else if (activeTab === "bulkReg") content = <BulkRegistrationTab />;
+  else if (activeTab === "result_amendment")
+    content = <ResultAmendmentTab userRole="HOD" />;
   else content = <OverviewTab />;
 
   return (
@@ -895,7 +898,7 @@ function AnalyticsTab() {
   }, [deptStudents, deptResults, courses]);
 
   const levelBreakdown = useMemo(() => {
-    const levels = [100, 200, 300, 400, 500];
+    const levels = [100, 200, 300, 400, 500, 600];
     return levels
       .map((lvl) => {
         const lvlStudents = deptStudents.filter((s) => Number(s.level) === lvl);

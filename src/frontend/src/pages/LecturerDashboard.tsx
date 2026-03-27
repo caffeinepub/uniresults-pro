@@ -52,6 +52,7 @@ import AttendanceTab from "./tabs/AttendanceTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 
@@ -103,6 +104,8 @@ export default function LecturerDashboard() {
         <ScoreEntrySheetTab />
       ) : activeTab === "results_processing" ? (
         <ResultsProcessingTab userRole="Lecturer" />
+      ) : activeTab === "result_amendment" ? (
+        <ResultAmendmentTab userRole="Lecturer" />
       ) : (
         <CoursesView />
       )}

@@ -169,6 +169,7 @@ function getStudentData() {
 }
 
 function OverviewTab() {
+  const { setActiveTab } = useContext(TabContext);
   const { me, myResults, cgpa } = getStudentData();
   const [showIDCard, setShowIDCard] = useState(false);
   // Get advisor
@@ -193,10 +194,72 @@ function OverviewTab() {
     count: myResults.filter((r) => r.grade === g).length,
   }));
   const carryoverCount = myResults.filter((r) => r.grade === "F").length;
+  const isNewStudent = myResults.length === 0 && me;
+  const onboardDismissKey = me ? `onboard_dismissed_${me.matricNumber}` : null;
+  const [onboardDismissed, setOnboardDismissed] = useState<boolean>(() => {
+    if (!onboardDismissKey) return true;
+    return localStorage.getItem(onboardDismissKey) === "true";
+  });
+  function dismissOnboard() {
+    if (onboardDismissKey) localStorage.setItem(onboardDismissKey, "true");
+    setOnboardDismissed(true);
+  }
 
   return (
     <div className="space-y-6">
       <CarryOverBanner />
+      {isNewStudent && !onboardDismissed && (
+        <div
+          className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3"
+          data-ocid="student.onboarding.card"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-sm">
+                Welcome to UniResults Pro! 👋
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Complete these steps to get started:
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              data-ocid="student.onboarding.close_button"
+              onClick={dismissOnboard}
+            >
+              Got it
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              {
+                label: "Complete Profile",
+                tab: "progress",
+                done: !!(me?.email || me?.phone),
+              },
+              { label: "Pay Fees", tab: "fee_status", done: false },
+              { label: "Register Courses", tab: "course_reg", done: false },
+              { label: "Check Timetable", tab: "timetable", done: false },
+            ].map((item) => (
+              <button
+                key={item.tab}
+                type="button"
+                data-ocid={`student.onboarding.${item.tab}.button`}
+                onClick={() => setActiveTab(item.tab)}
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs hover:bg-muted transition-colors text-left"
+              >
+                <span
+                  className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${item.done ? "bg-success text-success-foreground" : "bg-muted border border-border"}`}
+                >
+                  {item.done ? "✓" : ""}
+                </span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {me && showIDCard && (
         <StudentIDCardModal
           student={me}

@@ -9,6 +9,7 @@ import HODDashboard from "./pages/HODDashboard";
 import LecturerDashboard from "./pages/LecturerDashboard";
 import LoginPage from "./pages/LoginPage";
 import StudentDashboard from "./pages/StudentDashboard";
+import SystemInitWizard from "./pages/tabs/SystemInitWizard";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ function DashboardRouter() {
   const role = currentUser.role;
   return (
     <Layout>
+      <SystemInitWizard />
       {(role === "SuperAdmin" || role === "Registrar") && <AdminDashboard />}
       {role === "HOD" && <HODDashboard />}
       {role === "Lecturer" && <LecturerDashboard />}

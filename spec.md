@@ -1,57 +1,92 @@
-# UniResults Pro — Version 35
+# UniResults Pro — Version 37 (Go-Live Complete Package)
 
 ## Current State
 
-- Full academic management system with Registrar, HOD, Dean, Lecturer, Student dashboards
-- Students tab in AdminDashboard has: manual Add Student form, CSV bulk upload, and an AI Smart Scanner (image upload side-by-side with editable rows)
-- Student records store: S/N, Reg No (JAMB), Matric Number, Name, Department, State, LGA, Sex, Status
-- No dedicated full student profile/record view exists — students are shown only in a flat table
-- HODDashboard and DeanDashboard do not have access to bulk registration or AI scanner
-- No Student Profile page showing all data in one combined view (courses, results, fees, attendance, etc.)
+Version 36 is a comprehensive university results management system with: student records (Biology/Chemistry/Computer Science/Mathematics Education under Faculty of Science Education), results processing pipeline, score entry sheets, senate/cumulative/departmental reports, biometric attendance, ID cards, fee management, hostel, library clearance, alumni, payroll, timetable, exam scheduling, course registration, graduation clearance, department transfer, academic advisor, audit log, Internet Identity login, student matric login, result verification portal, notice board, dark mode, offline sync, bulk registration, AI smart scanner.
+
+Levels currently go up to 500. Academic levels are referenced throughout context and reports.
 
 ## Requested Changes (Diff)
 
 ### Add
 
-1. **StudentProfileModal** — A full-screen or large modal/drawer showing all data for one student in one view:
-   - Personal info (name, matric, reg no, dept, faculty, level, state, LGA, sex, status, DOB, email, phone, advisor)
-   - Course Registrations — all sessions/semesters with registered courses and credit units
-   - Academic Results — per-semester table: course code, title, CA, exam, total, grade, GP, GPA, CGPA
-   - Fee/Payment Status — current balance, payment history, clearance status
-   - Attendance — per-course attendance percentage
-   - Academic Standing — current standing (Good Standing / Probation / Withdrawn), GPA trend
-   - Library clearance status
-   - Printable from the modal
-   - Accessible via a "View Profile" button on every student row
+1. **Level 600 Support** — Extend all level dropdowns, filters, reports, and logic from max 500 to max 600 (for extended/postgraduate programs and spillover students)
 
-2. **BulkRegistrationTab (new standalone tab)** — Available in AdminDashboard, HODDashboard, DeanDashboard:
-   - Tab label: "Bulk Reg"
-   - Sub-tabs: "CSV Upload" and "Scan & Import"
-   - CSV Upload: download blank template, upload filled CSV, preview extracted rows, confirm import
-   - Scan & Import (AI Scanner): upload image of printed OR handwritten student list; displays image on left, editable data table on right; admin fills/corrects S/N, Reg No, Name, Department, State, LGA, Sex, Status per row; supports adding/removing rows; batch import on confirm
-   - Supports document types: Student Admission List, Result Sheet, Course Registration Form (selectable)
-   - Import logs added to audit trail
+2. **Spillover Student Handling** — Students who exceed expected graduation year are flagged as "Spillover". System tracks their minimum year of graduation (admission year + minimum programme duration) and maximum year of graduation (admission year + maximum programme duration). Spillover flag auto-set when student exceeds max graduation year without graduating.
 
-3. **View Profile button** on all student rows in:
-   - AdminDashboard StudentsTab
-   - HODDashboard students view
-   - DeanDashboard students view
+3. **Graduation Requirements Configuration** — New settings panel (SuperAdmin/Registrar) to define per-programme:
+   - Minimum total credit units required for graduation
+   - Maximum total credit units allowed
+   - Minimum CGPA for graduation
+   - Minimum programme duration (years, e.g. 4 for a 4-year programme)
+   - Maximum programme duration / maximum years of study (e.g. 7 for a 4-year programme)
+   - Minimum year of graduation (derived: admission year + min duration)
+   - Maximum year of graduation (derived: admission year + max duration)
+   - These settings feed into graduation eligibility checks in clearance workflow
+
+4. **Degree Classification Summary** — Auto-calculated from CGPA:
+   - First Class: CGPA ≥ 4.50
+   - Second Class Upper: 3.50–4.49
+   - Second Class Lower: 2.40–3.49
+   - Third Class: 1.50–2.39
+   - Pass: 1.00–1.49
+   - Fail: < 1.00
+   - Displayed in transcripts, graduation list, senate report, student portal
+
+5. **System Initialization Wizard** — First-time setup modal for new deployments:
+   - Step 1: Institution name, address, phone, email
+   - Step 2: Create SuperAdmin account
+   - Step 3: Set active session and semester
+   - Step 4: Option to generate default academic structure
+   - Dismissed flag saved in localStorage; never shown again once completed
+
+6. **Password Reset & Account Recovery** — Admins can reset any staff/student password from their record. Staff can request a password reset (generates a temporary pin). Logged in audit trail.
+
+7. **Final Year Batch Graduation Processing** — Registrar tab: select eligible Level 400/500/600 students, run degree classification, generate graduation list, mark Graduated in batch. Eligibility checks: clearance approved, no F grades, credits meet minimum, CGPA ≥ minimum. Shows ineligible students with reasons.
+
+8. **Student Portal Onboarding** — New students (first login) see a welcome checklist: Complete Profile → Pay Fees → Register Courses → Check Timetable. Dismissible after all steps acknowledged.
+
+9. **Data Backup & Full Export** — SuperAdmin can export entire system data as JSON. Restore from JSON backup also available. Export logged in audit trail.
+
+10. **Help Center / User Guide** — Floating "?" help button per dashboard. Role-specific help panel slides in with key workflow steps (e.g. Lecturer: how to enter scores; Student: how to register courses; Registrar: how to publish results).
+
+11. **System Health Dashboard** — SuperAdmin tab showing:
+    - Total students, staff, courses, departments
+    - Students with no courses registered
+    - Courses with no scores entered
+    - Pending approvals count per stage
+    - Students flagged as spillover
+    - Data integrity alerts (unknown faculty, missing matric numbers)
+
+12. **Printable Graduation List** — Registrar generates official convocation list sorted by department and degree class, with institution heading, print/CSV export.
+
+13. **Result Amendment Workflow** — Post-publication corrections: Lecturer submits amendment request with reason → HOD approves → Registrar confirms. Amendment logged in audit trail with before/after scores.
 
 ### Modify
 
-- AdminDashboard: add "Bulk Reg" tab to sidebar nav (in addition to existing Students tab)
-- HODDashboard: add "Bulk Reg" tab to the tab list
-- DeanDashboard: add "Bulk Reg" tab to the tab list
-- Existing AI Scanner inside the Add Student dialog in AdminDashboard can remain as-is; the new BulkRegistrationTab is a more powerful standalone version
+- All level dropdowns, filters, loops, and report sections: extend from [100,200,300,400,500] to [100,200,300,400,500,600]
+- Graduation clearance eligibility: incorporate graduation requirements config (min credits, min CGPA, max years)
+- Senate/cumulative reports: handle Level 600 sections
+- Student academic standing: spillover flag shown in student profile and registrar view
+- Transcript: show degree classification
 
 ### Remove
-
 - Nothing removed
 
 ## Implementation Plan
 
-1. Create `src/frontend/src/pages/tabs/StudentProfileModal.tsx` — full student profile view with all data sections
-2. Create `src/frontend/src/pages/tabs/BulkRegistrationTab.tsx` — CSV upload + Scan & Import with image viewer and editable table
-3. Update `AdminDashboard.tsx` — add "Bulk Reg" nav item, import and render BulkRegistrationTab, add "View Profile" button to each student row that opens StudentProfileModal
-4. Update `HODDashboard.tsx` — add "Bulk Reg" tab, add "View Profile" button on student rows
-5. Update `DeanDashboard.tsx` — add "Bulk Reg" tab, add "View Profile" button on student rows
+1. Add `graduationRequirements` config to AppContext (per-department or system-wide): minCredits, maxCredits, minCGPA, minDuration, maxDuration
+2. Extend all LEVELS arrays to include 600
+3. Add spillover detection utility: compare student's current academic year vs min/max graduation year
+4. Add `DegreeClassification` utility function (CGPA → class label)
+5. Build `GraduationRequirementsTab` — settings form for Registrar/SuperAdmin
+6. Build `SystemInitWizard` — multi-step first-time setup modal
+7. Build `SystemHealthTab` — SuperAdmin dashboard panel
+8. Build `BatchGraduationTab` — Registrar batch graduation processing
+9. Build `ResultAmendmentTab` — amendment request/approval workflow
+10. Build `DataBackupTab` — export/import JSON
+11. Add Help Center floating button + role-specific content
+12. Add Student Onboarding checklist to StudentDashboard
+13. Add Password Reset to staff/student record dialogs
+14. Add Graduation List print view to Registrar
+15. Add Degree Classification to transcript, student portal, senate report

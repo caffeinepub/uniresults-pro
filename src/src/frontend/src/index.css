@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans.woff2") format("woff2");
+  font-weight: 200 700;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    /* Page background: #F4F7FB */
+    --background: 0.967 0.008 240;
+    /* Card surface: #FFFFFF */
+    --card: 1 0 0;
+    --card-foreground: 0.145 0.012 265;
+    --popover: 1 0 0;
+    --popover-foreground: 0.145 0.012 265;
+    /* Text primary: #111827 */
+    --foreground: 0.145 0.012 265;
+    /* Primary navy: #163A78 */
+    --primary: 0.29 0.09 258;
+    --primary-foreground: 0.98 0 0;
+    /* Secondary: light gray */
+    --secondary: 0.94 0.01 250;
+    --secondary-foreground: 0.29 0.09 258;
+    /* Muted */
+    --muted: 0.95 0.005 240;
+    --muted-foreground: 0.53 0.01 265;
+    /* Accent blue: #3B82F6 */
+    --accent: 0.61 0.15 250;
+    --accent-foreground: 0.98 0 0;
+    /* Destructive */
+    --destructive: 0.577 0.245 27;
+    --destructive-foreground: 0.98 0 0;
+    /* Border: #E6ECF3 */
+    --border: 0.93 0.01 250;
+    --input: 0.93 0.01 250;
+    --ring: 0.61 0.15 250;
+    /* Charts */
+    --chart-1: 0.61 0.15 250;
+    --chart-2: 0.72 0.19 145;
+    --chart-3: 0.77 0.17 75;
+    --chart-4: 0.57 0.18 30;
+    --chart-5: 0.69 0.16 320;
+    /* Sidebar */
+    --sidebar: 1 0 0;
+    --sidebar-foreground: 0.145 0.012 265;
+    --sidebar-primary: 0.29 0.09 258;
+    --sidebar-primary-foreground: 0.98 0 0;
+    --sidebar-accent: 0.94 0.03 250;
+    --sidebar-accent-foreground: 0.29 0.09 258;
+    --sidebar-border: 0.93 0.01 250;
+    --sidebar-ring: 0.61 0.15 250;
+    /* Custom */
+    --navy: 0.29 0.09 258;
+    --success: 0.72 0.19 145;
+    --warning: 0.77 0.17 75;
+  }
+
+  .dark {
+    --background: 0.13 0.01 265;
+    --card: 0.17 0.01 265;
+    --card-foreground: 0.95 0.005 240;
+    --popover: 0.17 0.01 265;
+    --popover-foreground: 0.95 0.005 240;
+    --foreground: 0.95 0.005 240;
+    --primary: 0.55 0.12 258;
+    --primary-foreground: 0.98 0 0;
+    --secondary: 0.22 0.01 265;
+    --secondary-foreground: 0.85 0.01 250;
+    --muted: 0.22 0.01 265;
+    --muted-foreground: 0.65 0.01 265;
+    --accent: 0.55 0.15 250;
+    --accent-foreground: 0.98 0 0;
+    --destructive: 0.55 0.22 27;
+    --destructive-foreground: 0.98 0 0;
+    --border: 0.28 0.02 265;
+    --input: 0.28 0.02 265;
+    --ring: 0.55 0.12 258;
+    --sidebar: 0.15 0.01 265;
+    --sidebar-foreground: 0.95 0.005 240;
+    --sidebar-border: 0.28 0.02 265;
+    --navy: 0.55 0.12 258;
+    --success: 0.65 0.17 145;
+    --warning: 0.72 0.15 75;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+}
+
+/* ===== Print Optimization ===== */
+@media print {
+  nav,
+  .no-print,
+  .notification-bell,
+  header,
+  footer {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+  .print-area {
+    page-break-inside: avoid;
+  }
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+  th,
+  td {
+    border: 1px solid #ccc !important;
+    padding: 4px 8px !important;
+    font-size: 10pt !important;
+    color: black !important;
+  }
+  thead tr {
+    background: #f0f0f0 !important;
+  }
+  @page {
+    margin: 15mm;
+    size: A4;
+  }
+  .rounded-xl,
+  .rounded-lg {
+    border-radius: 0 !important;
+  }
+  .shadow-lg,
+  .shadow-xs {
+    box-shadow: none !important;
+  }
+}
+
+/* Level-separated report sections */
+.level-section + .level-section {
+  page-break-before: always;
+}
+
+@media print {
+  .level-heading {
+    text-align: center;
+    margin-bottom: 1rem;
+    border: 2px solid #1a3a5c !important;
+    background: #f0f5ff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .level-section + .level-section {
+    page-break-before: always;
+  }
+}

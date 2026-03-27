@@ -93,17 +93,21 @@ import type { PendingRegistration } from "./LoginPage";
 import AdminInboxTab from "./tabs/AdminInboxTab";
 import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
 import AlumniManagementTab from "./tabs/AlumniManagementTab";
+import BatchGraduationTab from "./tabs/BatchGraduationTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CameraSecurityTab from "./tabs/CameraSecurityTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
+import DataBackupTab from "./tabs/DataBackupTab";
 import DeferralsTab from "./tabs/DefferralsTab";
 import { AdminTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
+import GraduationListTab from "./tabs/GraduationListTab";
+import GraduationRequirementsTab from "./tabs/GraduationRequirementsTab";
 import HostelManagementTab from "./tabs/HostelManagementTab";
 import LibraryClearanceTab from "./tabs/LibraryClearanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
@@ -111,6 +115,7 @@ import NoticeManagementTab from "./tabs/NoticeManagementTab";
 import PayrollTab from "./tabs/PayrollTab";
 import QRScannerModal from "./tabs/QRScannerModal";
 import ReportMonitorTab from "./tabs/ReportMonitorTab";
+import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
@@ -118,6 +123,7 @@ import SettingsTab from "./tabs/SettingsTab";
 import StaffTab from "./tabs/StaffTab";
 import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
+import SystemHealthTab from "./tabs/SystemHealthTab";
 
 export default function AdminDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -185,6 +191,14 @@ export default function AdminDashboard() {
   else if (activeTab === "library") view = <LibraryClearanceTab />;
   else if (activeTab === "admin_inbox") view = <AdminInboxTab />;
   else if (activeTab === "bulkReg") view = <BulkRegistrationTab />;
+  else if (activeTab === "batch_graduation") view = <BatchGraduationTab />;
+  else if (activeTab === "graduation_list") view = <GraduationListTab />;
+  else if (activeTab === "graduation_requirements")
+    view = <GraduationRequirementsTab />;
+  else if (activeTab === "data_backup") view = <DataBackupTab />;
+  else if (activeTab === "system_health") view = <SystemHealthTab />;
+  else if (activeTab === "result_amendment")
+    view = <ResultAmendmentTab userRole="Registrar" />;
   else view = <OverviewTab />;
 
   return (
@@ -1033,11 +1047,13 @@ function StudentsTab() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {["100", "200", "300", "400", "500"].map((l) => (
-                            <SelectItem key={l} value={l}>
-                              {l} Level
-                            </SelectItem>
-                          ))}
+                          {["100", "200", "300", "400", "500", "600"].map(
+                            (l) => (
+                              <SelectItem key={l} value={l}>
+                                {l} Level
+                              </SelectItem>
+                            ),
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1334,11 +1350,13 @@ function StudentsTab() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {["100", "200", "300", "400", "500"].map((l) => (
-                              <SelectItem key={l} value={l}>
-                                {l} Level
-                              </SelectItem>
-                            ))}
+                            {["100", "200", "300", "400", "500", "600"].map(
+                              (l) => (
+                                <SelectItem key={l} value={l}>
+                                  {l} Level
+                                </SelectItem>
+                              ),
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
