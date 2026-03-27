@@ -84,6 +84,7 @@ function EvalCard({
       scores,
       comment,
       timestamp: new Date().toISOString(),
+      submittedAt: new Date().toISOString(),
     };
     addLecturerEvaluation(ev);
     setSubmitted(true);
@@ -108,7 +109,7 @@ function EvalCard({
         ) : (
           <>
             {CRITERIA.map((c) => (
-              <div key={c.key} className="space-y-1">
+              <div key={String(c.key)} className="space-y-1">
                 <p className="text-xs font-medium">{c.label}</p>
                 <StarInput
                   value={scores[c.key]}

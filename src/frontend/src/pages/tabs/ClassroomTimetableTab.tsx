@@ -181,7 +181,7 @@ export default function ClassroomTimetableTab({
     setForm({
       courseCode: e.courseCode,
       courseName: e.courseName,
-      lecturerId: e.lecturerId,
+      lecturerId: e.lecturerId ?? "",
       room: e.room,
       day: e.day,
       startTime: e.startTime,
@@ -442,7 +442,7 @@ export default function ClassroomTimetableTab({
                   </div>
                 </TableCell>
                 <TableCell className="text-sm">
-                  {getLecturerName(e.lecturerId)}
+                  {getLecturerName(e.lecturerId ?? "")}
                 </TableCell>
                 <TableCell className="text-sm">{e.room}</TableCell>
                 <TableCell>

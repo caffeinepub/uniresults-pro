@@ -647,7 +647,6 @@ export default function SenateReportTab({ userRole, hodDepartmentId }: Props) {
               <SelectItem value="300">Level 300</SelectItem>
               <SelectItem value="400">Level 400</SelectItem>
               <SelectItem value="500">Level 500</SelectItem>
-              <SelectItem value="600">Level 600</SelectItem>
             </SelectContent>
           </Select>
         </div>

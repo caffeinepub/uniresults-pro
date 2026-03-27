@@ -50,14 +50,8 @@ import type {
 } from "../context/AppContext";
 import AttendanceTab from "./tabs/AttendanceTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
-import ClassroomTimetableTab from "./tabs/ClassroomTimetableTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
-import LecturerPortalTab from "./tabs/LecturerPortalTab";
-import LecturerRatingTab from "./tabs/LecturerRatingTab";
-import LecturerResultsTab from "./tabs/LecturerResultsTab";
-import MyEvaluationsTab from "./tabs/MyEvaluationsTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
-import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 
@@ -74,11 +68,6 @@ export default function LecturerDashboard() {
     },
     { label: "Mark Attendance", tab: "attendance", icon: ClipboardCheck },
     { label: "View Courses", tab: "overview", icon: BookOpen },
-    { label: "My Results", tab: "my_results", icon: ClipboardList },
-    { label: "My Portal", tab: "my_portal", icon: BookOpen },
-    { label: "Class Timetable", tab: "class_timetable", icon: ClipboardList },
-    { label: "My Ratings", tab: "my_ratings", icon: ClipboardList },
-    { label: "My Evaluations", tab: "my_evaluations", icon: ClipboardList },
   ];
 
   return (
@@ -114,18 +103,6 @@ export default function LecturerDashboard() {
         <ScoreEntrySheetTab />
       ) : activeTab === "results_processing" ? (
         <ResultsProcessingTab userRole="Lecturer" />
-      ) : activeTab === "result_amendment" ? (
-        <ResultAmendmentTab userRole="Lecturer" />
-      ) : activeTab === "my_results" ? (
-        <LecturerResultsTab />
-      ) : activeTab === "my_portal" ? (
-        <LecturerPortalTab />
-      ) : activeTab === "class_timetable" ? (
-        <LecturerClassTimetableTab />
-      ) : activeTab === "exam_timetable" ? (
-        <LecturerExamTimetableTab />
-      ) : activeTab === "my_ratings" ? (
-        <LecturerRatingTab studentView={false} />
       ) : (
         <CoursesView />
       )}
@@ -1279,25 +1256,6 @@ function TeachingScheduleTab() {
 function LecturerExamScheduleTab() {
   const { currentUser, courses } = useApp();
   // Show courses where lecturerPrincipal matches current user
-  const myCourses = courses.filter(
-    (c) => c.lecturerPrincipal === currentUser?.principal,
-  );
-  const myCourseCodes = myCourses.map((c) => c.code);
-  return <ExamScheduleTab filterCourseCodes={myCourseCodes} isAdmin={false} />;
-}
-
-function LecturerClassTimetableTab() {
-  const { currentUser, staffMembers } = useApp();
-  const me = staffMembers.find(
-    (s) => s.staffId === currentUser?.principal || s.name === currentUser?.name,
-  );
-  return (
-    <ClassroomTimetableTab filterForStaffId={me?.staffId} isAdmin={false} />
-  );
-}
-
-function LecturerExamTimetableTab() {
-  const { currentUser, courses } = useApp();
   const myCourses = courses.filter(
     (c) => c.lecturerPrincipal === currentUser?.principal,
   );

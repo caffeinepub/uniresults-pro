@@ -47,7 +47,6 @@ import {
   RefreshCw,
   ScanLine,
   ScrollText,
-  Search,
   Settings2,
   Trash2,
   Upload,
@@ -58,9 +57,7 @@ import {
   Building,
   DollarSign,
   GraduationCap,
-  Link2,
   Mail,
-  MessageSquare,
   QrCode,
   Shield,
   UserCheck,
@@ -79,6 +76,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import type { Course } from "../backend.d";
+import { InstitutionTypeBanner } from "../components/InstitutionTypeBanner";
 import { TabContext } from "../components/Layout";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
@@ -96,45 +94,32 @@ import type { PendingRegistration } from "./LoginPage";
 import AdminInboxTab from "./tabs/AdminInboxTab";
 import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
 import AlumniManagementTab from "./tabs/AlumniManagementTab";
-import AttendanceScreeningTab from "./tabs/AttendanceScreeningTab";
-import BatchGraduationTab from "./tabs/BatchGraduationTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CameraSecurityTab from "./tabs/CameraSecurityTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
-import DataBackupTab from "./tabs/DataBackupTab";
 import DeferralsTab from "./tabs/DefferralsTab";
 import { AdminTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
-import FacultyDeptManagementTab from "./tabs/FacultyDeptManagementTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
-import FeedbackManagementTab from "./tabs/FeedbackManagementTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
-import GraduationCertificateModal from "./tabs/GraduationCertificateModal";
-import GraduationListTab from "./tabs/GraduationListTab";
-import GraduationRequirementsTab from "./tabs/GraduationRequirementsTab";
 import HostelManagementTab from "./tabs/HostelManagementTab";
-import JAMBImportTab from "./tabs/JAMBImportTab";
-import LecturerEvaluationTab from "./tabs/LecturerEvaluationTab";
+import JambAdmissionScannerTab from "./tabs/JambAdmissionScannerTab";
 import LibraryClearanceTab from "./tabs/LibraryClearanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import NoticeManagementTab from "./tabs/NoticeManagementTab";
 import PayrollTab from "./tabs/PayrollTab";
 import QRScannerModal from "./tabs/QRScannerModal";
 import ReportMonitorTab from "./tabs/ReportMonitorTab";
-import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
-import SIWESManagementTab from "./tabs/SIWESManagementTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
 import StaffTab from "./tabs/StaffTab";
 import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
-import SystemHealthTab from "./tabs/SystemHealthTab";
-import { SettingsWizardButton } from "./tabs/SystemInitWizard";
 
 export default function AdminDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -156,8 +141,7 @@ export default function AdminDashboard() {
     { label: "Results Pipeline", tab: "results_processing", icon: BarChart3 },
     { label: "Dept. Results", tab: "dept_results", icon: BarChart3 },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
-    { label: "JAMB Import", tab: "jamb_import", icon: FileUp },
-    { label: "SIWES", tab: "siwes", icon: BookOpen },
+    { label: "JAMB Import", tab: "jamb_import", icon: ScanLine },
   ];
 
   let view: React.ReactNode;
@@ -204,22 +188,7 @@ export default function AdminDashboard() {
   else if (activeTab === "library") view = <LibraryClearanceTab />;
   else if (activeTab === "admin_inbox") view = <AdminInboxTab />;
   else if (activeTab === "bulkReg") view = <BulkRegistrationTab />;
-  else if (activeTab === "batch_graduation") view = <BatchGraduationTab />;
-  else if (activeTab === "graduation_list") view = <GraduationListTab />;
-  else if (activeTab === "graduation_requirements")
-    view = <GraduationRequirementsTab />;
-  else if (activeTab === "data_backup") view = <DataBackupTab />;
-  else if (activeTab === "system_health") view = <SystemHealthTab />;
-  else if (activeTab === "result_amendment")
-    view = <ResultAmendmentTab userRole="Registrar" />;
-  else if (activeTab === "feedback") view = <FeedbackManagementTab />;
-  else if (activeTab === "faculty_dept_mgmt")
-    view = <FacultyDeptManagementTab />;
-  else if (activeTab === "evaluations") view = <LecturerEvaluationTabAdmin />;
-  else if (activeTab === "attendance_screening")
-    view = <AttendanceScreeningTabAdmin />;
-  else if (activeTab === "jamb_import") view = <JAMBImportTab />;
-  else if (activeTab === "siwes") view = <SIWESManagementTab />;
+  else if (activeTab === "jamb_import") view = <JambAdmissionScannerTab />;
   else view = <OverviewTab />;
 
   return (
@@ -229,6 +198,9 @@ export default function AdminDashboard() {
         onClose={() => setQrScannerOpen(false)}
       />
       <NoticeBoardPanel userRole={adminUser?.role ?? "SuperAdmin"} />
+      <div className="flex items-center gap-2 mb-2 no-print">
+        <InstitutionTypeBanner />
+      </div>
       <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
           <button
@@ -330,44 +302,6 @@ export default function AdminDashboard() {
           <Mail className="w-3 h-3" />
           Inbox
         </button>
-        <button
-          type="button"
-          data-ocid="admin_quick.feedback.button"
-          onClick={() => setActiveTab("feedback")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
-            activeTab === "feedback"
-              ? "bg-primary/10 text-primary border-primary/30"
-              : ""
-          }`}
-        >
-          <MessageSquare className="w-3 h-3" />
-          Feedback
-        </button>
-      </div>
-      <div className="flex justify-end mb-2 gap-2 flex-wrap no-print">
-        <button
-          type="button"
-          data-ocid="admin_quick.faculty_dept_mgmt.button"
-          onClick={() => setActiveTab("faculty_dept_mgmt")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === "faculty_dept_mgmt" ? "bg-primary/10 text-primary border-primary/30" : ""}`}
-        >
-          Faculty &amp; Depts
-        </button>
-        <button
-          type="button"
-          data-ocid="admin_quick.share_link.button"
-          onClick={() => {
-            navigator.clipboard.writeText(window.location.href);
-            toast.success(
-              "Program link copied to clipboard! Share it with testers.",
-            );
-          }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <Link2 className="w-3 h-3" />
-          Share Link
-        </button>
-        <SettingsWizardButton />
       </div>
       {view}
     </>
@@ -771,7 +705,6 @@ function StudentsTab() {
     departments,
     addStudent,
     updateStudent,
-    deleteStudent,
     results,
     courses,
     deferralApplications,
@@ -820,8 +753,6 @@ function StudentsTab() {
     state: "",
     lga: "",
     status: "accepted",
-    programmeType: "Undergraduate" as "Undergraduate" | "Postgraduate",
-    pgLevel: "" as "" | "MSc" | "PGDE" | "PhD" | "PGD" | "MBA" | "MEd" | "MA",
   });
 
   const [scanImage, setScanImage] = useState<string | null>(null);
@@ -838,19 +769,6 @@ function StudentsTab() {
   const [selectedProfileId, setSelectedProfileId] = useState<bigint | null>(
     null,
   );
-  const [editStudent, setEditStudent] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState<{
-    name: string;
-    regNo: string;
-    matric: string;
-    deptId: string;
-    state: string;
-    lga: string;
-    gender: string;
-    status: string;
-  } | null>(null);
-  const [certStudent, setCertStudent] = useState<ExtendedStudent | null>(null);
-  const [certOpen, setCertOpen] = useState(false);
 
   const filtered = students.filter((s) => {
     const matchSearch =
@@ -883,8 +801,6 @@ function StudentsTab() {
       state: "",
       lga: "",
       status: "accepted",
-      programmeType: "Undergraduate",
-      pgLevel: "",
     });
   }
 
@@ -908,8 +824,6 @@ function StudentsTab() {
       regNo: form.regNo || undefined,
       state: form.state || undefined,
       lga: form.lga || undefined,
-      programmeType: form.programmeType,
-      pgLevel: form.pgLevel || undefined,
     } as any);
     resetManualForm();
     setOpen(false);
@@ -1126,13 +1040,11 @@ function StudentsTab() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {["100", "200", "300", "400", "500", "600"].map(
-                            (l) => (
-                              <SelectItem key={l} value={l}>
-                                {l} Level
-                              </SelectItem>
-                            ),
-                          )}
+                          {["100", "200", "300", "400", "500"].map((l) => (
+                            <SelectItem key={l} value={l}>
+                              {l} Level
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1251,57 +1163,6 @@ function StudentsTab() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label>Programme Type</Label>
-                      <Select
-                        value={form.programmeType}
-                        onValueChange={(v) =>
-                          setForm((f) => ({
-                            ...f,
-                            programmeType: v as
-                              | "Undergraduate"
-                              | "Postgraduate",
-                            pgLevel: "",
-                          }))
-                        }
-                      >
-                        <SelectTrigger data-ocid="students.programme_type.select">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Undergraduate">
-                            Undergraduate
-                          </SelectItem>
-                          <SelectItem value="Postgraduate">
-                            Postgraduate
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {form.programmeType === "Postgraduate" && (
-                      <div>
-                        <Label>PG Level</Label>
-                        <Select
-                          value={form.pgLevel}
-                          onValueChange={(v) =>
-                            setForm((f) => ({ ...f, pgLevel: v as any }))
-                          }
-                        >
-                          <SelectTrigger data-ocid="students.pg_level.select">
-                            <SelectValue placeholder="Select PG level" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="MSc">MSc</SelectItem>
-                            <SelectItem value="PGDE">PGDE</SelectItem>
-                            <SelectItem value="PhD">PhD</SelectItem>
-                            <SelectItem value="PGD">PGD</SelectItem>
-                            <SelectItem value="MBA">MBA</SelectItem>
-                            <SelectItem value="MEd">MEd</SelectItem>
-                            <SelectItem value="MA">MA</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
                   </div>
                   <DialogFooter>
                     <Button
@@ -1480,13 +1341,11 @@ function StudentsTab() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {["100", "200", "300", "400", "500", "600"].map(
-                              (l) => (
-                                <SelectItem key={l} value={l}>
-                                  {l} Level
-                                </SelectItem>
-                              ),
-                            )}
+                            {["100", "200", "300", "400", "500"].map((l) => (
+                              <SelectItem key={l} value={l}>
+                                {l} Level
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -1884,59 +1743,6 @@ function StudentsTab() {
                         <Eye className="w-3 h-3" />
                         Profile
                       </button>
-                      {(s.status === "Graduated" ||
-                        s.status === "graduated") && (
-                        <button
-                          type="button"
-                          data-ocid={`students.cert.button.${i + 1}`}
-                          onClick={() => {
-                            setCertStudent(s);
-                            setCertOpen(true);
-                          }}
-                          className="text-xs text-green-600 hover:underline inline-flex items-center gap-1"
-                        >
-                          🎓 Certificate
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        data-ocid={`students.edit_button.${i + 1}`}
-                        onClick={() => {
-                          setEditStudent(s);
-                          setEditForm({
-                            name: s.name,
-                            regNo: (s as any).regNo ?? "",
-                            matric: s.matricNumber,
-                            deptId: String(s.departmentId),
-                            state: (s as any).state ?? "",
-                            lga: (s as any).lga ?? "",
-                            gender: s.gender ?? "",
-                            status: s.status ?? "accepted",
-                          });
-                        }}
-                        className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-                      >
-                        <Pencil className="w-3 h-3" />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        data-ocid={`students.delete_button.${i + 1}`}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Delete student ${s.name}? This cannot be undone.`,
-                            )
-                          ) {
-                            deleteStudent(s.id);
-                            toast.success("Student deleted");
-                          }
-                        }}
-                        className="text-xs text-destructive hover:underline inline-flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        Delete
-                      </button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -1952,185 +1758,6 @@ function StudentsTab() {
           open={docOpen}
           onOpenChange={setDocOpen}
         />
-      )}
-
-      {/* Edit Student Modal */}
-      {editStudent && editForm && (
-        <Dialog
-          open={!!editStudent}
-          onOpenChange={(v) => {
-            if (!v) {
-              setEditStudent(null);
-              setEditForm(null);
-            }
-          }}
-        >
-          <DialogContent data-ocid="students.dialog" className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Edit Student</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Full Name</Label>
-                  <Input
-                    data-ocid="students.input"
-                    value={editForm.name}
-                    onChange={(e) =>
-                      setEditForm((f) =>
-                        f ? { ...f, name: e.target.value } : f,
-                      )
-                    }
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Matric Number</Label>
-                  <Input
-                    data-ocid="students.input"
-                    value={editForm.matric}
-                    onChange={(e) =>
-                      setEditForm((f) =>
-                        f ? { ...f, matric: e.target.value } : f,
-                      )
-                    }
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">JAMB Reg No</Label>
-                  <Input
-                    data-ocid="students.input"
-                    value={editForm.regNo}
-                    onChange={(e) =>
-                      setEditForm((f) =>
-                        f ? { ...f, regNo: e.target.value } : f,
-                      )
-                    }
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Department</Label>
-                  <select
-                    data-ocid="students.select"
-                    value={editForm.deptId}
-                    onChange={(e) =>
-                      setEditForm((f) =>
-                        f ? { ...f, deptId: e.target.value } : f,
-                      )
-                    }
-                    className="w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
-                  >
-                    <option value="">-- Select --</option>
-                    {departments.map((d) => (
-                      <option key={String(d.id)} value={String(d.id)}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-xs">State</Label>
-                  <Input
-                    data-ocid="students.input"
-                    value={editForm.state}
-                    onChange={(e) =>
-                      setEditForm((f) =>
-                        f ? { ...f, state: e.target.value } : f,
-                      )
-                    }
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">LGA</Label>
-                  <Input
-                    data-ocid="students.input"
-                    value={editForm.lga}
-                    onChange={(e) =>
-                      setEditForm((f) =>
-                        f ? { ...f, lga: e.target.value } : f,
-                      )
-                    }
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Sex</Label>
-                  <select
-                    data-ocid="students.select"
-                    value={editForm.gender}
-                    onChange={(e) =>
-                      setEditForm((f) =>
-                        f ? { ...f, gender: e.target.value } : f,
-                      )
-                    }
-                    className="w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
-                  >
-                    <option value="">-- Select --</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-xs">Status</Label>
-                  <select
-                    data-ocid="students.select"
-                    value={editForm.status}
-                    onChange={(e) =>
-                      setEditForm((f) =>
-                        f ? { ...f, status: e.target.value } : f,
-                      )
-                    }
-                    className="w-full text-sm border border-border rounded px-2 py-1.5 bg-background"
-                  >
-                    <option value="accepted">Accepted</option>
-                    <option value="active">Active</option>
-                    <option value="deferred">Deferred</option>
-                    <option value="graduated">Graduated</option>
-                    <option value="withdrawn">Withdrawn</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                data-ocid="students.cancel_button"
-                variant="outline"
-                onClick={() => {
-                  setEditStudent(null);
-                  setEditForm(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                data-ocid="students.save_button"
-                onClick={() => {
-                  if (!editForm.name || !editForm.matric) {
-                    toast.error("Name and matric number are required");
-                    return;
-                  }
-                  updateStudent(editStudent.id, {
-                    name: editForm.name,
-                    matricNumber: editForm.matric,
-                    departmentId: editForm.deptId
-                      ? BigInt(editForm.deptId)
-                      : editStudent.departmentId,
-                    status: editForm.status as any,
-                    gender: editForm.gender || undefined,
-                    state: editForm.state || undefined,
-                    lga: editForm.lga || undefined,
-                    regNo: editForm.regNo || undefined,
-                  } as any);
-                  toast.success("Student updated");
-                  setEditStudent(null);
-                  setEditForm(null);
-                }}
-              >
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       )}
 
       {/* Student Detail Modal */}
@@ -2193,23 +1820,12 @@ function StudentsTab() {
         studentId={selectedProfileId}
         onClose={() => setSelectedProfileId(null)}
       />
-      {certStudent && (
-        <GraduationCertificateModal
-          student={certStudent}
-          open={certOpen}
-          onClose={() => {
-            setCertOpen(false);
-            setCertStudent(null);
-          }}
-        />
-      )}
     </div>
   );
 }
 
 function CoursesTab() {
   const { courses, departments, addCourse, bulkAddCourses } = useApp();
-  const [courseSearch, setCourseSearch] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkRows, setBulkRows] = useState<
     {
@@ -2292,7 +1908,6 @@ function CoursesTab() {
     deptId: "",
     lecturer: "",
     semester: "First",
-    courseType: "Core",
   });
 
   function handleAdd() {
@@ -2305,8 +1920,7 @@ function CoursesTab() {
       departmentId: BigInt(form.deptId),
       lecturerPrincipal: form.lecturer || "unassigned",
       semester: form.semester,
-      courseType: form.courseType,
-    } as any);
+    });
     setForm({
       name: "",
       code: "",
@@ -2314,7 +1928,6 @@ function CoursesTab() {
       deptId: "",
       lecturer: "",
       semester: "First",
-      courseType: "Core",
     });
     setOpen(false);
     toast.success("Course added");
@@ -2430,23 +2043,6 @@ function CoursesTab() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label>Course Type</Label>
-                  <Select
-                    value={form.courseType}
-                    onValueChange={(v) =>
-                      setForm((f) => ({ ...f, courseType: v }))
-                    }
-                  >
-                    <SelectTrigger data-ocid="courses.coursetype.select">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Core">Core</SelectItem>
-                      <SelectItem value="Elective">Elective</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -2540,30 +2136,6 @@ function CoursesTab() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-      <div className="flex gap-2 mb-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            data-ocid="coursemgmt.search_input"
-            placeholder="Search by code, name, or department..."
-            value={courseSearch}
-            onChange={(e) => setCourseSearch(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-      </div>
-      <div className="flex gap-2 mb-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            data-ocid="coursemgmt.search_input"
-            placeholder="Search by code, name, or department..."
-            value={courseSearch}
-            onChange={(e) => setCourseSearch(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
       </div>
       <div className="bg-card rounded-xl border border-border shadow-xs">
         <Table>
@@ -3844,7 +3416,6 @@ function RolesTab() {
 function CourseManagementTab() {
   const { courses, departments, addCourse, updateCourse, removeCourse } =
     useApp();
-  const [cmSearch, setCmSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
   const [form, setForm] = useState({
@@ -3854,7 +3425,6 @@ function CourseManagementTab() {
     deptId: "",
     lecturer: "",
     semester: "First",
-    courseType: "Core",
   });
 
   function resetForm() {
@@ -3865,7 +3435,6 @@ function CourseManagementTab() {
       deptId: "",
       lecturer: "",
       semester: "First",
-      courseType: "Core",
     });
     setEditing(null);
   }
@@ -3884,7 +3453,6 @@ function CourseManagementTab() {
       deptId: String(course.departmentId),
       lecturer: course.lecturerPrincipal,
       semester: course.semester,
-      courseType: (course as any).courseType ?? "Core",
     });
     setOpen(true);
   }
@@ -3894,7 +3462,7 @@ function CourseManagementTab() {
       toast.error("Name, code, and department are required");
       return;
     }
-    const courseData = {
+    const courseData: Course = {
       id: editing?.id ?? BigInt(Date.now()),
       name: form.name,
       code: form.code,
@@ -3902,8 +3470,7 @@ function CourseManagementTab() {
       departmentId: BigInt(form.deptId),
       lecturerPrincipal: form.lecturer || "unassigned",
       semester: form.semester,
-      courseType: form.courseType,
-    } as any;
+    };
     if (editing) {
       updateCourse(courseData);
       toast.success("Course updated");
@@ -4043,23 +3610,6 @@ function CourseManagementTab() {
                   placeholder="e.g. lecturer-1"
                 />
               </div>
-              <div>
-                <Label>Course Type</Label>
-                <Select
-                  value={form.courseType}
-                  onValueChange={(v) =>
-                    setForm((f) => ({ ...f, courseType: v }))
-                  }
-                >
-                  <SelectTrigger data-ocid="coursemgmt.coursetype.select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Core">Core</SelectItem>
-                    <SelectItem value="Elective">Elective</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
             <DialogFooter>
               <Button
@@ -4082,18 +3632,6 @@ function CourseManagementTab() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-      <div className="flex gap-2 mb-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            data-ocid="coursemgmt.search_input"
-            placeholder="Search by code, name, or department..."
-            value={cmSearch}
-            onChange={(e) => setCmSearch(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
       </div>
       <div className="bg-card rounded-xl border border-border shadow-xs">
         <Table>
@@ -4120,65 +3658,52 @@ function CourseManagementTab() {
                 </TableCell>
               </TableRow>
             )}
-            {courses
-              .filter((c) => {
-                const dept2 = departments.find(
-                  (d) => String(d.id) === String(c.departmentId),
-                );
-                const q = cmSearch.toLowerCase();
-                return (
-                  !q ||
-                  c.code.toLowerCase().includes(q) ||
-                  c.name.toLowerCase().includes(q) ||
-                  (dept2?.name ?? "").toLowerCase().includes(q)
-                );
-              })
-              .map((c, i) => {
-                const dept = departments.find(
-                  (d) => String(d.id) === String(c.departmentId),
-                );
-                return (
-                  <TableRow
-                    key={String(c.id)}
-                    data-ocid={`coursemgmt.item.${i + 1}`}
-                  >
-                    <TableCell className="font-mono text-sm font-semibold">
-                      {c.code}
-                    </TableCell>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {dept?.name ?? "-"}
-                    </TableCell>
-                    <TableCell>{String(c.creditUnits)}</TableCell>
-                    <TableCell>{c.semester}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {c.lecturerPrincipal}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          data-ocid={`coursemgmt.edit_button.${i + 1}`}
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openEdit(c)}
-                          className="h-7 text-xs"
-                        >
-                          <Pencil className="w-3 h-3 mr-1" /> Edit
-                        </Button>
-                        <Button
-                          data-ocid={`coursemgmt.delete_button.${i + 1}`}
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDelete(c.id)}
-                          className="h-7 text-xs"
-                        >
-                          <Trash2 className="w-3 h-3 mr-1" /> Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+            {courses.map((c, i) => {
+              const dept = departments.find(
+                (d) => String(d.id) === String(c.departmentId),
+              );
+              return (
+                <TableRow
+                  key={String(c.id)}
+                  data-ocid={`coursemgmt.item.${i + 1}`}
+                >
+                  <TableCell className="font-mono text-sm font-semibold">
+                    {c.code}
+                  </TableCell>
+                  <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {dept?.name ?? "-"}
+                  </TableCell>
+                  <TableCell>{String(c.creditUnits)}</TableCell>
+                  <TableCell>{c.semester}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {c.lecturerPrincipal}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        data-ocid={`coursemgmt.edit_button.${i + 1}`}
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEdit(c)}
+                        className="h-7 text-xs"
+                      >
+                        <Pencil className="w-3 h-3 mr-1" /> Edit
+                      </Button>
+                      <Button
+                        data-ocid={`coursemgmt.delete_button.${i + 1}`}
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(c.id)}
+                        className="h-7 text-xs"
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" /> Delete
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -4193,19 +3718,13 @@ function AcademicCalendarTab() {
     setActiveCalendar,
     toggleRegistrationOpen,
     toggleAddDropOpen,
-    setAddDropDeadline,
   } = useApp();
   const [open, setOpen] = useState(false);
-  const [deadlineEdit, setDeadlineEdit] = useState<{
-    id: bigint;
-    value: string;
-  } | null>(null);
   const [form, setForm] = useState({
     session: "",
     semester: "First" as "First" | "Second",
     startDate: "",
     endDate: "",
-    addDropDeadline: "",
   });
 
   function handleAdd() {
@@ -4222,16 +3741,9 @@ function AcademicCalendarTab() {
       endDate: form.endDate,
       registrationOpen: false,
       addDropOpen: false,
-      addDropDeadline: form.addDropDeadline || undefined,
     };
     addAcademicCalendar(cal);
-    setForm({
-      session: "",
-      semester: "First",
-      startDate: "",
-      endDate: "",
-      addDropDeadline: "",
-    });
+    setForm({ session: "", semester: "First", startDate: "", endDate: "" });
     setOpen(false);
     toast.success("Academic calendar added");
   }
@@ -4320,17 +3832,6 @@ function AcademicCalendarTab() {
                   />
                 </div>
               </div>
-              <div>
-                <Label>Add/Drop Deadline (Mid-Semester Break, optional)</Label>
-                <Input
-                  data-ocid="calendar.add_drop_deadline.input"
-                  type="date"
-                  value={form.addDropDeadline}
-                  onChange={(e) =>
-                    setForm({ ...form, addDropDeadline: e.target.value })
-                  }
-                />
-              </div>
             </div>
             <DialogFooter>
               <Button
@@ -4351,58 +3852,6 @@ function AcademicCalendarTab() {
           </DialogContent>
         </Dialog>
       </div>
-
-      {/* Portal Status Summary */}
-      {(() => {
-        const activeCal = academicCalendars.find((c) => c.isActive);
-        if (!activeCal) return null;
-        const deadlinePassed = activeCal.addDropDeadline
-          ? new Date() > new Date(activeCal.addDropDeadline)
-          : false;
-        const deadlineFormatted = activeCal.addDropDeadline
-          ? new Date(activeCal.addDropDeadline).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })
-          : null;
-        return (
-          <div
-            className={`rounded-xl border p-4 mb-2 ${activeCal.registrationOpen ? "bg-success/8 border-success/25" : "bg-destructive/8 border-destructive/20"}`}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="font-semibold text-sm">
-                Portal Status — {activeCal.session} {activeCal.semester}{" "}
-                Semester (Active)
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs">
-                <span
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full font-semibold border ${activeCal.registrationOpen ? "bg-success/15 text-success border-success/30" : "bg-destructive/15 text-destructive border-destructive/30"}`}
-                >
-                  {activeCal.registrationOpen
-                    ? "✓ Registration OPEN"
-                    : "✗ Registration CLOSED"}
-                </span>
-                <span
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full font-semibold border ${activeCal.addDropOpen ? "bg-primary/15 text-primary border-primary/30" : "bg-muted/30 text-muted-foreground border-border"}`}
-                >
-                  {activeCal.addDropOpen
-                    ? "✓ Add/Drop OPEN"
-                    : "Add/Drop CLOSED"}
-                </span>
-                {deadlineFormatted && (
-                  <span
-                    className={`text-xs ${deadlinePassed ? "text-destructive font-medium" : "text-muted-foreground"}`}
-                  >
-                    Add/Drop Deadline: {deadlineFormatted}
-                    {deadlinePassed && " ⚠ Passed"}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       <div className="bg-card rounded-xl border border-border shadow-xs">
         <Table>
@@ -4470,83 +3919,20 @@ function AcademicCalendarTab() {
                   </Button>
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <Button
-                      size="sm"
-                      variant={cal.addDropOpen ? "default" : "outline"}
-                      onClick={() => {
-                        toggleAddDropOpen(cal.id);
-                        toast.success(
-                          cal.addDropOpen
-                            ? "Add/Drop closed"
-                            : "Add/Drop opened",
-                        );
-                      }}
-                      className={`h-7 text-xs ${cal.addDropOpen ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}`}
-                      data-ocid={`calendar.toggle_add_drop.${i + 1}`}
-                    >
-                      {cal.addDropOpen ? "✓ Open" : "Closed"}
-                    </Button>
-                    {cal.addDropDeadline && (
-                      <span
-                        className={`text-[10px] ${new Date() > new Date(cal.addDropDeadline) ? "text-destructive font-semibold" : "text-muted-foreground"}`}
-                      >
-                        {new Date() > new Date(cal.addDropDeadline)
-                          ? "⚠ Deadline Passed"
-                          : `Deadline: ${cal.addDropDeadline}`}
-                      </span>
-                    )}
-                    {deadlineEdit &&
-                    String(deadlineEdit.id) === String(cal.id) ? (
-                      <div className="flex gap-1 items-center mt-1">
-                        <Input
-                          type="date"
-                          className="h-6 text-xs w-28 px-1"
-                          value={deadlineEdit.value}
-                          onChange={(e) =>
-                            setDeadlineEdit({
-                              id: cal.id,
-                              value: e.target.value,
-                            })
-                          }
-                        />
-                        <Button
-                          size="sm"
-                          className="h-6 text-[10px] px-2"
-                          onClick={() => {
-                            setAddDropDeadline(cal.id, deadlineEdit.value);
-                            setDeadlineEdit(null);
-                            toast.success("Add/Drop deadline updated");
-                          }}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-[10px] px-2"
-                          onClick={() => setDeadlineEdit(null)}
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        className="flex items-center gap-1 text-[10px] text-primary hover:underline"
-                        onClick={() =>
-                          setDeadlineEdit({
-                            id: cal.id,
-                            value: cal.addDropDeadline ?? "",
-                          })
-                        }
-                        data-ocid={`calendar.edit_deadline.${i + 1}`}
-                      >
-                        <Pencil className="w-2.5 h-2.5" />{" "}
-                        {cal.addDropDeadline ? "Edit" : "Set"} Deadline
-                      </button>
-                    )}
-                  </div>
+                  <Button
+                    size="sm"
+                    variant={cal.addDropOpen ? "default" : "outline"}
+                    onClick={() => {
+                      toggleAddDropOpen(cal.id);
+                      toast.success(
+                        cal.addDropOpen ? "Add/Drop closed" : "Add/Drop opened",
+                      );
+                    }}
+                    className={`h-7 text-xs ${cal.addDropOpen ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}`}
+                    data-ocid={`calendar.toggle_add_drop.${i + 1}`}
+                  >
+                    {cal.addDropOpen ? "✓ Open" : "Closed"}
+                  </Button>
                 </TableCell>
                 <TableCell>
                   {!cal.isActive && (
@@ -4565,40 +3951,6 @@ function AcademicCalendarTab() {
             ))}
           </TableBody>
         </Table>
-      </div>
-
-      {/* Evaluation Window Control */}
-      <EvaluationWindowControl />
-    </div>
-  );
-}
-
-function EvaluationWindowControl() {
-  const { evaluationWindowOpen, setEvaluationWindowOpen } = useApp();
-  return (
-    <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4">
-      <div>
-        <p className="font-semibold text-sm">Lecturer Evaluation Window</p>
-        <p className="text-xs text-muted-foreground">
-          Allow students to submit lecturer evaluations for the active semester
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        <span
-          className={`text-xs font-medium ${evaluationWindowOpen ? "text-green-600" : "text-muted-foreground"}`}
-        >
-          {evaluationWindowOpen ? "Open" : "Closed"}
-        </span>
-        <button
-          type="button"
-          data-ocid="calendar.eval_window.toggle"
-          onClick={() => setEvaluationWindowOpen(!evaluationWindowOpen)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${evaluationWindowOpen ? "bg-primary" : "bg-muted-foreground/30"}`}
-        >
-          <span
-            className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${evaluationWindowOpen ? "translate-x-6" : "translate-x-1"}`}
-          />
-        </button>
       </div>
     </div>
   );
@@ -5881,12 +5233,4 @@ function PendingRegistrationsTab() {
       )}
     </div>
   );
-}
-
-function LecturerEvaluationTabAdmin() {
-  return <LecturerEvaluationTab userRole="Registrar" />;
-}
-
-function AttendanceScreeningTabAdmin() {
-  return <AttendanceScreeningTab />;
 }

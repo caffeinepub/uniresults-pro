@@ -16,7 +16,6 @@ export type RoleName =
   | "Lecturer"
   | "Student"
   | "Dean"
-  | "ExamOfficer"
   | null;
 
 export interface AppUser {
@@ -36,10 +35,12 @@ export type ExtendedStudent = Student & {
   state?: string;
   lga?: string;
   regNo?: string;
-  admissionYear?: number;
-  status?: string;
-  programmeType?: "Undergraduate" | "Postgraduate";
-  pgLevel?: "MSc" | "PGDE" | "PhD" | "PGD" | "MBA" | "MEd" | "MA";
+  admissionSession?: string;
+  admissionYear?: string;
+  programmeType?: string;
+  department?: string;
+  admissionDate?: string;
+  programme?: string;
 };
 
 export type ExtendedResult = AcademicResult & {
@@ -62,11 +63,97 @@ export interface InstitutionSettings {
   email: string;
   website: string;
   logoText: string;
+  institutionType?: string;
 }
 
 export interface SyncStatus {
   isOnline: boolean;
   lastSaved: string | null;
+}
+export interface GraduationRequirements {
+  id: string;
+  departmentId: string;
+  minCreditUnits: number;
+  maxCreditUnits: number;
+  minCGPA: number;
+  minDuration: number;
+  maxDuration: number;
+}
+
+export interface ClassroomTimetableEntry {
+  id: bigint;
+  day: string;
+  startTime: string;
+  endTime: string;
+  courseCode: string;
+  courseName: string;
+  room: string;
+  level: string;
+  session: string;
+  semester: string;
+  departmentId?: bigint;
+  staffId?: string;
+  lecturerId?: string;
+}
+
+export interface LecturerEvaluation {
+  id: string;
+  lecturerId: string;
+  studentId: string;
+  courseId: string;
+  session: string;
+  semester: string;
+  scores: {
+    teaching: number;
+    punctuality: number;
+    delivery: number;
+    accessibility: number;
+    overall: number;
+  };
+  comment: string;
+  timestamp: string;
+  submittedAt: string;
+}
+
+export interface LecturerDocument {
+  id: bigint;
+  staffId: string;
+  name: string;
+  type: string;
+  url: string;
+  uploadedAt: string;
+  size?: string;
+  courseId?: bigint;
+}
+
+export interface LecturerRating {
+  id: bigint;
+  lecturerId?: string;
+  staffId: string;
+  studentId: bigint;
+  courseId: bigint;
+  courseCode: string;
+  session: string;
+  semester: string;
+  rating: number;
+  comment?: string;
+  submittedAt: string;
+}
+
+export interface SIWESRecord {
+  id: bigint;
+  studentId: bigint;
+  session: string;
+  companyName: string;
+  supervisorName: string;
+  supervisorPhone: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  status: "Pending Placement" | "Placed" | "Active" | "Completed" | "Failed";
+  logBookSubmitted: boolean;
+  supervisorScore: number | null;
+  coordinatorComment: string;
 }
 
 export interface CourseRegistration {
@@ -104,7 +191,6 @@ export interface AcademicCalendar {
   endDate: string;
   registrationOpen: boolean;
   addDropOpen: boolean;
-  addDropDeadline?: string;
 }
 
 export interface GradeAppeal {
@@ -269,86 +355,6 @@ export interface CourseFeedback {
   submittedAt: string;
 }
 
-export interface GraduationRequirements {
-  id: string;
-  departmentId: string; // 'all' for system-wide default
-  minCreditUnits: number;
-  maxCreditUnits: number;
-  minCGPA: number;
-  minDuration: number;
-  maxDuration: number;
-}
-export interface ClassroomTimetableEntry {
-  id: bigint;
-  courseCode: string;
-  courseName: string;
-  lecturerId: string;
-  room: string;
-  day: string;
-  startTime: string;
-  endTime: string;
-  level: string;
-  departmentId: bigint;
-  session: string;
-  semester: string;
-}
-
-export interface LecturerDocument {
-  id: bigint;
-  staffId: string;
-  name: string;
-  type: string;
-  url: string;
-  uploadedAt: string;
-  size: string;
-}
-
-export interface LecturerRating {
-  id: bigint;
-  staffId: string;
-  studentId: bigint;
-  courseCode: string;
-  session: string;
-  semester: string;
-  rating: number;
-  comment: string;
-  submittedAt: string;
-}
-
-export interface LecturerEvaluation {
-  id: string;
-  studentId: string;
-  lecturerId: string;
-  courseId: string;
-  session: string;
-  semester: string;
-  scores: {
-    teaching: number;
-    punctuality: number;
-    delivery: number;
-    accessibility: number;
-    overall: number;
-  };
-  comment: string;
-  timestamp: string;
-}
-
-export interface SIWESRecord {
-  id: bigint;
-  studentId: bigint;
-  session: string;
-  companyName: string;
-  supervisorName: string;
-  supervisorPhone: string;
-  location: string;
-  startDate: string;
-  endDate: string;
-  status: "Pending Placement" | "Placed" | "Active" | "Completed" | "Failed";
-  logBookSubmitted: boolean;
-  supervisorScore: number | null;
-  coordinatorComment: string;
-}
-
 interface AppState {
   currentUser: AppUser | null;
   departments: ExtendedDepartment[];
@@ -378,14 +384,11 @@ interface AppState {
   moderatorNames: Record<string, string>;
   graduationRequirements: GraduationRequirements[];
   classroomTimetable: ClassroomTimetableEntry[];
+  lecturerEvaluations: LecturerEvaluation[];
   lecturerDocuments: LecturerDocument[];
   lecturerRatings: LecturerRating[];
-  lateRegFineAmount: number;
-  registrationDeadline: string;
-  practicalAssignments: Record<string, string>;
-  lecturerEvaluations: LecturerEvaluation[];
-  evaluationWindowOpen: boolean;
   siwesRecords: SIWESRecord[];
+  evaluationWindowOpen: boolean;
 }
 
 interface AppContextValue extends AppState {
@@ -426,7 +429,6 @@ interface AppContextValue extends AppState {
   setActiveCalendar: (id: bigint) => void;
   toggleRegistrationOpen: (id: bigint) => void;
   toggleAddDropOpen: (id: bigint) => void;
-  setAddDropDeadline: (id: bigint, deadline: string) => void;
   submitGradeAppeal: (appeal: GradeAppeal) => void;
   respondToAppeal: (
     id: bigint,
@@ -485,27 +487,23 @@ interface AppContextValue extends AppState {
   rejectResultsByCourse: (courseId: bigint, comment: string) => void;
   publishResultsByCourse: (courseId: bigint) => void;
   publishResultsBatch: (courseIds: bigint[]) => void;
-  addGraduationRequirement: (req: Omit<GraduationRequirements, "id">) => void;
-  updateGraduationRequirement: (req: GraduationRequirements) => void;
-  deleteGraduationRequirement: (id: string) => void;
   updateFaculty: (id: bigint, updates: Partial<Faculty>) => void;
   deleteFaculty: (id: bigint) => void;
   updateDepartment: (id: bigint, updates: Partial<ExtendedDepartment>) => void;
   deleteDepartment: (id: bigint) => void;
-  deleteStudent: (id: bigint) => void;
+  addGraduationRequirement: (req: Omit<GraduationRequirements, "id">) => void;
+  updateGraduationRequirement: (req: GraduationRequirements) => void;
+  deleteGraduationRequirement: (id: string) => void;
   addClassroomTimetableEntry: (entry: ClassroomTimetableEntry) => void;
   updateClassroomTimetableEntry: (entry: ClassroomTimetableEntry) => void;
   removeClassroomTimetableEntry: (id: bigint) => void;
+  addLecturerEvaluation: (eval_: LecturerEvaluation) => void;
   addLecturerDocument: (doc: LecturerDocument) => void;
   removeLecturerDocument: (id: bigint) => void;
   addLecturerRating: (rating: LecturerRating) => void;
-  setLateRegFineAmount: (amount: number) => void;
-  setRegistrationDeadline: (date: string) => void;
-  setPracticalAssignment: (courseId: string, staffId: string) => void;
-  addLecturerEvaluation: (ev: LecturerEvaluation) => void;
+  addSIWESRecord: (record: SIWESRecord) => void;
+  updateSIWESRecord: (record: SIWESRecord) => void;
   setEvaluationWindowOpen: (open: boolean) => void;
-  addSIWESRecord: (rec: SIWESRecord) => void;
-  updateSIWESRecord: (rec: SIWESRecord) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -552,7 +550,6 @@ const FULL_DEPARTMENTS: ExtendedDepartment[] = [
   { id: BigInt(26), name: "Science Education", facultyId: BigInt(8) },
   { id: BigInt(27), name: "Biology Education", facultyId: BigInt(8) },
   { id: BigInt(28), name: "Chemistry Education", facultyId: BigInt(8) },
-  { id: BigInt(29), name: "Mathematics Education", facultyId: BigInt(8) },
 ];
 
 const DEMO_DEPARTMENTS = FULL_DEPARTMENTS;
@@ -1907,1488 +1904,9 @@ const FULL_COURSES: Course[] = [
     lecturerPrincipal: "lecturer-3",
     semester: "Second",
   },
-  // Mathematics Education (dept 29) - BSc Ed
-  {
-    id: BigInt(148),
-    name: "Foundation of Education",
-    code: "EDU101M",
-    creditUnits: BigInt(3),
-    departmentId: BigInt(29),
-    lecturerPrincipal: "lecturer-3",
-    semester: "First",
-  },
-  {
-    id: BigInt(149),
-    name: "Teaching Practice I",
-    code: "TP101M",
-    creditUnits: BigInt(3),
-    departmentId: BigInt(29),
-    lecturerPrincipal: "lecturer-3",
-    semester: "First",
-  },
-  {
-    id: BigInt(150),
-    name: "General Studies in Education I",
-    code: "GSE101M",
-    creditUnits: BigInt(2),
-    departmentId: BigInt(29),
-    lecturerPrincipal: "lecturer-3",
-    semester: "Second",
-  },
-  {
-    id: BigInt(151),
-    name: "Mathematics for Education I",
-    code: "MTH101E",
-    creditUnits: BigInt(3),
-    departmentId: BigInt(29),
-    lecturerPrincipal: "lecturer-3",
-    semester: "First",
-  },
-  {
-    id: BigInt(152),
-    name: "Mathematics for Education II",
-    code: "MTH201E",
-    creditUnits: BigInt(3),
-    departmentId: BigInt(29),
-    lecturerPrincipal: "lecturer-3",
-    semester: "Second",
-  },
-  // Postgraduate Courses (level 700-800) - cast as any since Course type doesn't have level field
-  ...([
-    {
-      id: BigInt(153),
-      name: "Advanced Research Methods",
-      code: "GSE701",
-      creditUnits: BigInt(3),
-      level: BigInt(700),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-    {
-      id: BigInt(154),
-      name: "Curriculum Theory and Development",
-      code: "EDU703",
-      creditUnits: BigInt(3),
-      level: BigInt(700),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-2",
-      semester: "First",
-    },
-    {
-      id: BigInt(155),
-      name: "Advanced Algorithm Design",
-      code: "CSC701",
-      creditUnits: BigInt(3),
-      level: BigInt(700),
-      departmentId: BigInt(1),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-    {
-      id: BigInt(156),
-      name: "Measurement and Evaluation",
-      code: "GSE702",
-      creditUnits: BigInt(3),
-      level: BigInt(700),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    {
-      id: BigInt(157),
-      name: "Teaching Practice Supervision",
-      code: "EDU705",
-      creditUnits: BigInt(3),
-      level: BigInt(700),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(158),
-      name: "Machine Learning Fundamentals",
-      code: "CSC702",
-      creditUnits: BigInt(3),
-      level: BigInt(700),
-      departmentId: BigInt(1),
-      lecturerPrincipal: "lecturer-1",
-      semester: "Second",
-    },
-    {
-      id: BigInt(159),
-      name: "Doctoral Seminar in Education",
-      code: "EDU801",
-      creditUnits: BigInt(3),
-      level: BigInt(800),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-2",
-      semester: "First",
-    },
-    {
-      id: BigInt(160),
-      name: "Thesis Research",
-      code: "EDU802",
-      creditUnits: BigInt(6),
-      level: BigInt(800),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-  ] as any[]),
-  // 300-level and 400-level courses for Science Education departments
-  ...([
-    // Computer Science Education (dept 25) - 300 level
-    {
-      id: BigInt(161),
-      name: "Educational Psychology",
-      code: "EDU301",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-2",
-      semester: "First",
-    },
-    {
-      id: BigInt(162),
-      name: "Curriculum Development",
-      code: "EDU302",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    {
-      id: BigInt(163),
-      name: "Computer Networks",
-      code: "CSC301E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(164),
-      name: "Database Systems for Education",
-      code: "CSC302E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(165),
-      name: "General Studies III",
-      code: "GSE301",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-    {
-      id: BigInt(166),
-      name: "Research Methods in Education",
-      code: "EDU303",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    // Computer Science Education (dept 25) - 400 level
-    {
-      id: BigInt(167),
-      name: "Teaching Practice",
-      code: "TP401",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(168),
-      name: "Project Work",
-      code: "CSC401E",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(169),
-      name: "Software Engineering for Education",
-      code: "CSC402E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-    {
-      id: BigInt(170),
-      name: "ICT in Education",
-      code: "EDU401",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    // Science Education (dept 26) - 300 level
-    {
-      id: BigInt(171),
-      name: "Educational Psychology",
-      code: "EDU301S",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(26),
-      lecturerPrincipal: "lecturer-2",
-      semester: "First",
-    },
-    {
-      id: BigInt(172),
-      name: "Curriculum Development",
-      code: "EDU302S",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(26),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    {
-      id: BigInt(173),
-      name: "Physical Science III",
-      code: "SCI301",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(26),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(174),
-      name: "Laboratory Methods",
-      code: "SCI302",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(26),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(175),
-      name: "Research Methods",
-      code: "EDU303S",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(26),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-    // Science Education (dept 26) - 400 level
-    {
-      id: BigInt(176),
-      name: "Teaching Practice",
-      code: "TP401S",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(26),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(177),
-      name: "Project Work",
-      code: "SCI401",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(26),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(178),
-      name: "Environmental Science",
-      code: "SCI402",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(26),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    // Biology Education (dept 27) - 300 level
-    {
-      id: BigInt(179),
-      name: "Cell Biology & Genetics",
-      code: "BIO301",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      lecturerPrincipal: "lecturer-2",
-      semester: "First",
-    },
-    {
-      id: BigInt(180),
-      name: "Ecology & Evolution",
-      code: "BIO302",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    {
-      id: BigInt(181),
-      name: "Educational Psychology",
-      code: "EDU301B",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(182),
-      name: "Curriculum Development",
-      code: "EDU302B",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(183),
-      name: "Microbiology",
-      code: "BIO303",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-    {
-      id: BigInt(184),
-      name: "Research Methods in Education",
-      code: "EDU303B",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    // Biology Education (dept 27) - 400 level
-    {
-      id: BigInt(185),
-      name: "Teaching Practice",
-      code: "TP401B",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(27),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(186),
-      name: "Project Work",
-      code: "BIO401",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(27),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(187),
-      name: "Physiology",
-      code: "BIO402",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-    // Chemistry Education (dept 28) - 100 level
-    {
-      id: BigInt(188),
-      name: "General Chemistry I",
-      code: "CHM101E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-2",
-      semester: "First",
-    },
-    {
-      id: BigInt(189),
-      name: "General Chemistry II",
-      code: "CHM102E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    {
-      id: BigInt(190),
-      name: "Foundation of Education",
-      code: "EDU101C",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(191),
-      name: "General Studies I",
-      code: "GSE101C",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-1",
-      semester: "Second",
-    },
-    // Chemistry Education (dept 28) - 200 level
-    {
-      id: BigInt(192),
-      name: "Organic Chemistry",
-      code: "CHM201E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-2",
-      semester: "First",
-    },
-    {
-      id: BigInt(193),
-      name: "Inorganic Chemistry",
-      code: "CHM202E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    {
-      id: BigInt(194),
-      name: "Foundation of Education II",
-      code: "EDU201C",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(195),
-      name: "General Studies II",
-      code: "GSE201C",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-    // Chemistry Education (dept 28) - 300 level
-    {
-      id: BigInt(196),
-      name: "Physical Chemistry",
-      code: "CHM301E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-2",
-      semester: "First",
-    },
-    {
-      id: BigInt(197),
-      name: "Analytical Chemistry",
-      code: "CHM302E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    {
-      id: BigInt(198),
-      name: "Educational Psychology",
-      code: "EDU301C",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(199),
-      name: "Curriculum Development",
-      code: "EDU302C",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(200),
-      name: "Research Methods",
-      code: "EDU303C",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-1",
-      semester: "Second",
-    },
-    // Chemistry Education (dept 28) - 400 level
-    {
-      id: BigInt(201),
-      name: "Teaching Practice",
-      code: "TP401C",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(202),
-      name: "Project Work",
-      code: "CHM401E",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(203),
-      name: "Industrial Chemistry",
-      code: "CHM402E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-    // Mathematics Education (dept 29) - 300 level
-    {
-      id: BigInt(204),
-      name: "Abstract Algebra",
-      code: "MAT301E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      lecturerPrincipal: "lecturer-2",
-      semester: "First",
-    },
-    {
-      id: BigInt(205),
-      name: "Real Analysis",
-      code: "MAT302E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      lecturerPrincipal: "lecturer-2",
-      semester: "Second",
-    },
-    {
-      id: BigInt(206),
-      name: "Educational Psychology",
-      code: "EDU301M",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(207),
-      name: "Curriculum Development",
-      code: "EDU302M",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(208),
-      name: "Numerical Methods",
-      code: "MAT303E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-    {
-      id: BigInt(209),
-      name: "Research Methods",
-      code: "EDU303M",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      lecturerPrincipal: "lecturer-1",
-      semester: "Second",
-    },
-    // Mathematics Education (dept 29) - 400 level
-    {
-      id: BigInt(210),
-      name: "Teaching Practice",
-      code: "TP401M",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(29),
-      lecturerPrincipal: "lecturer-3",
-      semester: "First",
-    },
-    {
-      id: BigInt(211),
-      name: "Project Work",
-      code: "MAT401E",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(29),
-      lecturerPrincipal: "lecturer-3",
-      semester: "Second",
-    },
-    {
-      id: BigInt(212),
-      name: "Operations Research",
-      code: "MAT402E",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      lecturerPrincipal: "lecturer-1",
-      semester: "First",
-    },
-  ] as any[]),
-  // =====================================================
-  // NUC COMPLETE CURRICULUM - Added Courses
-  // Science Education Departments (25=CSE, 26=SciEd, 27=BioEd, 28=ChemEd, 29=MthEd)
-  // IDs start at 213
-  // =====================================================
-  ...([] as any[]).concat([
-    // ---- GSE Complete Catalog ---- Biology Education (dept 27) ----
-    {
-      id: BigInt(213),
-      name: "Use of English I",
-      code: "GSE101B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(214),
-      name: "Use of English II",
-      code: "GSE102B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(215),
-      name: "Nigerian Peoples and Culture",
-      code: "GSE103B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(216),
-      name: "History and Philosophy of Science",
-      code: "GSE104B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(217),
-      name: "Philosophy and Logic",
-      code: "GSE201B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(218),
-      name: "Entrepreneurship I",
-      code: "GSE202B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(219),
-      name: "Peace Studies and Conflict Resolution",
-      code: "GSE203B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(220),
-      name: "Introduction to Computer Applications",
-      code: "GSE204B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: false,
-    },
-    {
-      id: BigInt(221),
-      name: "Entrepreneurship II",
-      code: "GSE301B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(222),
-      name: "Environmental and Occupational Health",
-      code: "GSE302B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: false,
-    },
-    // ---- Biology Education Core Courses ----
-    {
-      id: BigInt(223),
-      name: "General Biology I",
-      code: "BIO101",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(224),
-      name: "General Biology II",
-      code: "BIO102",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(225),
-      name: "General Biology Practical I",
-      code: "BIO103",
-      creditUnits: BigInt(1),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(226),
-      name: "General Biology Practical II",
-      code: "BIO104",
-      creditUnits: BigInt(1),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(227),
-      name: "History of Education in Nigeria",
-      code: "EDU102B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(228),
-      name: "Genetics I",
-      code: "BIO201",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(229),
-      name: "Cell Biology",
-      code: "BIO202",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(230),
-      name: "Botany I",
-      code: "BIO203",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(231),
-      name: "Zoology I",
-      code: "BIO204",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(232),
-      name: "Ecology",
-      code: "BIO205",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(233),
-      name: "Microbiology I",
-      code: "BIO206",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(234),
-      name: "Principles of Teaching",
-      code: "EDU202B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(235),
-      name: "Microbiology II",
-      code: "BIO304",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(236),
-      name: "Botany II",
-      code: "BIO305",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(237),
-      name: "SIWES",
-      code: "SIWES301B",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(238),
-      name: "Special Education",
-      code: "EDU402B",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(239),
-      name: "Research Methods in Biology",
-      code: "BIO403",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(240),
-      name: "Teaching Practice (Biology Ed)",
-      code: "EDU404B",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(27),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(241),
-      name: "Research Project (Biology Ed)",
-      code: "EDU403B",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(242),
-      name: "Parasitology",
-      code: "BIO404",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(243),
-      name: "Virology",
-      code: "BIO405",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(27),
-      semester: "Second",
-      isCore: false,
-    },
-    // ---- GSE for Chemistry Education (dept 28) ----
-    {
-      id: BigInt(244),
-      name: "Use of English I",
-      code: "GSE101C2",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(245),
-      name: "Use of English II",
-      code: "GSE102C",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(28),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(246),
-      name: "Nigerian Peoples and Culture",
-      code: "GSE103C",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(28),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(247),
-      name: "Philosophy and Logic",
-      code: "GSE201C2",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(248),
-      name: "Entrepreneurship I",
-      code: "GSE202C2",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(28),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(249),
-      name: "Entrepreneurship II",
-      code: "GSE301C2",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: true,
-    },
-    // ---- Chemistry Education Core Courses ----
-    {
-      id: BigInt(250),
-      name: "General Chemistry Practical I",
-      code: "CHM103",
-      creditUnits: BigInt(1),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(251),
-      name: "General Chemistry Practical II",
-      code: "CHM104",
-      creditUnits: BigInt(1),
-      departmentId: BigInt(28),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(252),
-      name: "Principles of Teaching",
-      code: "EDU202C",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(28),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(253),
-      name: "Inorganic Chemistry I",
-      code: "CHM203",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(254),
-      name: "Analytical Chemistry I",
-      code: "CHM204",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(255),
-      name: "Physical Chemistry Practical",
-      code: "CHM205",
-      creditUnits: BigInt(1),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(256),
-      name: "Inorganic Chemistry II",
-      code: "CHM303",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(257),
-      name: "Analytical Chemistry II",
-      code: "CHM304",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(258),
-      name: "Industrial Chemistry",
-      code: "CHM305",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      semester: "Second",
-      isCore: false,
-    },
-    {
-      id: BigInt(259),
-      name: "SIWES",
-      code: "SIWES301C",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(260),
-      name: "Special Education",
-      code: "EDU402C",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(261),
-      name: "Research Methods in Chemistry",
-      code: "CHM403",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(262),
-      name: "Teaching Practice (Chemistry Ed)",
-      code: "EDU404C",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(28),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(263),
-      name: "Research Project (Chemistry Ed)",
-      code: "EDU403C",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(28),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(264),
-      name: "Polymer Chemistry",
-      code: "CHM404",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(28),
-      semester: "Second",
-      isCore: false,
-    },
-    // ---- GSE for Computer Science Education (dept 25) ----
-    {
-      id: BigInt(265),
-      name: "Use of English I",
-      code: "GSE101CSE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(25),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(266),
-      name: "Use of English II",
-      code: "GSE102CSE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(267),
-      name: "Nigerian Peoples and Culture",
-      code: "GSE103CSE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(268),
-      name: "Entrepreneurship I",
-      code: "GSE202CSE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(269),
-      name: "Entrepreneurship II",
-      code: "GSE301CSE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(25),
-      semester: "First",
-      isCore: true,
-    },
-    // ---- Computer Science Education Core Courses ----
-    {
-      id: BigInt(270),
-      name: "Computer Hardware",
-      code: "CSC103",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(271),
-      name: "Principles of Teaching",
-      code: "EDU202CSE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(272),
-      name: "Database Systems I",
-      code: "CSC203",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(273),
-      name: "Systems Analysis and Design",
-      code: "CSC204",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(274),
-      name: "Numerical Methods",
-      code: "CSC205",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: false,
-    },
-    {
-      id: BigInt(275),
-      name: "Computer Networks",
-      code: "CSC303",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(276),
-      name: "Software Engineering I",
-      code: "CSC304",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(277),
-      name: "Database Systems II",
-      code: "CSC305",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(278),
-      name: "SIWES",
-      code: "SIWES301CSE",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(25),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(279),
-      name: "Special Education",
-      code: "EDU402CSE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(25),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(280),
-      name: "Computer Graphics",
-      code: "CSC403",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(281),
-      name: "Research Methods in Computing",
-      code: "CSC404",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(282),
-      name: "Teaching Practice (CSE)",
-      code: "EDU404CSE",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(25),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(283),
-      name: "Research Project (CSE)",
-      code: "EDU403CSE",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(284),
-      name: "Mobile Application Development",
-      code: "CSC405",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(25),
-      semester: "Second",
-      isCore: false,
-    },
-    // ---- GSE for Mathematics Education (dept 29) ----
-    {
-      id: BigInt(285),
-      name: "Use of English I",
-      code: "GSE101MTE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(29),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(286),
-      name: "Use of English II",
-      code: "GSE102MTE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(29),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(287),
-      name: "Nigerian Peoples and Culture",
-      code: "GSE103MTE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(29),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(288),
-      name: "Entrepreneurship I",
-      code: "GSE202MTE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(29),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(289),
-      name: "Entrepreneurship II",
-      code: "GSE301MTE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(29),
-      semester: "First",
-      isCore: true,
-    },
-    // ---- Mathematics Education Core Courses ----
-    {
-      id: BigInt(290),
-      name: "Logic and Set Theory",
-      code: "MTH103",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(291),
-      name: "Trigonometry and Analytic Geometry",
-      code: "MTH104",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(292),
-      name: "Principles of Teaching",
-      code: "EDU202MTE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(29),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(293),
-      name: "Abstract Algebra I",
-      code: "MTH203",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(294),
-      name: "Probability and Statistics I",
-      code: "MTH204",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(295),
-      name: "Real Analysis",
-      code: "MTH205",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(296),
-      name: "Numerical Analysis",
-      code: "MTH303",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(297),
-      name: "Probability and Statistics II",
-      code: "MTH304",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(298),
-      name: "Differential Equations",
-      code: "MTH305",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(299),
-      name: "SIWES",
-      code: "SIWES301MTE",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(29),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(300),
-      name: "Special Education",
-      code: "EDU402MTE",
-      creditUnits: BigInt(2),
-      departmentId: BigInt(29),
-      semester: "First",
-      isCore: false,
-    },
-    {
-      id: BigInt(301),
-      name: "Research Methods in Mathematics",
-      code: "MTH403",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(302),
-      name: "Teaching Practice (Mathematics Ed)",
-      code: "EDU404MTE",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(29),
-      semester: "First",
-      isCore: true,
-    },
-    {
-      id: BigInt(303),
-      name: "Research Project (Mathematics Ed)",
-      code: "EDU403MTE",
-      creditUnits: BigInt(6),
-      departmentId: BigInt(29),
-      semester: "Second",
-      isCore: true,
-    },
-    {
-      id: BigInt(304),
-      name: "Complex Analysis",
-      code: "MTH404",
-      creditUnits: BigInt(3),
-      departmentId: BigInt(29),
-      semester: "Second",
-      isCore: true,
-    },
-  ] as any[]),
 ];
 
-function getCourseType(code: string): "Core" | "Elective" {
-  const prefix = code.replace(/[0-9]/g, "").replace(/E$/, "").toUpperCase();
-  // GSE (General Studies/Education) = Elective
-  if (prefix === "GSE") return "Elective";
-  // Courses ending with E suffix (elective marker in some depts)
-  if (code.endsWith("E")) return "Elective";
-  // TP (Teaching Practice) = Elective
-  if (prefix === "TP") return "Elective";
-  // 300/400 level second-semester courses of non-core depts = Elective (roughly 30%)
-  const num = Number.parseInt(code.replace(/[^0-9]/g, "")) || 100;
-  if (
-    num >= 300 &&
-    code.includes("2") &&
-    !code.startsWith("CSC") &&
-    !code.startsWith("EDU") &&
-    !code.startsWith("PHY") &&
-    !code.startsWith("MTH")
-  )
-    return "Elective";
-  return "Core";
-}
-
-const DEMO_COURSES = FULL_COURSES.map(
-  (c) => ({ ...c, courseType: getCourseType(c.code) }) as any,
-);
+const DEMO_COURSES = FULL_COURSES;
 
 // ============================================================
 // ADMISSION 2025/2026 - Faculty of Science Education
@@ -4387,1332 +2905,6 @@ const ADMISSION_CHM_2025: ExtendedStudent[] = [
   },
 ];
 
-// ============================================================
-// ADMISSION 2025/2026 - Education & Computer Science (98 students)
-// Extracted from official admission list
-// ============================================================
-const ADMISSION_CSE_2025: ExtendedStudent[] = [
-  {
-    id: BigInt(500),
-    name: "Abubakar Abdulmutalib",
-    matricNumber: "CSE/2025/001",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-001",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025515209521A",
-  },
-  {
-    id: BigInt(501),
-    name: "Bello Aminu Muhammad",
-    matricNumber: "CSE/2025/002",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-002",
-    gender: "Male",
-    state: "Niger",
-    lga: "Mariga",
-    jambRegNo: "2025503211120A",
-  },
-  {
-    id: BigInt(502),
-    name: "Hassan Nafisa",
-    matricNumber: "CSE/2025/003",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-003",
-    gender: "Female",
-    state: "Niger",
-    lga: "Mariga",
-    jambRegNo: "2025508802620F",
-  },
-  {
-    id: BigInt(503),
-    name: "Hassan Suleiman",
-    matricNumber: "CSE/2025/004",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-004",
-    gender: "Male",
-    state: "Niger",
-    lga: "Mariga",
-    jambRegNo: "2025510455510F",
-  },
-  {
-    id: BigInt(504),
-    name: "Nuhu Umar Faruq",
-    matricNumber: "CSE/2025/005",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-005",
-    gender: "Male",
-    state: "Kebbi",
-    lga: "Birnin Kebbi",
-    jambRegNo: "2025518318190A",
-  },
-  {
-    id: BigInt(505),
-    name: "Shehu Ismail",
-    matricNumber: "CSE/2025/006",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-006",
-    gender: "Male",
-    state: "Niger",
-    lga: "Rafi",
-    jambRegNo: "2025500597390F",
-  },
-  {
-    id: BigInt(506),
-    name: "Yakubu Hudu",
-    matricNumber: "CSE/2025/007",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-007",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025504729650F",
-  },
-  {
-    id: BigInt(507),
-    name: "Zaggi Catherine",
-    matricNumber: "CSE/2025/008",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-008",
-    gender: "Female",
-    state: "Niger",
-    lga: "Paiko",
-    jambRegNo: "2025501526380F",
-  },
-  {
-    id: BigInt(508),
-    name: "Abdulazeez Abdulsamiu",
-    matricNumber: "CSE/2025/009",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-009",
-    gender: "Male",
-    state: "Oyo",
-    lga: "Ogbomosho North",
-    jambRegNo: "2025517770100A",
-  },
-  {
-    id: BigInt(509),
-    name: "Abdulganiyu Abbas Yakubu",
-    matricNumber: "CSE/2025/010",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-010",
-    gender: "Male",
-    state: "Kwara",
-    lga: "Ifelodun",
-    jambRegNo: "2025506473710F",
-  },
-  {
-    id: BigInt(510),
-    name: "Abduljabbar Farida",
-    matricNumber: "CSE/2025/011",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-011",
-    gender: "Female",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025503298780F",
-  },
-  {
-    id: BigInt(511),
-    name: "Abdulkareem Awwal",
-    matricNumber: "CSE/2025/012",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-012",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025515534130F",
-  },
-  {
-    id: BigInt(512),
-    name: "Abdullahi Hajara Buhari",
-    matricNumber: "CSE/2025/013",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-013",
-    gender: "Female",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025515978630F",
-  },
-  {
-    id: BigInt(513),
-    name: "Abdullahi Muhammad Anache",
-    matricNumber: "CSE/2025/014",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-014",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025504628730A",
-  },
-  {
-    id: BigInt(514),
-    name: "Abdullahi Rofiat Ayomide",
-    matricNumber: "CSE/2025/015",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-015",
-    gender: "Female",
-    state: "Kwara",
-    lga: "Asa",
-    jambRegNo: "2025518001350A",
-  },
-  {
-    id: BigInt(515),
-    name: "Abdulrasheed Shukurat",
-    matricNumber: "CSE/2025/016",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-016",
-    gender: "Female",
-    state: "Oyo",
-    lga: "Ogbomosho North",
-    jambRegNo: "2025503461210F",
-  },
-  {
-    id: BigInt(516),
-    name: "Abdulrazak Sherif",
-    matricNumber: "CSE/2025/017",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-017",
-    gender: "Male",
-    state: "Kwara",
-    lga: "Ilorin East",
-    jambRegNo: "2025503495720A",
-  },
-  {
-    id: BigInt(517),
-    name: "Abubakar Abdulahad Ladan",
-    matricNumber: "CSE/2025/018",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-018",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025506007546A",
-  },
-  {
-    id: BigInt(518),
-    name: "Abubakar Ibrahim",
-    matricNumber: "CSE/2025/019",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-019",
-    gender: "Male",
-    state: "Niger",
-    lga: "Mariga",
-    jambRegNo: "2025504727100F",
-  },
-  {
-    id: BigInt(519),
-    name: "Abubakar Ibrahim",
-    matricNumber: "CSE/2025/020",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-020",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025513711610F",
-  },
-  {
-    id: BigInt(520),
-    name: "Abubakar Junaidu",
-    matricNumber: "CSE/2025/021",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-021",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025900119290F",
-  },
-  {
-    id: BigInt(521),
-    name: "Abubakar-Siddiku Maryam",
-    matricNumber: "CSE/2025/022",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-022",
-    gender: "Female",
-    state: "Oyo",
-    lga: "Ogbomosho North",
-    jambRegNo: "2025504585110F",
-  },
-  {
-    id: BigInt(522),
-    name: "Adeleke John Adeolu",
-    matricNumber: "CSE/2025/023",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-023",
-    gender: "Male",
-    state: "Kwara",
-    lga: "Asa",
-    jambRegNo: "2025500081990A",
-  },
-  {
-    id: BigInt(523),
-    name: "Ahmed Saheed",
-    matricNumber: "CSE/2025/024",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-024",
-    gender: "Male",
-    state: "Oyo",
-    lga: "Ogbomosho North",
-    jambRegNo: "2025511978870F",
-  },
-  {
-    id: BigInt(524),
-    name: "Akanbi Adewale Williams",
-    matricNumber: "CSE/2025/025",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-025",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025513402420F",
-  },
-  {
-    id: BigInt(525),
-    name: "Aliyu Usman",
-    matricNumber: "CSE/2025/026",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-026",
-    gender: "Male",
-    state: "Nassarawa",
-    lga: "Lafia",
-    jambRegNo: "2025511170280A",
-  },
-  {
-    id: BigInt(526),
-    name: "Bako Bulus",
-    matricNumber: "CSE/2025/027",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-027",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025509586380A",
-  },
-  {
-    id: BigInt(527),
-    name: "Bala Abdulhameed Kuta",
-    matricNumber: "CSE/2025/028",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-028",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025517167920F",
-  },
-  {
-    id: BigInt(528),
-    name: "Bello Ibrahim Gambo",
-    matricNumber: "CSE/2025/029",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-029",
-    gender: "Male",
-    state: "Kebbi",
-    lga: "Birnin Kebbi",
-    jambRegNo: "2025505740300A",
-  },
-  {
-    id: BigInt(529),
-    name: "Bello Nasir",
-    matricNumber: "CSE/2025/030",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-030",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025504211910A",
-  },
-  {
-    id: BigInt(530),
-    name: "Dauda Silas",
-    matricNumber: "CSE/2025/031",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-031",
-    gender: "Male",
-    state: "Anambra",
-    lga: "Awka South",
-    jambRegNo: "2025502193900A",
-  },
-  {
-    id: BigInt(531),
-    name: "Egbuchunam Blessing Ngozi",
-    matricNumber: "CSE/2025/032",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-032",
-    gender: "Female",
-    state: "Anambra",
-    lga: "Awka South",
-    jambRegNo: "2025511241420F",
-  },
-  {
-    id: BigInt(532),
-    name: "Gazali Abdulwaris",
-    matricNumber: "CSE/2025/033",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-033",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025515595780F",
-  },
-  {
-    id: BigInt(533),
-    name: "Gbagir Luper Jonathan",
-    matricNumber: "CSE/2025/034",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-034",
-    gender: "Male",
-    state: "Benue",
-    lga: "Vandeikya",
-    jambRegNo: "2025900927070A",
-  },
-  {
-    id: BigInt(534),
-    name: "Giwa Lawrence Moses",
-    matricNumber: "CSE/2025/035",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-035",
-    gender: "Male",
-    state: "Kaduna",
-    lga: "Kachia",
-    jambRegNo: "2025505623790F",
-  },
-  {
-    id: BigInt(535),
-    name: "Godabe Hafsat Uba",
-    matricNumber: "CSE/2025/036",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-036",
-    gender: "Female",
-    state: "Kaduna",
-    lga: "Kachia",
-    jambRegNo: "2025500128130F",
-  },
-  {
-    id: BigInt(536),
-    name: "Hamisu Salihu Agodema",
-    matricNumber: "CSE/2025/037",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-037",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025517700110F",
-  },
-  {
-    id: BigInt(537),
-    name: "Haruna Abdullahi Nadappo",
-    matricNumber: "CSE/2025/038",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-038",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025503981410F",
-  },
-  {
-    id: BigInt(538),
-    name: "Haruna Ibrahim",
-    matricNumber: "CSE/2025/039",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-039",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025517714670A",
-  },
-  {
-    id: BigInt(539),
-    name: "Hassan Abbas Dikko",
-    matricNumber: "CSE/2025/040",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-040",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025516145800F",
-  },
-  {
-    id: BigInt(540),
-    name: "Hosea Destiny",
-    matricNumber: "CSE/2025/041",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-041",
-    gender: "Male",
-    state: "Kaduna",
-    lga: "Jema'A",
-    jambRegNo: "2025501283010F",
-  },
-  {
-    id: BigInt(541),
-    name: "Ibrahim John",
-    matricNumber: "CSE/2025/042",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-042",
-    gender: "Male",
-    state: "Kebbi",
-    lga: "Zuru",
-    jambRegNo: "2025517402210F",
-  },
-  {
-    id: BigInt(542),
-    name: "Ibrahim Joshua",
-    matricNumber: "CSE/2025/043",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-043",
-    gender: "Male",
-    state: "Kebbi",
-    lga: "Zuru",
-    jambRegNo: "2025504536600A",
-  },
-  {
-    id: BigInt(543),
-    name: "Ibrahim Maryam Anaba",
-    matricNumber: "CSE/2025/044",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-044",
-    gender: "Female",
-    state: "Niger",
-    lga: "Magama",
-    jambRegNo: "2025504640210F",
-  },
-  {
-    id: BigInt(544),
-    name: "Ibrahim Ruhalma",
-    matricNumber: "CSE/2025/045",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-045",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025517748470F",
-  },
-  {
-    id: BigInt(545),
-    name: "Isah Habiba Bala",
-    matricNumber: "CSE/2025/046",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-046",
-    gender: "Female",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025506118861A",
-  },
-  {
-    id: BigInt(546),
-    name: "Isah Hassan Patizhiko",
-    matricNumber: "CSE/2025/047",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-047",
-    gender: "Male",
-    state: "Niger",
-    lga: "Wushishi",
-    jambRegNo: "2025511863900F",
-  },
-  {
-    id: BigInt(547),
-    name: "Isah Hauwau",
-    matricNumber: "CSE/2025/048",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-048",
-    gender: "Female",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025518417680F",
-  },
-  {
-    id: BigInt(548),
-    name: "Isah Hussaini Patizhiko",
-    matricNumber: "CSE/2025/049",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-049",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025511832320F",
-  },
-  {
-    id: BigInt(549),
-    name: "Isyaku Usman",
-    matricNumber: "CSE/2025/050",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-050",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025501801940F",
-  },
-  {
-    id: BigInt(550),
-    name: "Itodo Sunday Emmanuel",
-    matricNumber: "CSE/2025/051",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-051",
-    gender: "Male",
-    state: "Benue",
-    lga: "Ado",
-    jambRegNo: "2025516583120F",
-  },
-  {
-    id: BigInt(551),
-    name: "Jamiu Hayatullah",
-    matricNumber: "CSE/2025/052",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-052",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025512424920A",
-  },
-  {
-    id: BigInt(552),
-    name: "Lawal Abdulrahman",
-    matricNumber: "CSE/2025/053",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-053",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025500054170A",
-  },
-  {
-    id: BigInt(553),
-    name: "Lawal Fahad",
-    matricNumber: "CSE/2025/054",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-054",
-    gender: "Male",
-    state: "Niger",
-    lga: "Bida",
-    jambRegNo: "2025512210480F",
-  },
-  {
-    id: BigInt(554),
-    name: "Mahmud Abdulmutalib",
-    matricNumber: "CSE/2025/055",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-055",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025518644440A",
-  },
-  {
-    id: BigInt(555),
-    name: "Mikailu Bilal Gidado",
-    matricNumber: "CSE/2025/056",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-056",
-    gender: "Male",
-    state: "Niger",
-    lga: "Magama",
-    jambRegNo: "2025516667050A",
-  },
-  {
-    id: BigInt(556),
-    name: "Mohammed Surajo Galadima",
-    matricNumber: "CSE/2025/057",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-057",
-    gender: "Male",
-    state: "Niger",
-    lga: "Magama",
-    jambRegNo: "2025511991340A",
-  },
-  {
-    id: BigInt(557),
-    name: "Moses Marvellous La'Adama",
-    matricNumber: "CSE/2025/058",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-058",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025512805930A",
-  },
-  {
-    id: BigInt(558),
-    name: "Muazu Abdullahi S Pawa",
-    matricNumber: "CSE/2025/059",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-059",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025512344090F",
-  },
-  {
-    id: BigInt(559),
-    name: "Muhammad Ahamad Tijjani",
-    matricNumber: "CSE/2025/060",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-060",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025510642330F",
-  },
-  {
-    id: BigInt(560),
-    name: "Muhammad Al-Amin Auwal",
-    matricNumber: "CSE/2025/061",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-061",
-    gender: "Male",
-    state: "Niger",
-    lga: "Lavun",
-    jambRegNo: "2025500835527A",
-  },
-  {
-    id: BigInt(561),
-    name: "Muhammad Muhammad Jipan",
-    matricNumber: "CSE/2025/062",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-062",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025900416710F",
-  },
-  {
-    id: BigInt(562),
-    name: "Muhammad Musa",
-    matricNumber: "CSE/2025/063",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-063",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025512729900F",
-  },
-  {
-    id: BigInt(563),
-    name: "Muhammad Saifullahi",
-    matricNumber: "CSE/2025/064",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-064",
-    gender: "Male",
-    state: "Niger",
-    lga: "Bida",
-    jambRegNo: "2025515556380F",
-  },
-  {
-    id: BigInt(564),
-    name: "Muhammad Zayyan",
-    matricNumber: "CSE/2025/065",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-065",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025514882030F",
-  },
-  {
-    id: BigInt(565),
-    name: "Musa Aliyu",
-    matricNumber: "CSE/2025/066",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-066",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025515592630F",
-  },
-  {
-    id: BigInt(566),
-    name: "Musa Bashir",
-    matricNumber: "CSE/2025/067",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-067",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025517657430A",
-  },
-  {
-    id: BigInt(567),
-    name: "Musa Sadiq A",
-    matricNumber: "CSE/2025/068",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-068",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025511002700A",
-  },
-  {
-    id: BigInt(568),
-    name: "Musa Suleiman Salinu",
-    matricNumber: "CSE/2025/069",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-069",
-    gender: "Male",
-    state: "Niger",
-    lga: "Lavun",
-    jambRegNo: "2025509786610F",
-  },
-  {
-    id: BigInt(569),
-    name: "Ndace Mohammed Jiya",
-    matricNumber: "CSE/2025/070",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-070",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025519073650A",
-  },
-  {
-    id: BigInt(570),
-    name: "Nuhu Anas",
-    matricNumber: "CSE/2025/071",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-071",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025500456520A",
-  },
-  {
-    id: BigInt(571),
-    name: "Nurudeen Abdulateef",
-    matricNumber: "CSE/2025/072",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-072",
-    gender: "Male",
-    state: "Niger",
-    lga: "Mariga",
-    jambRegNo: "2025531097003F",
-  },
-  {
-    id: BigInt(572),
-    name: "Olanrewaju Oyeniyi Samson",
-    matricNumber: "CSE/2025/073",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-073",
-    gender: "Male",
-    state: "Osun",
-    lga: "Ila",
-    jambRegNo: "2025501342340A",
-  },
-  {
-    id: BigInt(573),
-    name: "Osoko Boluwatife Emmanuel",
-    matricNumber: "CSE/2025/074",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-074",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025514759440F",
-  },
-  {
-    id: BigInt(574),
-    name: "Piia Joshua Tersoo",
-    matricNumber: "CSE/2025/075",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-075",
-    gender: "Male",
-    state: "Benue",
-    lga: "Gboko",
-    jambRegNo: "2025516030650A",
-  },
-  {
-    id: BigInt(575),
-    name: "Rufai Kamal",
-    matricNumber: "CSE/2025/076",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-076",
-    gender: "Male",
-    state: "Benue",
-    lga: "Vandeikya",
-    jambRegNo: "2025516558970F",
-  },
-  {
-    id: BigInt(576),
-    name: "Sa'Adu Aliyu Yusuf",
-    matricNumber: "CSE/2025/077",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-077",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025501914940A",
-  },
-  {
-    id: BigInt(577),
-    name: "Sabitu Salim",
-    matricNumber: "CSE/2025/078",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-078",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025514735680A",
-  },
-  {
-    id: BigInt(578),
-    name: "Sadiq Fatima Inyass",
-    matricNumber: "CSE/2025/079",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-079",
-    gender: "Female",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025508788620F",
-  },
-  {
-    id: BigInt(579),
-    name: "Sale Abdullahi",
-    matricNumber: "CSE/2025/080",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-080",
-    gender: "Male",
-    state: "Oyo",
-    lga: "Ibadan North",
-    jambRegNo: "2025590515940A",
-  },
-  {
-    id: BigInt(580),
-    name: "Salihu Rukayyat",
-    matricNumber: "CSE/2025/081",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-081",
-    gender: "Female",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025519620290F",
-  },
-  {
-    id: BigInt(581),
-    name: "Salisu Bashar",
-    matricNumber: "CSE/2025/082",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-082",
-    gender: "Male",
-    state: "Kaduna",
-    lga: "Dan Musa",
-    jambRegNo: "2025514447680A",
-  },
-  {
-    id: BigInt(582),
-    name: "Simon Judith Ochanya",
-    matricNumber: "CSE/2025/083",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-083",
-    gender: "Female",
-    state: "Benue",
-    lga: "Gboko",
-    jambRegNo: "2025507153730A",
-  },
-  {
-    id: BigInt(583),
-    name: "Suleiman Hamza",
-    matricNumber: "CSE/2025/084",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-084",
-    gender: "Male",
-    state: "Kaduna",
-    lga: "Zaria",
-    jambRegNo: "2025513339690F",
-  },
-  {
-    id: BigInt(584),
-    name: "Tijjani Isah Idris",
-    matricNumber: "CSE/2025/085",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-085",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025519749270A",
-  },
-  {
-    id: BigInt(585),
-    name: "Udumachukwu Chinedu Caleb",
-    matricNumber: "CSE/2025/086",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-086",
-    gender: "Male",
-    state: "Anambra",
-    lga: "Orumba North",
-    jambRegNo: "2025516120010F",
-  },
-  {
-    id: BigInt(586),
-    name: "Umar Ibrahim",
-    matricNumber: "CSE/2025/087",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-087",
-    gender: "Male",
-    state: "Zamfara",
-    lga: "Gumi",
-    jambRegNo: "2025519795330A",
-  },
-  {
-    id: BigInt(587),
-    name: "Umar Uzairu Faruk",
-    matricNumber: "CSE/2025/088",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-088",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025500118440F",
-  },
-  {
-    id: BigInt(588),
-    name: "Usman Saidu",
-    matricNumber: "CSE/2025/089",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-089",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025512043410F",
-  },
-  {
-    id: BigInt(589),
-    name: "Usman Shedrack Itaha",
-    matricNumber: "CSE/2025/090",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-090",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025514004370A",
-  },
-  {
-    id: BigInt(590),
-    name: "Yakubu Michael",
-    matricNumber: "CSE/2025/091",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-091",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025514519500A",
-  },
-  {
-    id: BigInt(591),
-    name: "Yakubu Tanimu",
-    matricNumber: "CSE/2025/092",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-092",
-    gender: "Male",
-    state: "Niger",
-    lga: "Lavun",
-    jambRegNo: "2025517736460F",
-  },
-  {
-    id: BigInt(592),
-    name: "Yisa Zenas Solomon",
-    matricNumber: "CSE/2025/093",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-093",
-    gender: "Male",
-    state: "Plateau",
-    lga: "Jos East",
-    jambRegNo: "2025590006679F",
-  },
-  {
-    id: BigInt(593),
-    name: "Yohanna Hosea Azi",
-    matricNumber: "CSE/2025/094",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-094",
-    gender: "Male",
-    state: "Kogi",
-    lga: "Aiyoji",
-    jambRegNo: "2025503339620A",
-  },
-  {
-    id: BigInt(594),
-    name: "Yusuf Abdulsalam",
-    matricNumber: "CSE/2025/095",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-095",
-    gender: "Male",
-    state: "Kaduna",
-    lga: "Zaria",
-    jambRegNo: "2025503230640F",
-  },
-  {
-    id: BigInt(595),
-    name: "Yusuf Muhammad Hadi",
-    matricNumber: "CSE/2025/096",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-096",
-    gender: "Male",
-    state: "Gombe",
-    lga: "Yamaltu Deba",
-    jambRegNo: "2025503412440A",
-  },
-  {
-    id: BigInt(596),
-    name: "Yusuf Munnirah",
-    matricNumber: "CSE/2025/097",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-097",
-    gender: "Female",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025513943130F",
-  },
-  {
-    id: BigInt(597),
-    name: "Zakariyya Abdulsalam Yahuza",
-    matricNumber: "CSE/2025/098",
-    departmentId: BigInt(25),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "cse-2025-098",
-    gender: "Male",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025511280290A",
-  },
-];
-
-// ============================================================
-// ADMISSION 2025/2026 - Mathematics Education (3 students)
-// ============================================================
-const ADMISSION_MTE_2025: ExtendedStudent[] = [
-  {
-    id: BigInt(600),
-    name: "Abubakar Kasim",
-    matricNumber: "MTE/2025/001",
-    departmentId: BigInt(29),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "mte-2025-001",
-    gender: "Male",
-    state: "Niger",
-    lga: "Sida",
-    jambRegNo: "2025501950495CF",
-  },
-  {
-    id: BigInt(601),
-    name: "Jeremiah Nicodemus",
-    matricNumber: "MTE/2025/002",
-    departmentId: BigInt(29),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "mte-2025-002",
-    gender: "Male",
-    state: "Kaduna",
-    lga: "Kaura",
-    jambRegNo: "2025504036952CF",
-  },
-  {
-    id: BigInt(602),
-    name: "Muhammed Halima",
-    matricNumber: "MTE/2025/003",
-    departmentId: BigInt(29),
-    level: BigInt(100),
-    status: "active",
-    userPrincipal: "mte-2025-003",
-    gender: "Female",
-    state: "Niger",
-    lga: "Kontagora",
-    jambRegNo: "2025590171939CF",
-  },
-];
-
 const DEMO_STUDENTS: ExtendedStudent[] = [
   {
     id: BigInt(1),
@@ -5794,8 +2986,6 @@ const DEMO_STUDENTS: ExtendedStudent[] = [
   },
   ...ADMISSION_BIO_2025,
   ...ADMISSION_CHM_2025,
-  ...ADMISSION_CSE_2025,
-  ...ADMISSION_MTE_2025,
 ];
 
 export function calcGradePoint(total: number): {
@@ -5853,30 +3043,6 @@ export function getAcademicStanding(gpa: number): {
     badgeClass:
       "bg-destructive/10 text-destructive border border-destructive/20",
   };
-}
-
-export function getDegreeClassification(cgpa: number): string {
-  if (cgpa >= 4.5) return "First Class";
-  if (cgpa >= 3.5) return "Second Class Upper";
-  if (cgpa >= 2.4) return "Second Class Lower";
-  if (cgpa >= 1.5) return "Third Class";
-  if (cgpa >= 1.0) return "Pass";
-  return "Fail";
-}
-
-export function getSpilloverStatus(
-  student: ExtendedStudent,
-  requirements: { minDuration: number; maxDuration: number } | null,
-): { isSpillover: boolean; minGradYear: number; maxGradYear: number } {
-  const currentYear = new Date().getFullYear();
-  const admissionYear = student.admissionYear ?? currentYear;
-  const minDuration = requirements?.minDuration ?? 4;
-  const maxDuration = requirements?.maxDuration ?? 7;
-  const minGradYear = admissionYear + minDuration;
-  const maxGradYear = admissionYear + maxDuration;
-  const isSpillover =
-    currentYear > maxGradYear && student.status !== "Graduated";
-  return { isSpillover, minGradYear, maxGradYear };
 }
 
 function makeResult(
@@ -6576,7 +3742,6 @@ const DEMO_CALENDARS: AcademicCalendar[] = [
     endDate: "2025-01-31",
     registrationOpen: true,
     addDropOpen: false,
-    addDropDeadline: "2025-03-15",
   },
   {
     id: BigInt(2),
@@ -6857,23 +4022,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     () => lsGet<CourseFeedback[]>("courseFeedback") ?? [],
   );
   const [seeded] = useState(true);
-  const [graduationRequirements, setGraduationRequirements] = useState<
-    GraduationRequirements[]
-  >(() => {
-    const saved = lsGet<GraduationRequirements[]>("graduationRequirements");
-    if (saved) return saved;
-    return [
-      {
-        id: "default",
-        departmentId: "all",
-        minCreditUnits: 120,
-        maxCreditUnits: 180,
-        minCGPA: 1.0,
-        minDuration: 4,
-        maxDuration: 7,
-      },
-    ];
-  });
   const [moderatorNames, setModeratorNamesState] = useState<
     Record<string, string>
   >(() => {
@@ -6885,33 +4033,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  const [graduationRequirements, setGraduationRequirements] = useState<
+    GraduationRequirements[]
+  >(() => lsGet<GraduationRequirements[]>("unirp_gradReqs") ?? []);
   const [classroomTimetable, setClassroomTimetable] = useState<
     ClassroomTimetableEntry[]
-  >(() => lsGet<ClassroomTimetableEntry[]>("classroomTimetable") ?? []);
-  const [lecturerDocuments, setLecturerDocuments] = useState<
-    LecturerDocument[]
-  >(() => lsGet<LecturerDocument[]>("lecturerDocuments") ?? []);
-  const [lecturerRatings, setLecturerRatings] = useState<LecturerRating[]>(
-    () => lsGet<LecturerRating[]>("lecturerRatings") ?? [],
-  );
-  const [lateRegFineAmount, setLateRegFineAmountState] = useState<number>(
-    () => lsGet<number>("lateRegFineAmount") ?? 5000,
-  );
-  const [registrationDeadline, setRegistrationDeadlineState] = useState<string>(
-    () => lsGet<string>("registrationDeadline") ?? "",
-  );
-  const [practicalAssignments, setPracticalAssignmentsState] = useState<
-    Record<string, string>
-  >(() => lsGet<Record<string, string>>("practicalAssignments") ?? {});
-
+  >(() => lsGet<ClassroomTimetableEntry[]>("unirp_classroomTimetable") ?? []);
   const [lecturerEvaluations, setLecturerEvaluations] = useState<
     LecturerEvaluation[]
-  >(() => lsGet<LecturerEvaluation[]>("lecturerEvaluations") ?? []);
-  const [evaluationWindowOpen, setEvaluationWindowOpenState] =
-    useState<boolean>(() => lsGet<boolean>("evaluationWindowOpen") ?? false);
-  const [siwesRecords, setSiwesRecords] = useState<SIWESRecord[]>(
-    () => lsGet<SIWESRecord[]>("siwesRecords") ?? [],
+  >(() => lsGet<LecturerEvaluation[]>("unirp_lecturerEvals") ?? []);
+  const [lecturerDocuments, setLecturerDocuments] = useState<
+    LecturerDocument[]
+  >(() => lsGet<LecturerDocument[]>("unirp_lecturerDocs") ?? []);
+  const [lecturerRatings, setLecturerRatings] = useState<LecturerRating[]>(
+    () => lsGet<LecturerRating[]>("unirp_lecturerRatings") ?? [],
   );
+  const [siwesRecords, setSiwesRecords] = useState<SIWESRecord[]>(
+    () => lsGet<SIWESRecord[]>("unirp_siwesRecords") ?? [],
+  );
+  const [evaluationWindowOpen, setEvaluationWindowOpenState] =
+    useState<boolean>(() => lsGet<boolean>("unirp_evalWindowOpen") ?? false);
 
   const DEFAULT_INSTITUTION: InstitutionSettings = {
     name: "Federal University of Education Kontagora, Niger State",
@@ -6920,6 +4061,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     email: "registry@fuekos.edu.ng",
     website: "www.fuekos.edu.ng",
     logoText: "FUEK",
+    institutionType: "university",
   };
 
   const [institutionSettings, setInstitutionSettings] =
@@ -7023,36 +4165,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     lsSet("courseFeedback", courseFeedback);
   }, [courseFeedback]);
-  useEffect(() => {
-    lsSet("graduationRequirements", graduationRequirements);
-  }, [graduationRequirements]);
-  useEffect(() => {
-    lsSet("classroomTimetable", classroomTimetable);
-  }, [classroomTimetable]);
-  useEffect(() => {
-    lsSet("lecturerDocuments", lecturerDocuments);
-  }, [lecturerDocuments]);
-  useEffect(() => {
-    lsSet("lecturerRatings", lecturerRatings);
-  }, [lecturerRatings]);
-  useEffect(() => {
-    lsSet("lateRegFineAmount", lateRegFineAmount);
-  }, [lateRegFineAmount]);
-  useEffect(() => {
-    lsSet("registrationDeadline", registrationDeadline);
-  }, [registrationDeadline]);
-  useEffect(() => {
-    lsSet("practicalAssignments", practicalAssignments);
-  }, [practicalAssignments]);
-  useEffect(() => {
-    lsSet("lecturerEvaluations", lecturerEvaluations);
-  }, [lecturerEvaluations]);
-  useEffect(() => {
-    lsSet("evaluationWindowOpen", evaluationWindowOpen);
-  }, [evaluationWindowOpen]);
-  useEffect(() => {
-    lsSet("siwesRecords", siwesRecords);
-  }, [siwesRecords]);
 
   const logAudit = useCallback(
     (actorName: string, actorRole: string, action: string, details: string) => {
@@ -7102,140 +4214,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (u) logAudit(u.name, u.role ?? "", "Logout", `${u.name} logged out`);
     setCurrentUser(null);
   }, [logAudit]);
-
-  const updateFaculty = useCallback((id: bigint, updates: Partial<Faculty>) => {
-    setFaculties((prev) =>
-      prev.map((f) => (String(f.id) === String(id) ? { ...f, ...updates } : f)),
-    );
-  }, []);
-
-  const deleteFaculty = useCallback(
-    (id: bigint) => {
-      setFaculties((prev) => prev.filter((f) => String(f.id) !== String(id)));
-      setDepartments((prev) =>
-        prev.filter((d) => String(d.facultyId) !== String(id)),
-      );
-      const u = currentUserRef.current;
-      if (u)
-        logAudit(
-          u.name,
-          u.role ?? "",
-          "Faculty Deleted",
-          `Deleted faculty ID ${id}`,
-        );
-    },
-    [logAudit],
-  );
-
-  const updateDepartment = useCallback(
-    (id: bigint, updates: Partial<ExtendedDepartment>) => {
-      setDepartments((prev) =>
-        prev.map((d) =>
-          String(d.id) === String(id) ? { ...d, ...updates } : d,
-        ),
-      );
-    },
-    [],
-  );
-
-  const deleteDepartment = useCallback(
-    (id: bigint) => {
-      setDepartments((prev) => prev.filter((d) => String(d.id) !== String(id)));
-      const u = currentUserRef.current;
-      if (u)
-        logAudit(
-          u.name,
-          u.role ?? "",
-          "Department Deleted",
-          `Deleted department ID ${id}`,
-        );
-    },
-    [logAudit],
-  );
-
-  const addClassroomTimetableEntry = useCallback(
-    (entry: ClassroomTimetableEntry) =>
-      setClassroomTimetable((prev) => [...prev, entry]),
-    [],
-  );
-  const updateClassroomTimetableEntry = useCallback(
-    (entry: ClassroomTimetableEntry) =>
-      setClassroomTimetable((prev) =>
-        prev.map((e) => (String(e.id) === String(entry.id) ? entry : e)),
-      ),
-    [],
-  );
-  const removeClassroomTimetableEntry = useCallback(
-    (id: bigint) =>
-      setClassroomTimetable((prev) =>
-        prev.filter((e) => String(e.id) !== String(id)),
-      ),
-    [],
-  );
-  const addLecturerDocument = useCallback(
-    (doc: LecturerDocument) => setLecturerDocuments((prev) => [...prev, doc]),
-    [],
-  );
-  const removeLecturerDocument = useCallback(
-    (id: bigint) =>
-      setLecturerDocuments((prev) =>
-        prev.filter((d) => String(d.id) !== String(id)),
-      ),
-    [],
-  );
-  const addLecturerRating = useCallback(
-    (rating: LecturerRating) => setLecturerRatings((prev) => [...prev, rating]),
-    [],
-  );
-  const setLateRegFineAmount = useCallback(
-    (amount: number) => setLateRegFineAmountState(amount),
-    [],
-  );
-  const setRegistrationDeadline = useCallback(
-    (date: string) => setRegistrationDeadlineState(date),
-    [],
-  );
-  const setPracticalAssignment = useCallback(
-    (courseId: string, staffId: string) =>
-      setPracticalAssignmentsState((prev) => ({
-        ...prev,
-        [courseId]: staffId,
-      })),
-    [],
-  );
-
-  const addLecturerEvaluation = useCallback((ev: LecturerEvaluation) => {
-    setLecturerEvaluations((prev) => [...prev, ev]);
-  }, []);
-
-  const setEvaluationWindowOpen = useCallback((open: boolean) => {
-    setEvaluationWindowOpenState(open);
-  }, []);
-
-  const addSIWESRecord = useCallback((rec: SIWESRecord) => {
-    setSiwesRecords((prev) => [...prev, rec]);
-  }, []);
-
-  const updateSIWESRecord = useCallback((rec: SIWESRecord) => {
-    setSiwesRecords((prev) =>
-      prev.map((r) => (String(r.id) === String(rec.id) ? rec : r)),
-    );
-  }, []);
-
-  const deleteStudent = useCallback(
-    (id: bigint) => {
-      setStudents((prev) => prev.filter((s) => String(s.id) !== String(id)));
-      const u = currentUserRef.current;
-      if (u)
-        logAudit(
-          u.name,
-          u.role ?? "",
-          "Student Deleted",
-          `Deleted student ID ${id}`,
-        );
-    },
-    [logAudit],
-  );
 
   const addDepartment = useCallback(
     (dept: ExtendedDepartment) => setDepartments((prev) => [...prev, dept]),
@@ -7527,14 +4505,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAcademicCalendars((prev) =>
       prev.map((c) =>
         c.id === id ? { ...c, addDropOpen: !c.addDropOpen } : c,
-      ),
-    );
-  }, []);
-
-  const setAddDropDeadline = useCallback((id: bigint, deadline: string) => {
-    setAcademicCalendars((prev) =>
-      prev.map((c) =>
-        String(c.id) === String(id) ? { ...c, addDropDeadline: deadline } : c,
       ),
     );
   }, []);
@@ -7937,98 +4907,150 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const toAdd = SENATE_SAMPLE_RESULTS.filter((r) => !existingIds.has(r.id));
       return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
     });
-    // Add sample evaluations
-    setLecturerEvaluations((prev) => {
-      if (prev.length > 0) return prev;
-      const SAMPLE_EVALS: LecturerEvaluation[] = [
-        {
-          id: "eval-1",
-          studentId: "student-demo-1",
-          lecturerId: "lec-001",
-          courseId: "1",
-          session: "2024/2025",
-          semester: "First",
-          scores: {
-            teaching: 4,
-            punctuality: 5,
-            delivery: 4,
-            accessibility: 3,
-            overall: 4,
-          },
-          comment: "Very engaging and knowledgeable lecturer.",
-          timestamp: new Date().toISOString(),
-        },
-        {
-          id: "eval-2",
-          studentId: "student-demo-2",
-          lecturerId: "lec-001",
-          courseId: "1",
-          session: "2024/2025",
-          semester: "First",
-          scores: {
-            teaching: 3,
-            punctuality: 4,
-            delivery: 3,
-            accessibility: 4,
-            overall: 3,
-          },
-          comment: "Could improve on content delivery speed.",
-          timestamp: new Date().toISOString(),
-        },
-        {
-          id: "eval-3",
-          studentId: "student-demo-3",
-          lecturerId: "lec-002",
-          courseId: "2",
-          session: "2024/2025",
-          semester: "First",
-          scores: {
-            teaching: 5,
-            punctuality: 5,
-            delivery: 5,
-            accessibility: 5,
-            overall: 5,
-          },
-          comment: "Excellent! Best lecturer in the department.",
-          timestamp: new Date().toISOString(),
-        },
-        {
-          id: "eval-4",
-          studentId: "student-demo-4",
-          lecturerId: "lec-002",
-          courseId: "2",
-          session: "2024/2025",
-          semester: "First",
-          scores: {
-            teaching: 4,
-            punctuality: 3,
-            delivery: 4,
-            accessibility: 3,
-            overall: 4,
-          },
-          comment: "",
-          timestamp: new Date().toISOString(),
-        },
-        {
-          id: "eval-5",
-          studentId: "student-demo-5",
-          lecturerId: "lec-001",
-          courseId: "3",
-          session: "2024/2025",
-          semester: "Second",
-          scores: {
-            teaching: 2,
-            punctuality: 2,
-            delivery: 3,
-            accessibility: 2,
-            overall: 2,
-          },
-          comment: "Lecturer is often late and sometimes unprepared.",
-          timestamp: new Date().toISOString(),
-        },
-      ];
-      return SAMPLE_EVALS;
+  }, []);
+
+  // Faculty / Department CRUD
+  const updateFaculty = useCallback((id: bigint, updates: Partial<Faculty>) => {
+    setFaculties((prev) =>
+      prev.map((f) => (String(f.id) === String(id) ? { ...f, ...updates } : f)),
+    );
+  }, []);
+  const deleteFaculty = useCallback((id: bigint) => {
+    setFaculties((prev) => prev.filter((f) => String(f.id) !== String(id)));
+  }, []);
+  const updateDepartment = useCallback(
+    (id: bigint, updates: Partial<ExtendedDepartment>) => {
+      setDepartments((prev) =>
+        prev.map((d) =>
+          String(d.id) === String(id) ? { ...d, ...updates } : d,
+        ),
+      );
+    },
+    [],
+  );
+  const deleteDepartment = useCallback((id: bigint) => {
+    setDepartments((prev) => prev.filter((d) => String(d.id) !== String(id)));
+  }, []);
+
+  // Graduation Requirements
+  const addGraduationRequirement = useCallback(
+    (req: Omit<GraduationRequirements, "id">) => {
+      const newReq: GraduationRequirements = { ...req, id: String(Date.now()) };
+      setGraduationRequirements((prev) => {
+        const next = [...prev, newReq];
+        lsSet("unirp_gradReqs", next);
+        return next;
+      });
+    },
+    [],
+  );
+  const updateGraduationRequirement = useCallback(
+    (req: GraduationRequirements) => {
+      setGraduationRequirements((prev) => {
+        const next = prev.map((r) =>
+          String(r.id) === String(req.id) ? req : r,
+        );
+        lsSet("unirp_gradReqs", next);
+        return next;
+      });
+    },
+    [],
+  );
+  const deleteGraduationRequirement = useCallback((id: string) => {
+    setGraduationRequirements((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      lsSet("unirp_gradReqs", next);
+      return next;
     });
+  }, []);
+
+  // Classroom Timetable
+  const addClassroomTimetableEntry = useCallback(
+    (entry: ClassroomTimetableEntry) => {
+      setClassroomTimetable((prev) => {
+        const next = [...prev, entry];
+        lsSet("unirp_classroomTimetable", next);
+        return next;
+      });
+    },
+    [],
+  );
+  const updateClassroomTimetableEntry = useCallback(
+    (entry: ClassroomTimetableEntry) => {
+      setClassroomTimetable((prev) => {
+        const next = prev.map((e) =>
+          String(e.id) === String(entry.id) ? entry : e,
+        );
+        lsSet("unirp_classroomTimetable", next);
+        return next;
+      });
+    },
+    [],
+  );
+  const removeClassroomTimetableEntry = useCallback((id: bigint) => {
+    setClassroomTimetable((prev) => {
+      const next = prev.filter((e) => String(e.id) !== String(id));
+      lsSet("unirp_classroomTimetable", next);
+      return next;
+    });
+  }, []);
+
+  // Lecturer Evaluations
+  const addLecturerEvaluation = useCallback((eval_: LecturerEvaluation) => {
+    setLecturerEvaluations((prev) => {
+      const next = [...prev, eval_];
+      lsSet("unirp_lecturerEvals", next);
+      return next;
+    });
+  }, []);
+
+  // Lecturer Documents
+  const addLecturerDocument = useCallback((doc: LecturerDocument) => {
+    setLecturerDocuments((prev) => {
+      const next = [...prev, doc];
+      lsSet("unirp_lecturerDocs", next);
+      return next;
+    });
+  }, []);
+  const removeLecturerDocument = useCallback((id: bigint) => {
+    setLecturerDocuments((prev) => {
+      const next = prev.filter((d) => String(d.id) !== String(id));
+      lsSet("unirp_lecturerDocs", next);
+      return next;
+    });
+  }, []);
+
+  // Lecturer Ratings
+  const addLecturerRating = useCallback((rating: LecturerRating) => {
+    setLecturerRatings((prev) => {
+      const next = [...prev, rating];
+      lsSet("unirp_lecturerRatings", next);
+      return next;
+    });
+  }, []);
+
+  // SIWES Records
+  const addSIWESRecord = useCallback((record: SIWESRecord) => {
+    setSiwesRecords((prev) => {
+      const next = [...prev, record];
+      lsSet("unirp_siwesRecords", next);
+      return next;
+    });
+  }, []);
+  const updateSIWESRecord = useCallback((record: SIWESRecord) => {
+    setSiwesRecords((prev) => {
+      const next = prev.map((r) =>
+        String(r.id) === String(record.id) ? record : r,
+      );
+      lsSet("unirp_siwesRecords", next);
+      return next;
+    });
+  }, []);
+
+  // Evaluation Window
+  const setEvaluationWindowOpen = useCallback((open: boolean) => {
+    setEvaluationWindowOpenState(open);
+    lsSet("unirp_evalWindowOpen", open);
   }, []);
 
   const submitCourseResults = useCallback(
@@ -8169,30 +5191,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [logAudit, addNotification],
   );
 
-  const addGraduationRequirement = useCallback(
-    (req: Omit<GraduationRequirements, "id">) => {
-      const newReq: GraduationRequirements = {
-        ...req,
-        id: Date.now().toString(),
-      };
-      setGraduationRequirements((prev) => [...prev, newReq]);
-    },
-    [],
-  );
-
-  const updateGraduationRequirement = useCallback(
-    (req: GraduationRequirements) => {
-      setGraduationRequirements((prev) =>
-        prev.map((r) => (r.id === req.id ? req : r)),
-      );
-    },
-    [],
-  );
-
-  const deleteGraduationRequirement = useCallback((id: string) => {
-    setGraduationRequirements((prev) => prev.filter((r) => r.id !== id));
-  }, []);
-
   return (
     <AppContext.Provider
       value={{
@@ -8237,7 +5235,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setActiveCalendar,
         toggleRegistrationOpen,
         toggleAddDropOpen,
-        setAddDropDeadline,
         submitGradeAppeal,
         respondToAppeal,
         addNotification,
@@ -8283,41 +5280,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         publishResultsByCourse,
         publishResultsBatch,
         graduationRequirements,
-        addGraduationRequirement,
-        updateGraduationRequirement,
-        deleteGraduationRequirement,
+        classroomTimetable,
+        lecturerEvaluations,
+        lecturerDocuments,
+        lecturerRatings,
+        siwesRecords,
+        evaluationWindowOpen,
         updateFaculty,
         deleteFaculty,
         updateDepartment,
         deleteDepartment,
-        deleteStudent,
-        classroomTimetable,
-        lecturerDocuments,
-        lecturerRatings,
-        lateRegFineAmount,
-        registrationDeadline,
-        practicalAssignments,
+        addGraduationRequirement,
+        updateGraduationRequirement,
+        deleteGraduationRequirement,
         addClassroomTimetableEntry,
         updateClassroomTimetableEntry,
         removeClassroomTimetableEntry,
+        addLecturerEvaluation,
         addLecturerDocument,
         removeLecturerDocument,
         addLecturerRating,
-        setLateRegFineAmount,
-        setRegistrationDeadline,
-        setPracticalAssignment,
-        lecturerEvaluations,
-        evaluationWindowOpen,
-        addLecturerEvaluation,
-        setEvaluationWindowOpen,
-        siwesRecords,
         addSIWESRecord,
         updateSIWESRecord,
+        setEvaluationWindowOpen,
       }}
     >
       {children}
     </AppContext.Provider>
   );
+}
+
+export function getDegreeClassification(cgpa: number): string {
+  if (cgpa >= 4.5) return "First Class";
+  if (cgpa >= 3.5) return "Second Class Upper";
+  if (cgpa >= 2.4) return "Second Class Lower";
+  if (cgpa >= 1.5) return "Third Class";
+  if (cgpa >= 1.0) return "Pass";
+  return "Fail";
+}
+
+export function getSpilloverStatus(
+  student: ExtendedStudent,
+  req: GraduationRequirements | null,
+): { isSpillover: boolean; reason: string } {
+  if (!req) return { isSpillover: false, reason: "" };
+  const maxYears = req.maxDuration ?? 6;
+  const admYear = student.admissionYear
+    ? Number.parseInt(student.admissionYear, 10)
+    : null;
+  if (!admYear) return { isSpillover: false, reason: "" };
+  const currentYear = new Date().getFullYear();
+  const yearsSpent = currentYear - admYear;
+  if (yearsSpent > maxYears) {
+    return {
+      isSpillover: true,
+      reason: `Exceeded max ${maxYears} years (${yearsSpent} years spent)`,
+    };
+  }
+  return { isSpillover: false, reason: "" };
 }
 
 export function useApp() {

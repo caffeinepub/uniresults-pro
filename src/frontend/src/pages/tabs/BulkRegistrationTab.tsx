@@ -399,13 +399,11 @@ export default function BulkRegistrationTab() {
                               updateCsvRow(i, "level", e.target.value)
                             }
                           >
-                            {["100", "200", "300", "400", "500", "600"].map(
-                              (l) => (
-                                <option key={l} value={l}>
-                                  {l}
-                                </option>
-                              ),
-                            )}
+                            {["100", "200", "300", "400", "500"].map((l) => (
+                              <option key={l} value={l}>
+                                {l}
+                              </option>
+                            ))}
                           </select>
                         </td>
                         <td className="px-2 py-1">
@@ -675,13 +673,11 @@ export default function BulkRegistrationTab() {
                               updateScanRow(i, "level", e.target.value)
                             }
                           >
-                            {["100", "200", "300", "400", "500", "600"].map(
-                              (l) => (
-                                <option key={l} value={l}>
-                                  {l}
-                                </option>
-                              ),
-                            )}
+                            {["100", "200", "300", "400", "500"].map((l) => (
+                              <option key={l} value={l}>
+                                {l}
+                              </option>
+                            ))}
                           </select>
                         </td>
                         <td className="px-2 py-1">

@@ -23,10 +23,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   Building2,
-  CalendarClock,
   Database,
   Download,
-  GraduationCap,
   Lock,
   Save,
   Shield,
@@ -37,6 +35,10 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { type InstitutionSettings, useApp } from "../../context/AppContext";
+import {
+  INSTITUTION_TYPE_OPTIONS,
+  getInstitutionConfig,
+} from "../../utils/institutionConfig";
 
 const PREFIX = "unires_";
 
@@ -116,10 +118,6 @@ export default function SettingsTab() {
     syncStatus,
     updateInstitutionSettings,
     logAudit,
-    lateRegFineAmount,
-    setLateRegFineAmount,
-    registrationDeadline,
-    setRegistrationDeadline,
   } = useApp();
 
   const isSuperAdmin = currentUser?.role === "SuperAdmin";
@@ -143,8 +141,6 @@ export default function SettingsTab() {
   });
 
   const [storageUsage, setStorageUsage] = useState(getStorageUsage);
-  const [fineAmount, setFineAmount] = useState(lateRegFineAmount);
-  const [regDeadline, setRegDeadline] = useState(registrationDeadline);
 
   useEffect(() => {
     setForm(institutionSettings);
@@ -242,6 +238,45 @@ export default function SettingsTab() {
               Only SuperAdmin can edit institution settings.
             </div>
           )}
+
+          {/* Institution Type */}
+          <div className="mb-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">Institution Type</span>
+              {(() => {
+                const cfg = getInstitutionConfig(form.institutionType);
+                const colorMap: Record<string, string> = {
+                  university: "bg-blue-100 text-blue-800",
+                  nce: "bg-purple-100 text-purple-800",
+                  polytechnic: "bg-orange-100 text-orange-800",
+                  secondary: "bg-green-100 text-green-800",
+                  primary: "bg-yellow-100 text-yellow-800",
+                  pre_nursery: "bg-pink-100 text-pink-800",
+                };
+                const badgeClass = `px-2 py-0.5 rounded-full text-xs font-medium ${colorMap[cfg.type] ?? colorMap.university}`;
+                return <span className={badgeClass}>{cfg.shortLabel}</span>;
+              })()}
+            </div>
+            <select
+              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
+              value={form.institutionType ?? "university"}
+              disabled={!canEdit}
+              onChange={(e) =>
+                handleFieldChange("institutionType", e.target.value)
+              }
+              data-ocid="settings.institution_type.select"
+            >
+              {INSTITUTION_TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Changing institution type affects level labels, grading scale, and
+              report formats throughout the system.
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Institution Name */}
@@ -589,78 +624,6 @@ export default function SettingsTab() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Academic Policies */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <GraduationCap className="w-4 h-4" />
-            Academic Policies
-          </CardTitle>
-          <CardDescription>
-            Configure late registration fines and registration deadlines.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="fine-amount">Late Registration Fine (₦)</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="fine-amount"
-                  type="number"
-                  step="100"
-                  min="0"
-                  value={fineAmount}
-                  onChange={(e) => setFineAmount(Number(e.target.value))}
-                  data-ocid="settings.fine.input"
-                  placeholder="5000"
-                />
-                <Button
-                  size="sm"
-                  data-ocid="settings.fine.save_button"
-                  onClick={() => {
-                    setLateRegFineAmount(fineAmount);
-                    toast.success("Late registration fine updated");
-                  }}
-                >
-                  <Save className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Fine charged for registering after the deadline.
-              </p>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="reg-deadline" className="flex items-center gap-1">
-                <CalendarClock className="w-3.5 h-3.5" /> Registration Deadline
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="reg-deadline"
-                  type="date"
-                  value={regDeadline}
-                  onChange={(e) => setRegDeadline(e.target.value)}
-                  data-ocid="settings.deadline.input"
-                />
-                <Button
-                  size="sm"
-                  data-ocid="settings.deadline.save_button"
-                  onClick={() => {
-                    setRegistrationDeadline(regDeadline);
-                    toast.success("Registration deadline updated");
-                  }}
-                >
-                  <Save className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                After this date, a late registration fine will be applied.
-              </p>
-            </div>
           </div>
         </CardContent>
       </Card>

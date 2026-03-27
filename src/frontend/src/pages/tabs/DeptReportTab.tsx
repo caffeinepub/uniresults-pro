@@ -29,7 +29,7 @@ import { Download, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { calcGradePoint, useApp } from "../../context/AppContext";
 
-const LEVELS = [100, 200, 300, 400, 500, 600];
+const LEVELS = [100, 200, 300, 400, 500];
 
 export default function DeptReportTab() {
   const {

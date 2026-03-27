@@ -263,7 +263,7 @@ export default function LecturerEvaluationTab({
                 ) : (
                   CRITERIA.map((c) => (
                     <div
-                      key={c.key}
+                      key={String(c.key)}
                       className="flex items-center justify-between text-xs"
                     >
                       <span className="text-muted-foreground">{c.label}</span>
@@ -277,19 +277,19 @@ export default function LecturerEvaluationTab({
                       Comments:
                     </p>
                     {evals
-                      .filter((e) => e.comment.trim())
+                      .filter((e) => e.comment?.trim())
                       .slice(0, 3)
                       .map((e) => (
                         <p
                           key={e.timestamp}
                           className="text-xs bg-muted/40 rounded p-1.5 italic"
                         >
-                          "{e.comment}"
+                          "{e.comment ?? ""}"
                         </p>
                       ))}
-                    {evals.filter((e) => e.comment.trim()).length > 3 && (
+                    {evals.filter((e) => e.comment?.trim()).length > 3 && (
                       <p className="text-xs text-muted-foreground">
-                        +{evals.filter((e) => e.comment.trim()).length - 3}{" "}
+                        +{evals.filter((e) => e.comment?.trim()).length - 3}{" "}
                         more…
                       </p>
                     )}
@@ -312,7 +312,7 @@ export default function LecturerEvaluationTab({
                 <TableHead>Lecturer</TableHead>
                 <TableHead>Responses</TableHead>
                 {CRITERIA.map((c) => (
-                  <TableHead key={c.key} className="text-center">
+                  <TableHead key={String(c.key)} className="text-center">
                     {c.label}
                   </TableHead>
                 ))}
@@ -341,7 +341,7 @@ export default function LecturerEvaluationTab({
                     </TableCell>
                     <TableCell>{evals.length}</TableCell>
                     {CRITERIA.map((c) => (
-                      <TableCell key={c.key} className="text-center">
+                      <TableCell key={String(c.key)} className="text-center">
                         {evals.length > 0 ? (
                           <StarDisplay value={getAvg(evals, c.key)} />
                         ) : (

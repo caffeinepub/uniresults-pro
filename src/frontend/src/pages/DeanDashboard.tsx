@@ -24,8 +24,6 @@ import {
   FileText,
   FileUp,
   ScrollText,
-  ShieldCheck,
-  Star,
   Users,
   XCircle,
 } from "lucide-react";
@@ -42,20 +40,19 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import { InstitutionTypeBanner } from "../components/InstitutionTypeBanner";
 import { TabContext } from "../components/Layout";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
-import AttendanceScreeningTab from "./tabs/AttendanceScreeningTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
-import FacultyDeptManagementTab from "./tabs/FacultyDeptManagementTab";
 import FacultyReportTab from "./tabs/FacultyReportTab";
-import LecturerEvaluationTab from "./tabs/LecturerEvaluationTab";
+import JambAdmissionScannerTab from "./tabs/JambAdmissionScannerTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
@@ -74,13 +71,7 @@ export default function DeanDashboard() {
     { label: "Dept. Results", tab: "dept_results", icon: FileText },
     { label: "Students", tab: "students", icon: Users },
     { label: "Bulk Reg", tab: "bulkReg", icon: FileUp },
-    { label: "Faculty & Depts", tab: "faculty_dept_mgmt", icon: Users },
-    { label: "Evaluations", tab: "evaluations", icon: Star },
-    {
-      label: "Attendance Screen",
-      tab: "attendance_screening",
-      icon: ShieldCheck,
-    },
+    { label: "JAMB Import", tab: "jamb_import", icon: FileUp },
   ];
 
   let view: React.ReactNode;
@@ -102,17 +93,15 @@ export default function DeanDashboard() {
     view = <ResultsProcessingTab userRole="Dean" />;
   else if (activeTab === "students") view = <DeanStudentsTab />;
   else if (activeTab === "bulkReg") view = <BulkRegistrationTab />;
-  else if (activeTab === "faculty_dept_mgmt")
-    view = <FacultyDeptManagementTab readOnly={true} />;
-  else if (activeTab === "evaluations")
-    view = <LecturerEvaluationTab userRole="Dean" />;
-  else if (activeTab === "attendance_screening")
-    view = <AttendanceScreeningTab />;
+  else if (activeTab === "jamb_import") view = <JambAdmissionScannerTab />;
   else view = <OverviewTab />;
 
   return (
     <>
       <NoticeBoardPanel userRole="Dean" />
+      <div className="flex items-center gap-2 mb-2 no-print">
+        <InstitutionTypeBanner />
+      </div>
       <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
           <button

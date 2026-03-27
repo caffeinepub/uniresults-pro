@@ -1,5 +1,4 @@
 import {
-  Activity,
   BarChart3,
   Bell,
   BookOpen,
@@ -8,13 +7,10 @@ import {
   Camera,
   ChevronRight,
   ClipboardList,
-  Database,
   DollarSign,
-  Edit,
   FileCheck,
   FileText,
   GraduationCap,
-  HelpCircle,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -27,7 +23,6 @@ import {
   Shield,
   Sun,
   Users,
-  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import React, { useEffect, useRef, useState } from "react";
@@ -72,13 +67,6 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
       label: "Pending Registrations",
       icon: Users,
     },
-    { id: "system_health", label: "System Health", icon: Activity },
-    { id: "data_backup", label: "Data Backup", icon: Database },
-    {
-      id: "graduation_requirements",
-      label: "Grad. Requirements",
-      icon: GraduationCap,
-    },
   ],
   Registrar: [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -111,14 +99,6 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
       label: "Pending Registrations",
       icon: Users,
     },
-    { id: "batch_graduation", label: "Batch Graduation", icon: GraduationCap },
-    { id: "graduation_list", label: "Graduation List", icon: FileText },
-    {
-      id: "graduation_requirements",
-      label: "Grad. Requirements",
-      icon: GraduationCap,
-    },
-    { id: "result_amendment", label: "Result Amendment", icon: Edit },
   ],
   HOD: [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -133,7 +113,6 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "course_assignments", label: "Course Assignments", icon: BookOpen },
     { id: "hod_transfers", label: "Transfers", icon: ChevronRight },
     { id: "biometric", label: "Biometric", icon: Camera },
-    { id: "result_amendment", label: "Result Amendment", icon: Edit },
   ],
   Lecturer: [
     { id: "overview", label: "My Courses", icon: BookOpen },
@@ -143,7 +122,6 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "schedule", label: "Schedule", icon: CalendarDays },
     { id: "attendance", label: "Attendance", icon: ClipboardList },
     { id: "biometric", label: "Biometric", icon: Camera },
-    { id: "result_amendment", label: "Result Amendment", icon: Edit },
   ],
   Student: [
     { id: "overview", label: "Dashboard", icon: LayoutDashboard },
@@ -444,248 +422,6 @@ function NotificationPanel({
   );
 }
 
-const HELP_CONTENT: Record<string, { title: string; steps: string[] }[]> = {
-  SuperAdmin: [
-    {
-      title: "System Setup",
-      steps: [
-        "1. Go to Settings to configure institution name and contacts.",
-        "2. Use Data Backup to export/restore all system data.",
-        "3. Configure grade scale in the Grade Scale tab.",
-      ],
-    },
-    {
-      title: "Managing Users",
-      steps: [
-        "1. Go to User Roles to manage admin accounts.",
-        "2. Staff can be added from the Staff tab.",
-        "3. Use Reset PIN in the Students table to reset student access.",
-      ],
-    },
-    {
-      title: "Audit & Monitoring",
-      steps: [
-        "1. Check the Audit Log for all system actions.",
-        "2. System Health tab shows data integrity alerts.",
-        "3. Report Monitor logs all print/export events.",
-      ],
-    },
-  ],
-  Registrar: [
-    {
-      title: "Academic Calendar",
-      steps: [
-        "1. Go to Academic Calendar to add sessions and semesters.",
-        "2. Toggle Registration Open/Closed per session.",
-        "3. Set an active session so dashboards reflect the current period.",
-      ],
-    },
-    {
-      title: "Result Publication",
-      steps: [
-        "1. Go to Results Processing to see the approval pipeline.",
-        "2. Publish results after Dean approval.",
-        "3. Use Seal Semester to lock and verify the semester.",
-      ],
-    },
-    {
-      title: "Batch Graduation",
-      steps: [
-        "1. Open Batch Graduation tab and filter by level (400-600).",
-        "2. Check eligibility — credits, CGPA, and clearance status.",
-        "3. Select eligible students and click Graduate Selected.",
-      ],
-    },
-  ],
-  HOD: [
-    {
-      title: "Score Sheet Entry",
-      steps: [
-        "1. Go to Score Sheet tab and select your course.",
-        "2. Enter CA (max 40) and Exam (max 60) for each student.",
-        "3. Total, Grade, and Remarks are auto-calculated.",
-      ],
-    },
-    {
-      title: "Result Approval",
-      steps: [
-        "1. Go to Approvals tab to see submitted results.",
-        "2. Review then click Approve or Reject (with comment).",
-        "3. Approved results move to Dean for further review.",
-      ],
-    },
-    {
-      title: "Departmental Reports",
-      steps: [
-        "1. Go to Dept. Report to generate per-level reports.",
-        "2. Use session/level filters for specific output.",
-        "3. Print or export as CSV.",
-      ],
-    },
-  ],
-  Dean: [
-    {
-      title: "Faculty Report",
-      steps: [
-        "1. Open Faculty Report tab.",
-        "2. Filter by session, department, or level.",
-        "3. Print the report or export as CSV for Senate.",
-      ],
-    },
-    {
-      title: "Result Approval Chain",
-      steps: [
-        "1. Go to Approvals to see HOD-approved results.",
-        "2. Approve to forward to Registrar or Reject with a note.",
-        "3. Track status in the Results tab.",
-      ],
-    },
-  ],
-  Lecturer: [
-    {
-      title: "Score Entry",
-      steps: [
-        "1. Go to Score Sheet tab and select your course.",
-        "2. Enter CA and Exam scores; total/grade are auto-filled.",
-        "3. Download blank CSV, fill offline, then upload.",
-      ],
-    },
-    {
-      title: "Submit for Approval",
-      steps: [
-        "1. After entering scores, click Submit for Approval.",
-        "2. Track status: Draft → Submitted → HOD Approved → Published.",
-        "3. If rejected, edit scores and resubmit.",
-      ],
-    },
-    {
-      title: "Attendance Marking",
-      steps: [
-        "1. Go to Attendance tab and select your course.",
-        "2. Mark Present/Absent for each student.",
-        "3. Use the camera icon to capture a biometric photo.",
-      ],
-    },
-  ],
-  Student: [
-    {
-      title: "Course Registration",
-      steps: [
-        "1. Go to Course Registration tab during the open period.",
-        "2. Level 100: select courses to register. Level 200+: carry-overs are auto-selected.",
-        "3. Check your credit total meets the minimum before submitting.",
-      ],
-    },
-    {
-      title: "Checking Results",
-      steps: [
-        "1. Go to My Results or Semester Summary tab.",
-        "2. Results appear once published by the Registrar.",
-        "3. View your transcript from the Transcript tab.",
-      ],
-    },
-    {
-      title: "Grade Appeal",
-      steps: [
-        "1. Go to Grade Appeals and click Submit Appeal.",
-        "2. Select the course and explain your concern.",
-        "3. Track the status — Lecturer and HOD review your appeal.",
-      ],
-    },
-  ],
-};
-
-function HelpCenter({ role }: { role: string }) {
-  const [open, setOpen] = useState(false);
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
-  const helpItems = HELP_CONTENT[role] ?? HELP_CONTENT.Student;
-
-  return (
-    <>
-      <button
-        type="button"
-        data-ocid="help.command_palette_open"
-        onClick={() => setOpen(true)}
-        className="no-print fixed bottom-6 right-6 z-40 w-11 h-11 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
-        title="Help Center"
-      >
-        <HelpCircle className="w-5 h-5" />
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ x: "100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "100%", opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="no-print fixed right-0 top-0 h-full w-80 bg-card border-l border-border shadow-2xl z-50 flex flex-col"
-            data-ocid="help.panel"
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-primary" />
-                <span className="font-semibold text-sm">Help Center</span>
-              </div>
-              <button
-                type="button"
-                data-ocid="help.close_button"
-                onClick={() => setOpen(false)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Role: <strong className="text-foreground">{role}</strong>
-              </p>
-              {helpItems.map((item, i) => (
-                <div
-                  key={item.title}
-                  className="rounded-xl border border-border overflow-hidden"
-                >
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left hover:bg-muted/40 transition-colors"
-                    onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
-                  >
-                    {item.title}
-                    <span className="text-muted-foreground">
-                      {expandedIdx === i ? "▲" : "▼"}
-                    </span>
-                  </button>
-                  <AnimatePresence>
-                    {expandedIdx === i && (
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: "auto" }}
-                        exit={{ height: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-4 pb-3 space-y-1.5 border-t border-border bg-muted/20">
-                          {item.steps.map((step) => (
-                            <p
-                              key={step}
-                              className="text-xs text-muted-foreground leading-relaxed"
-                            >
-                              {step}
-                            </p>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
-}
-
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { currentUser, logout, academicCalendars, notifications, syncStatus } =
     useApp();
@@ -902,9 +638,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </a>
           </p>
         </footer>
-
-        {/* Help Center floating button */}
-        <HelpCenter role={role} />
       </div>
     </TabContext.Provider>
   );

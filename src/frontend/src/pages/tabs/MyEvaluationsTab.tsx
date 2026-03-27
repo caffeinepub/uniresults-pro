@@ -114,7 +114,10 @@ export default function MyEvaluationsTab() {
           </CardHeader>
           <CardContent className="space-y-3">
             {CRITERIA.map((c) => (
-              <div key={c.key} className="flex items-center justify-between">
+              <div
+                key={String(c.key)}
+                className="flex items-center justify-between"
+              >
                 <span className="text-sm text-muted-foreground">{c.label}</span>
                 <StarDisplay value={getAvg(myEvals, c.key)} />
               </div>
@@ -140,7 +143,10 @@ export default function MyEvaluationsTab() {
             </CardHeader>
             <CardContent className="space-y-2">
               {CRITERIA.map((c) => (
-                <div key={c.key} className="flex items-center justify-between">
+                <div
+                  key={String(c.key)}
+                  className="flex items-center justify-between"
+                >
                   <span className="text-sm text-muted-foreground">
                     {c.label}
                   </span>

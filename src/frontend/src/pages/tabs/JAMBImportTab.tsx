@@ -249,7 +249,7 @@ export default function JAMBImportTab() {
         lga: row.lga,
         jambRegNo: row.regNo,
         regNo: row.regNo,
-        admissionYear: year,
+        admissionYear: String(year),
         programmeType: "Undergraduate",
       };
       addStudent(student);
