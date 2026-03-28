@@ -9,7 +9,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BookOpen, Eye, FileText, Trash2, Upload, User } from "lucide-react";
+import {
+  BookOpen,
+  Download,
+  Eye,
+  FileText,
+  Image,
+  Trash2,
+  Upload,
+  User,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useApp } from "../../context/AppContext";
@@ -19,8 +28,61 @@ const DOC_TYPES = [
   "Course Outline",
   "Lecture Notes",
   "Past Questions",
+  "Memo",
+  "Research Paper",
+  "Assignment",
+  "Exam Paper",
+  "Report",
+  "Handbook",
+  "Policy Document",
   "Other",
 ];
+
+function getFileExtBadge(filename: string) {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, { label: string; className: string }> = {
+    pdf: { label: "PDF", className: "bg-red-100 text-red-700" },
+    doc: { label: "DOC", className: "bg-blue-100 text-blue-700" },
+    docx: { label: "DOCX", className: "bg-blue-100 text-blue-700" },
+    docm: { label: "DOCM", className: "bg-blue-100 text-blue-700" },
+    xls: { label: "XLS", className: "bg-green-100 text-green-700" },
+    xlsx: { label: "XLSX", className: "bg-green-100 text-green-700" },
+    xlsm: { label: "XLSM", className: "bg-green-100 text-green-700" },
+    ppt: { label: "PPT", className: "bg-orange-100 text-orange-700" },
+    pptx: { label: "PPTX", className: "bg-orange-100 text-orange-700" },
+    ppsx: { label: "PPSX", className: "bg-orange-100 text-orange-700" },
+    jpg: { label: "IMG", className: "bg-purple-100 text-purple-700" },
+    jpeg: { label: "IMG", className: "bg-purple-100 text-purple-700" },
+    png: { label: "IMG", className: "bg-purple-100 text-purple-700" },
+    gif: { label: "IMG", className: "bg-purple-100 text-purple-700" },
+    webp: { label: "IMG", className: "bg-purple-100 text-purple-700" },
+    bmp: { label: "IMG", className: "bg-purple-100 text-purple-700" },
+    txt: { label: "TXT", className: "bg-gray-100 text-gray-700" },
+    rtf: { label: "RTF", className: "bg-gray-100 text-gray-700" },
+    csv: { label: "CSV", className: "bg-teal-100 text-teal-700" },
+    zip: { label: "ZIP", className: "bg-yellow-100 text-yellow-700" },
+    rar: { label: "RAR", className: "bg-yellow-100 text-yellow-700" },
+    "7z": { label: "7Z", className: "bg-yellow-100 text-yellow-700" },
+    odt: { label: "ODT", className: "bg-blue-100 text-blue-700" },
+    ods: { label: "ODS", className: "bg-green-100 text-green-700" },
+    odp: { label: "ODP", className: "bg-orange-100 text-orange-700" },
+  };
+  return (
+    map[ext] ?? {
+      label: ext.toUpperCase() || "FILE",
+      className: "bg-muted text-muted-foreground",
+    }
+  );
+}
+
+function isImageFile(filename: string) {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  return ["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(ext);
+}
+
+function isPDFFile(filename: string) {
+  return filename.split(".").pop()?.toLowerCase() === "pdf";
+}
 
 export default function LecturerPortalTab() {
   const {
@@ -62,6 +124,10 @@ export default function LecturerPortalTab() {
   const [docType, setDocType] = useState("CV/Vita");
   const [docName, setDocName] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<{
+    url: string;
+    name: string;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function getStudentCount(courseId: bigint) {
@@ -112,7 +178,7 @@ export default function LecturerPortalTab() {
         uploadedAt: new Date().toLocaleDateString(),
         size: `${(file.size / 1024).toFixed(1)} KB`,
       });
-      toast.success("Document uploaded");
+      toast.success("Document uploaded successfully");
       setDocName("");
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -288,7 +354,8 @@ export default function LecturerPortalTab() {
           >
             <Upload className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">
-              Click to upload PDF, DOC, or image (max 10MB)
+              Click to upload any document — PDF, Word, Excel, PowerPoint,
+              images, and more (max 10MB)
             </p>
             {uploading && (
               <p className="text-xs text-primary mt-1">Uploading...</p>
@@ -297,7 +364,7 @@ export default function LecturerPortalTab() {
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            accept=".pdf,.doc,.docx,.docm,.xls,.xlsx,.xlsm,.ppt,.pptx,.pps,.ppsx,.txt,.rtf,.csv,.odt,.ods,.odp,.jpg,.jpeg,.png,.gif,.bmp,.webp,.zip,.rar,.7z,*"
             className="hidden"
             onChange={handleFileUpload}
             data-ocid="lecturer_portal.upload_button"
@@ -306,55 +373,158 @@ export default function LecturerPortalTab() {
       </Card>
 
       {/* Document List */}
-      {myDocs.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              My Documents ({myDocs.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            View All Documents
+            {myDocs.length > 0 && (
+              <span className="ml-auto text-xs bg-primary/10 text-primary font-semibold rounded-full px-2 py-0.5">
+                {myDocs.length}
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {myDocs.length === 0 ? (
+            <p
+              className="text-sm text-muted-foreground text-center py-4"
+              data-ocid="lecturer_portal.empty_state"
+            >
+              No documents uploaded yet. Use the form above to add your first
+              document.
+            </p>
+          ) : (
             <div className="divide-y divide-border">
-              {myDocs.map((doc, i) => (
-                <div
-                  key={String(doc.id)}
-                  className="flex items-center justify-between py-2 gap-3"
-                  data-ocid={`lecturer_portal.item.${i + 1}`}
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {doc.type} · {doc.size} · {doc.uploadedAt}
-                    </p>
+              {myDocs.map((doc, i) => {
+                const badge = getFileExtBadge(doc.name);
+                const isImg = isImageFile(doc.name);
+                return (
+                  <div
+                    key={String(doc.id)}
+                    className="flex items-center justify-between py-3 gap-3"
+                    data-ocid={`lecturer_portal.item.${i + 1}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        {isImg ? (
+                          <Image className="w-4 h-4 text-purple-600" />
+                        ) : (
+                          <FileText className="w-4 h-4 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-sm font-medium truncate max-w-[180px]">
+                            {doc.name}
+                          </p>
+                          <span
+                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {doc.type} · {doc.size} · {doc.uploadedAt}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2"
+                        onClick={() => {
+                          if (isImg) {
+                            setPreviewDoc({ url: doc.url, name: doc.name });
+                          } else if (isPDFFile(doc.name)) {
+                            setPreviewDoc({ url: doc.url, name: doc.name });
+                          } else {
+                            // Office/binary files: trigger download instead of trying to view
+                            const a = document.createElement("a");
+                            a.href = doc.url;
+                            a.download = doc.name;
+                            a.click();
+                          }
+                        }}
+                        title="View"
+                        data-ocid={`lecturer_portal.button.${i + 1}`}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+                      <a
+                        href={doc.url}
+                        download={doc.name}
+                        className="inline-flex items-center justify-center h-7 w-7 rounded-md text-sm font-medium hover:bg-muted transition-colors"
+                        title="Download"
+                        data-ocid={`lecturer_portal.secondary_button.${i + 1}`}
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </a>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-destructive hover:text-destructive"
+                        onClick={() => {
+                          removeLecturerDocument(doc.id);
+                          toast.success("Document removed");
+                        }}
+                        data-ocid={`lecturer_portal.delete_button.${i + 1}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-2"
-                      onClick={() => window.open(doc.url, "_blank")}
-                      data-ocid={`lecturer_portal.button.${i + 1}`}
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-destructive hover:text-destructive"
-                      onClick={() => {
-                        removeLecturerDocument(doc.id);
-                        toast.success("Document removed");
-                      }}
-                      data-ocid={`lecturer_portal.delete_button.${i + 1}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Image Preview Modal */}
+      {previewDoc && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setPreviewDoc(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setPreviewDoc(null);
+          }}
+        >
+          <div
+            className="relative max-w-3xl max-h-[90vh] bg-background rounded-lg overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+              <p className="text-sm font-medium truncate">{previewDoc.name}</p>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground ml-4"
+                onClick={() => setPreviewDoc(null)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setPreviewDoc(null);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            {isImageFile(previewDoc.name) ? (
+              <img
+                src={previewDoc.url}
+                alt={previewDoc.name}
+                className="max-h-[80vh] object-contain w-full"
+              />
+            ) : (
+              <iframe
+                src={previewDoc.url}
+                title={previewDoc.name}
+                className="w-full"
+                style={{ height: "80vh", border: "none" }}
+              />
+            )}
+          </div>
+        </div>
       )}
 
       {/* Department Notices */}

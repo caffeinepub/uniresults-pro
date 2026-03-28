@@ -326,21 +326,73 @@ export default function CourseOutlineTab() {
               <div>
                 <b>File:</b> {viewOutline.filename}
               </div>
-              {viewOutline.content?.startsWith("data:application/pdf") && (
-                <a
-                  href={viewOutline.content}
-                  download={viewOutline.filename}
-                  className="text-primary underline"
-                >
-                  Download PDF
-                </a>
-              )}
               {viewOutline.content &&
-                !viewOutline.content.startsWith("data:") && (
-                  <pre className="bg-muted p-3 rounded text-xs overflow-auto max-h-64">
-                    {viewOutline.content}
-                  </pre>
-                )}
+                (() => {
+                  const filename = viewOutline.filename || "";
+                  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+                  const isImage = [
+                    "jpg",
+                    "jpeg",
+                    "png",
+                    "gif",
+                    "bmp",
+                    "webp",
+                  ].includes(ext);
+                  const isPDF = ext === "pdf";
+                  const isText = ["txt", "rtf", "csv"].includes(ext);
+                  const isDataUrl = viewOutline.content.startsWith("data:");
+
+                  if (isImage && isDataUrl) {
+                    return (
+                      <img
+                        src={viewOutline.content}
+                        alt={filename}
+                        className="max-h-64 object-contain rounded border border-border"
+                      />
+                    );
+                  }
+                  if (isPDF && isDataUrl) {
+                    return (
+                      <div className="space-y-2">
+                        <iframe
+                          src={viewOutline.content}
+                          title={filename}
+                          className="w-full rounded border border-border"
+                          style={{ height: "60vh", border: "none" }}
+                        />
+                        <a
+                          href={viewOutline.content}
+                          download={filename}
+                          className="text-primary underline text-sm"
+                        >
+                          Download PDF
+                        </a>
+                      </div>
+                    );
+                  }
+                  if (isText && !isDataUrl) {
+                    return (
+                      <pre className="bg-muted p-3 rounded text-xs overflow-auto max-h-64">
+                        {viewOutline.content}
+                      </pre>
+                    );
+                  }
+                  // For DOC, DOCX, XLS, XLSX, PPT, ZIP and other binary formats — download only
+                  return (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+                      <p className="font-medium mb-2">
+                        This file type cannot be previewed in the browser.
+                      </p>
+                      <a
+                        href={viewOutline.content}
+                        download={filename}
+                        className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-1.5 rounded text-sm font-medium hover:opacity-90"
+                      >
+                        ⬇ Download {filename}
+                      </a>
+                    </div>
+                  );
+                })()}
             </div>
             <Button
               data-ocid="course_outline.close.button"

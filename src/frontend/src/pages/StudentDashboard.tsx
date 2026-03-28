@@ -18,6 +18,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   ClipboardList,
+  ClipboardPaste,
   Download,
   FileText,
   GraduationCap,
@@ -28,6 +29,7 @@ import {
   PlusCircle,
   Printer,
   RefreshCw,
+  ScanLine,
   Star,
   TrendingUp,
   XCircle,
@@ -60,6 +62,10 @@ import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import { UpcomingEventsWidget } from "./tabs/AcademicCalendarEventsTab";
 import { CarryOverBanner } from "./tabs/CarryOverAutoTab";
 import CourseEvaluationTab from "./tabs/CourseEvaluationTab";
+import {
+  PasteCodesModal,
+  ScanCourseModal,
+} from "./tabs/CourseRegScannerModals";
 import CourseRegSlipModal from "./tabs/CourseRegSlipModal";
 import { StudentTransferTab } from "./tabs/DepartmentTransferTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
@@ -74,6 +80,7 @@ import StudentDocumentsTab from "./tabs/StudentDocumentsTab";
 import StudentIDCardModal from "./tabs/StudentIDCardModal";
 import StudentInboxTab, { InboxUnreadBadge } from "./tabs/StudentInboxTab";
 import StudentProgressTab from "./tabs/StudentProgressTab";
+import StudentResultSlipTab from "./tabs/StudentResultSlipTab";
 import ThesisTrackerTab from "./tabs/ThesisTrackerTab";
 import { StudentTranscriptRequestTab } from "./tabs/TranscriptRequestTab";
 
@@ -121,6 +128,7 @@ export default function StudentDashboard() {
     content = <StudentTranscriptRequestTab />;
   else if (activeTab === "thesis_tracker")
     content = <ThesisTrackerTab mode="student" />;
+  else if (activeTab === "result_slip") content = <StudentResultSlipTab />;
   else content = <OverviewTab />;
 
   return (
@@ -554,6 +562,8 @@ function CourseRegistrationTab() {
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [search1, setSearch1] = useState("");
   const [search2, setSearch2] = useState("");
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [showPasteModal, setShowPasteModal] = useState(false);
   const {
     currentUser,
     students,
@@ -1421,6 +1431,64 @@ function CourseRegistrationTab() {
           </span>
         </div>
       )}
+
+      {/* Scanner / Paste toolbar */}
+      {(canReg1 || canReg2) && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-1.5 text-xs h-8"
+            data-ocid="coursereg.scan_course_button"
+            onClick={() => setShowScanModal(true)}
+          >
+            <ScanLine className="w-3.5 h-3.5" />
+            Scan Course Code
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-1.5 text-xs h-8"
+            data-ocid="coursereg.paste_codes_button"
+            onClick={() => setShowPasteModal(true)}
+          >
+            <ClipboardPaste className="w-3.5 h-3.5" />
+            Paste Course Codes
+          </Button>
+        </div>
+      )}
+
+      {/* Scan Course Modal */}
+      <ScanCourseModal
+        open={showScanModal}
+        onClose={() => setShowScanModal(false)}
+        deptCourses={deptCourses}
+        firstSemCredits={firstSemCredits}
+        secondSemCredits={secondSemCredits}
+        maxCredits={MAX_CREDITS}
+        firstSemRegIds={firstSemRegIds}
+        secondSemRegIds={secondSemRegIds}
+        canReg1={canReg1}
+        canReg2={canReg2}
+        carryoverCourseIds={carryoverCourseIds}
+        onAdd={handleAdd}
+      />
+
+      {/* Paste Codes Modal */}
+      <PasteCodesModal
+        open={showPasteModal}
+        onClose={() => setShowPasteModal(false)}
+        deptCourses={deptCourses}
+        firstSemCredits={firstSemCredits}
+        secondSemCredits={secondSemCredits}
+        maxCredits={MAX_CREDITS}
+        firstSemRegIds={firstSemRegIds}
+        secondSemRegIds={secondSemRegIds}
+        canReg1={canReg1}
+        canReg2={canReg2}
+        carryoverCourseIds={carryoverCourseIds}
+        onAdd={handleAdd}
+      />
 
       {/* Two-column layout */}
       {selectedSession ? (

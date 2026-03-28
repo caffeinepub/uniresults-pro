@@ -49,16 +49,22 @@ import type { GraduationApplication } from "../context/AppContext";
 import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
+import CarryoverReportTab from "./tabs/CarryoverReportTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
+import DeansListTab from "./tabs/DeansListTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FacultyReportTab from "./tabs/FacultyReportTab";
+import GradeSheetTab from "./tabs/GradeSheetTab";
 import JambAdmissionScannerTab from "./tabs/JambAdmissionScannerTab";
+import MissingResultsTab from "./tabs/MissingResultsTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
+import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 
 export default function DeanDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -103,6 +109,12 @@ export default function DeanDashboard() {
   else if (activeTab === "students") view = <DeanStudentsTab />;
   else if (activeTab === "bulkReg") view = <BulkRegistrationTab />;
   else if (activeTab === "jamb_import") view = <JambAdmissionScannerTab />;
+  else if (activeTab === "supplementary") view = <SupplementaryExamsTab />;
+  else if (activeTab === "missing_results") view = <MissingResultsTab />;
+  else if (activeTab === "deans_list") view = <DeansListTab />;
+  else if (activeTab === "carryover_report") view = <CarryoverReportTab />;
+  else if (activeTab === "grade_sheet") view = <GradeSheetTab />;
+  else if (activeTab === "pass_fail_list") view = <PassFailGraduatingTab />;
   else view = <OverviewTab />;
 
   return (

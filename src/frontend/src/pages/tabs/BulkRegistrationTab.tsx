@@ -19,6 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle,
+  ClipboardPaste,
   Clock,
   Download,
   FileUp,
@@ -293,7 +294,7 @@ export default function BulkRegistrationTab() {
       </div>
 
       <Tabs defaultValue="csv" className="w-full">
-        <TabsList className="w-full max-w-lg">
+        <TabsList className="w-full max-w-2xl">
           <TabsTrigger
             value="csv"
             data-ocid="bulk_reg.csv.tab"
@@ -322,6 +323,14 @@ export default function BulkRegistrationTab() {
                 {jambScanBatches.length}
               </span>
             )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="paste"
+            data-ocid="bulk_reg.paste.tab"
+            className="flex-1"
+          >
+            <ClipboardPaste className="w-3.5 h-3.5 mr-1.5" />
+            Paste Data
           </TabsTrigger>
         </TabsList>
 
@@ -986,6 +995,11 @@ export default function BulkRegistrationTab() {
             </div>
           )}
         </TabsContent>
+
+        {/* ── Paste Data Tab ──────────────────────────────────── */}
+        <TabsContent value="paste" className="space-y-4 pt-4">
+          <PasteDataTab importRows={importRows} departments={departments} />
+        </TabsContent>
       </Tabs>
 
       {/* ── Image Preview Modal ─────────────────────────────────── */}
@@ -1053,6 +1067,249 @@ export default function BulkRegistrationTab() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ── Paste Data Tab Component ─────────────────────────────────────────────────
+interface PasteDataTabProps {
+  importRows: (rows: ImportRow[], onDone: (count: number) => void) => void;
+  departments: Array<{ id: bigint | number; name: string }>;
+}
+
+interface PasteRow {
+  id: string;
+  regNo: string;
+  name: string;
+  deptId: string;
+  state: string;
+  gender: string;
+  hasError: boolean;
+}
+
+function PasteDataTab({ importRows, departments }: PasteDataTabProps) {
+  const [rawText, setRawText] = useState("");
+  const [parsedRows, setParsedRows] = useState<PasteRow[]>([]);
+  const [imported, setImported] = useState(0);
+  const [isParsed, setIsParsed] = useState(false);
+
+  function parseText() {
+    const lines = rawText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length === 0) {
+      toast.error("Paste some data first.");
+      return;
+    }
+    const rows: PasteRow[] = lines.map((line) => {
+      // Split by tab or multiple spaces
+      const cols = line.split(/\t| {2,}/).map((c) => c.trim());
+      const regNo = cols[0] ?? "";
+      const name = cols[1] ?? "";
+      const deptHint = cols[2] ?? "";
+      const state = cols[3] ?? "";
+      const gender = cols[4] ?? "";
+      // Try to match department by name hint
+      const matchedDept = departments.find((d) =>
+        d.name.toLowerCase().includes(deptHint.toLowerCase()),
+      );
+      return {
+        id: Math.random().toString(36).slice(2),
+        regNo,
+        name,
+        deptId: matchedDept ? String(matchedDept.id) : "",
+        state,
+        gender,
+        hasError: !name || !regNo,
+      };
+    });
+    setParsedRows(rows);
+    setIsParsed(true);
+    toast.success(`Parsed ${rows.length} rows. Review before importing.`);
+  }
+
+  function updateRow(id: string, field: keyof PasteRow, value: string) {
+    setParsedRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r;
+        const updated = { ...r, [field]: value };
+        updated.hasError = !updated.name || !updated.regNo;
+        return updated;
+      }),
+    );
+  }
+
+  function handleImport() {
+    const validRows = parsedRows.filter((r) => !r.hasError);
+    if (validRows.length === 0) {
+      toast.error("No valid rows to import.");
+      return;
+    }
+    const importable: ImportRow[] = validRows.map((r) => ({
+      id: r.id,
+      sn: "",
+      regNo: r.regNo,
+      name: r.name,
+      deptId: r.deptId,
+      level: "100",
+      state: r.state,
+      lga: "",
+      gender: r.gender,
+      status: "accepted",
+    }));
+    importRows(importable, (count) => {
+      setImported(count);
+      setParsedRows([]);
+      setRawText("");
+      setIsParsed(false);
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-muted/30 border border-border rounded-lg p-4 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground mb-1">
+          How to use Paste Data
+        </p>
+        <p>
+          Copy a table from Word or Excel and paste it below. Each row should be
+          tab-separated or use multiple spaces. Expected column order:{" "}
+          <span className="font-mono text-xs bg-muted px-1 py-0.5 rounded">
+            JAMB Reg No | Name | Department | State | Gender
+          </span>
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="paste_area">Paste Student Data Here</Label>
+        <textarea
+          id="paste_area"
+          className="w-full min-h-[160px] font-mono text-xs border border-border rounded-lg p-3 bg-background resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+          placeholder={
+            "12345678AB\tAmaka Okonkwo\tBiology Education\tAnambra\tF\n22345679CD\tEmeka Obi\tComputer Science\tEnugu\tM"
+          }
+          value={rawText}
+          data-ocid="bulk_reg.paste.textarea"
+          onChange={(e) => {
+            setRawText(e.target.value);
+            setIsParsed(false);
+          }}
+        />
+      </div>
+
+      <div className="flex gap-3">
+        <Button
+          onClick={parseText}
+          disabled={!rawText.trim()}
+          data-ocid="bulk_reg.paste.parse_button"
+        >
+          Parse Data
+        </Button>
+        {isParsed && parsedRows.length > 0 && (
+          <Button
+            variant="default"
+            className="bg-success hover:bg-success/90 text-white"
+            onClick={handleImport}
+            data-ocid="bulk_reg.paste.import_button"
+          >
+            Import {parsedRows.filter((r) => !r.hasError).length} Students
+          </Button>
+        )}
+        {imported > 0 && (
+          <span className="text-sm text-success flex items-center gap-1">
+            <CheckCircle className="w-4 h-4" /> {imported} students imported
+          </span>
+        )}
+      </div>
+
+      {isParsed && parsedRows.length > 0 && (
+        <div className="overflow-x-auto border border-border rounded-lg">
+          <table className="w-full text-xs min-w-[700px]">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-3 py-2 text-left">JAMB Reg No *</th>
+                <th className="px-3 py-2 text-left">Name *</th>
+                <th className="px-3 py-2 text-left">Department</th>
+                <th className="px-3 py-2 text-left">State</th>
+                <th className="px-3 py-2 text-left">Gender</th>
+                <th className="px-3 py-2 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {parsedRows.map((row, idx) => (
+                <tr
+                  key={row.id}
+                  className={row.hasError ? "bg-red-50" : "hover:bg-muted/30"}
+                  data-ocid={`bulk_reg.paste.item.${idx + 1}`}
+                >
+                  <td className="px-2 py-1">
+                    <input
+                      className="w-full border-b border-border bg-transparent focus:outline-none focus:border-primary font-mono"
+                      value={row.regNo}
+                      onChange={(e) =>
+                        updateRow(row.id, "regNo", e.target.value)
+                      }
+                    />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input
+                      className="w-full border-b border-border bg-transparent focus:outline-none focus:border-primary"
+                      value={row.name}
+                      onChange={(e) =>
+                        updateRow(row.id, "name", e.target.value)
+                      }
+                    />
+                  </td>
+                  <td className="px-2 py-1">
+                    <select
+                      className="w-full border-b border-border bg-transparent focus:outline-none focus:border-primary text-xs"
+                      value={row.deptId}
+                      onChange={(e) =>
+                        updateRow(row.id, "deptId", e.target.value)
+                      }
+                    >
+                      <option value="">-- Select Dept --</option>
+                      {departments.map((d) => (
+                        <option key={String(d.id)} value={String(d.id)}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-2 py-1">
+                    <input
+                      className="w-full border-b border-border bg-transparent focus:outline-none focus:border-primary"
+                      value={row.state}
+                      onChange={(e) =>
+                        updateRow(row.id, "state", e.target.value)
+                      }
+                    />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input
+                      className="w-full border-b border-border bg-transparent focus:outline-none focus:border-primary"
+                      value={row.gender}
+                      onChange={(e) =>
+                        updateRow(row.id, "gender", e.target.value)
+                      }
+                    />
+                  </td>
+                  <td className="px-2 py-1">
+                    {row.hasError ? (
+                      <span className="text-destructive font-medium">
+                        ⚠ Required fields missing
+                      </span>
+                    ) : (
+                      <span className="text-success">✓ Ready</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

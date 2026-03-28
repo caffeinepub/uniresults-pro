@@ -16,9 +16,11 @@ import { useApp } from "../context/AppContext";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import DeptAllResultsTab from "./tabs/DeptAllResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import MissingResultsTab from "./tabs/MissingResultsTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
+import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 
 function OverviewTab() {
   const { results, courses, currentUser } = useApp();
@@ -152,6 +154,8 @@ export default function ExamOfficerDashboard() {
     content = <DeptAllResultsTab userRole="ExamOfficer" />;
   else if (activeTab === "exam_schedule") content = <ExamScheduleTab />;
   else if (activeTab === "biometric") content = <BiometricAttendanceTab />;
+  else if (activeTab === "supplementary") content = <SupplementaryExamsTab />;
+  else if (activeTab === "missing_results") content = <MissingResultsTab />;
   else content = <OverviewTab />;
 
   return (

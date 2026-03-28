@@ -17,13 +17,18 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  AlertCircle,
+  AlertOctagon,
   AlertTriangle,
   BarChart2,
   BookOpen,
   CheckCircle,
+  ClipboardCheck,
   ClipboardList,
   Download,
+  FileText,
   FileUp,
+  LayoutGrid,
   MessageSquare,
   RefreshCw,
   ScrollText,
@@ -56,6 +61,7 @@ import { UpcomingEventsWidget } from "./tabs/AcademicCalendarEventsTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BroadcastInboxTab from "./tabs/BroadcastInboxTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
+import CarryoverReportTab from "./tabs/CarryoverReportTab";
 import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import { HODTransferTab } from "./tabs/DepartmentTransferTab";
@@ -64,13 +70,18 @@ import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import ExamSupervisionTab from "./tabs/ExamSupervisionTab";
 import GPATrendChart from "./tabs/GPATrendChart";
+import GradeSheetTab from "./tabs/GradeSheetTab";
 import JambAdmissionScannerTab from "./tabs/JambAdmissionScannerTab";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
+import MissingResultsTab from "./tabs/MissingResultsTab";
+import ModerationWorkflowTab from "./tabs/ModerationWorkflowTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
+import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
+import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 import ThesisTrackerTab from "./tabs/ThesisTrackerTab";
 
 export default function HODDashboard() {
@@ -94,6 +105,12 @@ export default function HODDashboard() {
       icon: FileUp,
       show: _instConfig.showJAMBImport,
     },
+    { label: "Supplementary", tab: "supplementary", icon: AlertCircle },
+    { label: "Missing Results", tab: "missing_results", icon: AlertTriangle },
+    { label: "Carryover Report", tab: "carryover_report", icon: AlertOctagon },
+    { label: "Grade Sheet", tab: "grade_sheet", icon: LayoutGrid },
+    { label: "Pass/Fail Lists", tab: "pass_fail_list", icon: FileText },
+    { label: "Moderation", tab: "moderation", icon: ClipboardCheck },
   ];
 
   const quickActions = allQuickActions.filter((a) => a.show !== false);
@@ -134,6 +151,12 @@ export default function HODDashboard() {
   else if (activeTab === "exam_supervision") content = <ExamSupervisionTab />;
   else if (activeTab === "thesis_tracker")
     content = <ThesisTrackerTab mode="hod" />;
+  else if (activeTab === "supplementary") content = <SupplementaryExamsTab />;
+  else if (activeTab === "missing_results") content = <MissingResultsTab />;
+  else if (activeTab === "moderation") content = <ModerationWorkflowTab />;
+  else if (activeTab === "carryover_report") content = <CarryoverReportTab />;
+  else if (activeTab === "grade_sheet") content = <GradeSheetTab />;
+  else if (activeTab === "pass_fail_list") content = <PassFailGraduatingTab />;
   else content = <OverviewTab />;
 
   return (
