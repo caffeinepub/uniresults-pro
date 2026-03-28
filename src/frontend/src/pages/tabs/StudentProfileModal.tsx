@@ -231,6 +231,11 @@ export default function StudentProfileModal({ studentId, onClose }: Props) {
                     { label: "State of Origin", value: es.state ?? "—" },
                     { label: "LGA", value: es.lga ?? "—" },
                     { label: "Status", value: student.status },
+                    { label: "Entry Mode", value: es.entryMode ?? "UTME" },
+                    {
+                      label: "Semesters Registered",
+                      value: String(es.semestersRegistered ?? 0),
+                    },
                     { label: "Institution", value: institutionSettings.name },
                   ].map(({ label, value }) => (
                     <div

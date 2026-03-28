@@ -90,21 +90,24 @@ export default function BatchGraduationTab() {
   }, [students, filterLevel, filterDept]);
 
   const processed = useMemo(() => {
-    function getRequirements(deptId: string) {
+    function getRequirements(deptId: string, studentEntryMode?: string) {
       const deptReq = graduationRequirements.find(
         (r) => r.departmentId === deptId,
       );
       const defaultReq = graduationRequirements.find(
         (r) => r.departmentId === "all",
       );
-      return (
-        deptReq ||
+      const base = deptReq ||
         defaultReq || {
           minCreditUnits: 120,
           maxCreditUnits: 180,
           minCGPA: 1.0,
-        }
-      );
+        };
+      // Adjust for entry mode
+      if (studentEntryMode === "DE") {
+        return { ...base, minCreditUnits: Math.min(base.minCreditUnits, 90) };
+      }
+      return base;
     }
 
     function calcStudentCGPA(studentId: string) {
@@ -159,7 +162,7 @@ export default function BatchGraduationTab() {
       const sid = String(s.id);
       const dept = getStudentDepartment(s, departments);
       const deptId = dept ? String(dept.id) : "all";
-      const req = getRequirements(deptId);
+      const req = getRequirements(deptId, (s as any).entryMode ?? "UTME");
       const cgpa = calcStudentCGPA(sid);
       const totalCredits = calcTotalCredits(sid);
       const failedCourses = getFailedCourses(sid);

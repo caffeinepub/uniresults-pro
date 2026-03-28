@@ -97,41 +97,63 @@ export default function CourseRegSlipModal({
             <InfoRow label="Date" value={date} />
           </div>
 
-          {/* Courses table */}
-          <Table className="text-sm">
-            <TableHeader>
-              <TableRow className="bg-gray-100">
-                <TableHead className="text-xs">S/N</TableHead>
-                <TableHead className="text-xs">Course Code</TableHead>
-                <TableHead className="text-xs">Course Title</TableHead>
-                <TableHead className="text-xs text-right">
-                  Credit Units
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {registeredCourses.map((c, i) => (
-                <TableRow key={String(c.id)}>
-                  <TableCell className="text-xs">{i + 1}</TableCell>
-                  <TableCell className="text-xs font-mono font-medium">
-                    {c.code}
-                  </TableCell>
-                  <TableCell className="text-xs">{c.name}</TableCell>
-                  <TableCell className="text-xs text-right">
-                    {Number(c.creditUnits)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              <TableRow className="bg-gray-50 font-semibold">
-                <TableCell colSpan={3} className="text-xs text-right">
-                  Total Credit Units
-                </TableCell>
-                <TableCell className="text-xs text-right">
-                  {totalCredits}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+          {/* Courses table grouped by semester */}
+          {["First", "Second"].map((sem) => {
+            const semCourses = registeredCourses.filter(
+              (c) => c.semester === sem,
+            );
+            if (semCourses.length === 0) return null;
+            const semCredits = semCourses.reduce(
+              (s, c) => s + Number(c.creditUnits),
+              0,
+            );
+            return (
+              <div key={sem} className="mb-4">
+                <p className="text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wide border-b border-gray-200 pb-1">
+                  {sem} Semester
+                </p>
+                <Table className="text-sm">
+                  <TableHeader>
+                    <TableRow className="bg-gray-100">
+                      <TableHead className="text-xs">S/N</TableHead>
+                      <TableHead className="text-xs">Course Code</TableHead>
+                      <TableHead className="text-xs">Course Title</TableHead>
+                      <TableHead className="text-xs text-right">
+                        Units
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {semCourses.map((c, i) => (
+                      <TableRow key={String(c.id)}>
+                        <TableCell className="text-xs">{i + 1}</TableCell>
+                        <TableCell className="text-xs font-mono font-medium">
+                          {c.code}
+                        </TableCell>
+                        <TableCell className="text-xs">{c.name}</TableCell>
+                        <TableCell className="text-xs text-right">
+                          {Number(c.creditUnits)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-gray-50 font-semibold">
+                      <TableCell colSpan={3} className="text-xs text-right">
+                        Subtotal
+                      </TableCell>
+                      <TableCell className="text-xs text-right">
+                        {semCredits}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            );
+          })}
+          <div className="flex justify-end border-t border-gray-300 pt-2 mt-2">
+            <span className="text-xs font-bold text-gray-800">
+              Total Credit Units: {totalCredits}
+            </span>
+          </div>
 
           {/* Signature block */}
           <div className="grid grid-cols-2 gap-8 mt-8">

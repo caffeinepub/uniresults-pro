@@ -1,37 +1,38 @@
-# UniResults Pro — Version 58
+# UniResults Pro
 
 ## Current State
-Version 57 is a comprehensive academic management system with role-based dashboards (SuperAdmin, Registrar, HOD, Dean, Lecturer, Exam Officer, Student), multi-institution support, full results pipeline, course registration, timetable, attendance, financial clearance, ID card generation, staff login, student self-registration, audit log, data backup, help center, and more. Existing tabs: 42 tab files in /pages/tabs/, AppContext.tsx holds all state in localStorage.
+Version 59 is live with course registration showing both semesters side by side, carryover auto-selection, Core/Elective badges, credit tracking (min 16 / max 24), and auto-suggest buttons. Student records do not currently distinguish UTME vs DE entry mode, and no prerequisite enforcement exists.
 
 ## Requested Changes (Diff)
 
 ### Add
-1. **InboxBroadcastTab** (or enhance existing AdminInboxTab/StudentInboxTab) — Registrar/HOD can bulk-message all students in a department/level at once with one click; broadcast message appears in every recipient's student inbox.
-2. **TranscriptRequestTab** — Students formally request official transcript from student portal; Registrar sees pending requests, approves and generates a printable stamped transcript with institution letterhead.
-3. **AccreditationReportTab** — Registrar/Admin generates NUC/NCCE-formatted accreditation report for a department: staff list, student count by level, course load, pass rates, facilities checklist.
-4. **ExamSupervisionTab** — Registrar/HOD assigns invigilators (from staff list) to exam halls per course/date/time; view/print invigilation schedule; clash detection for same invigilator double-booked.
-5. **StudentClearanceTab** — Multi-department clearance form for graduating students: Library, Bursary, Hostel, Department, Faculty — each clears independently; Registrar sees overall clearance status; student sees progress tracker in their portal.
-6. **NoticeBoardTab** — Registrar/HOD posts announcements with title, body, target audience (All, Students, Staff, specific Department); visible on every relevant dashboard as a pinned notice card; notices can be pinned/unpinned/deleted.
-7. **ResultSlipModal** — Students can print a single-page semester result slip showing all courses, grades, GPA, CGPA, and remarks for that semester; accessible from the student results tab with a "Print Result Slip" button.
-8. **AcademicCalendarEventsTab** — Visual monthly calendar; Registrar adds events (holidays, resumption, exam periods, semester start/end); all roles see upcoming events on their dashboard sidebar.
-9. **CourseOutlineTab** (in Lecturer portal) — Lecturers upload official course outline/scheme of work PDF per course per semester; students can see and download from their course registration view.
-10. **ThesisTrackerTab** — PG students and supervisors track thesis/project progress through stages: Proposal Submitted → Approved → Draft Submitted → Defense Scheduled → Defense Passed → Final Submission → Completed; HOD/Dean sees all PG students' thesis status.
+- Entry Mode field (UTME / Direct Entry) on student records (registration form, edit form, student profile, bulk import)
+- Prerequisite configuration per course: Admin/HOD can set prerequisite course(s) for any course
+- Prerequisite enforcement in registration portal: if a course has a prerequisite that the student has not passed, the Select button is disabled with a tooltip showing the required prerequisite
+- DE-specific rule: when a DE student opens Course Registration, all 100-level GST courses are shown at the top of the First Semester column and auto-selected/locked (must register them first)
+- Graduation eligibility panel updates: show UTME vs DE credit requirement (120 vs 90), all-core-courses check, and semester count vs min/max (UTME: 8-12, DE: 6-10)
+- Semester count tracker per student: counts semesters they have been registered; shown in student profile and graduation panel
+- Graduation requirements display in student portal: progress bar showing credits passed vs required (120 UTME / 90 DE), core courses outstanding, semesters used vs limit
 
 ### Modify
-- **StudentDashboard**: Add Transcript Request button/tab, Result Slip print button, Clearance status tracker, Notice board panel, Course outline download links per registered course.
-- **LecturerDashboard**: Add Course Outline upload tab, Thesis Supervisor view (for PG supervisors), Notice board panel.
-- **HODDashboard / AdminDashboard / DeanDashboard**: Add Notice Board management, Accreditation Report, Exam Supervision, Student Clearance overview tabs.
-- **AppContext**: Add state for broadcastMessages, transcriptRequests, accreditationData, examSupervision, studentClearance, notices, academicCalendarEvents, courseOutlines, thesisTrackers.
+- Credit limits per semester: change min from 16 to 15; max stays at 24
+- Carryover enforcement: carryover courses are auto-selected AND locked (cannot be deselected) -- they must be registered first for returning students
+- Student add/edit form: add Entry Mode dropdown (UTME / Direct Entry)
+- Batch Graduation processing: use UTME/DE-aware credit requirement (120 vs 90) when checking eligibility
+- Student profile modal: show Entry Mode, semesters registered, credits passed vs required
 
 ### Remove
-- Nothing removed; all previous features maintained.
+- Nothing removed
 
 ## Implementation Plan
-1. Extend AppContext with new state slices for all 10 features.
-2. Create 10 new tab components (or enhance existing ones where overlap exists).
-3. Wire new tabs into appropriate dashboards with tab navigation entries.
-4. Add "Print Result Slip" button in StudentDashboard results view.
-5. Add notice board panel on all dashboards (collapsible sidebar widget or pinned cards).
-6. Add academic calendar events widget on dashboard sidebars.
-7. Add course outline download links in student course registration view.
-8. Ensure all new features are audit-logged and work offline via localStorage.
+1. Add `entryMode: 'UTME' | 'DE'` field to student data model and default existing students to 'UTME'
+2. Add Entry Mode dropdown to Add Student form, Edit Student form, and Self-Registration form
+3. Update course registration credit minimum from 16 to 15 across all level rules
+4. Lock carryover courses (non-removable) in registration portal for returning students
+5. Add prerequisite field to course data model; Admin/HOD course edit form gets a 'Prerequisite Course' multi-select
+6. In registration portal, check if student has a passing grade in prerequisite before allowing selection; show disabled state with tooltip
+7. Add DE rule: for DE students, extract all 100-level GST courses, show them locked at top of First Semester column
+8. Update graduation eligibility panel: use entryMode to pick 120 vs 90 credit requirement; check all core courses passed; calculate semesters registered vs UTME(8-12)/DE(6-10) limits
+9. Add semester counter to student records (increments each time a registration is submitted for a new semester)
+10. Display graduation progress in student portal overview: credits bar, core courses status, semester count
+11. Update Batch Graduation report to use UTME/DE-aware thresholds

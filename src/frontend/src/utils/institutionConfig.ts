@@ -224,7 +224,7 @@ export function getInstitutionConfig(type?: string): InstitutionConfig {
         showGraduation: true,
         showPostgraduate: true,
         showCreditUnits: true,
-        creditRules: { minPerSem: 16, maxPerSem: 24 },
+        creditRules: { minPerSem: 15, maxPerSem: 24 },
       };
   }
 }

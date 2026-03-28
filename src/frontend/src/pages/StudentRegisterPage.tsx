@@ -135,6 +135,7 @@ export default function StudentRegisterPage() {
     { id: Date.now(), subject: "", grade: "" },
   ]);
   const [photo, setPhoto] = useState<string>("");
+  const [entryMode, setEntryMode] = useState<"UTME" | "DE">("UTME");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -287,6 +288,7 @@ export default function StudentRegisterPage() {
         password,
         regNo: jambNo,
         jambRegNo: jambNo,
+        entryMode,
       });
       // Find the updated student to login
       const updated = students.find((s) => s.id === existingStudentId);
@@ -333,6 +335,7 @@ export default function StudentRegisterPage() {
         oLevelResults: validOLevel,
         password,
         programmeType: "undergraduate",
+        entryMode,
       };
       addStudent(newStudent);
       login({
@@ -397,26 +400,46 @@ export default function StudentRegisterPage() {
 
         {/* Steps indicator */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          {(["lookup", "form"] as Step[]).map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              {i > 0 && <div className="w-8 h-px bg-border" />}
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
-                  step === s
-                    ? "bg-primary text-primary-foreground"
-                    : step === "success" || (s === "lookup" && step === "form")
-                      ? "bg-success text-success-foreground"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {step === "success" || (s === "lookup" && step === "form") ? (
-                  <CheckCircle className="w-4 h-4" />
-                ) : (
-                  i + 1
+          {(["lookup", "form", "success"] as Step[]).map((s, i) => {
+            const labels = ["Lookup", "Register", "Done"];
+            const isPast =
+              (s === "lookup" && (step === "form" || step === "success")) ||
+              (s === "form" && step === "success");
+            const isActive = step === s;
+            return (
+              <div key={s} className="flex items-center gap-2">
+                {i > 0 && (
+                  <div
+                    className={`w-8 h-px ${
+                      isPast || (s === "form" && step === "success")
+                        ? "bg-success"
+                        : "bg-border"
+                    }`}
+                  />
                 )}
+                <div className="flex flex-col items-center gap-1">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : isPast || step === "success"
+                          ? "bg-success text-white"
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {isPast || (s === "success" && step === "success") ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      i + 1
+                    )}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">
+                    {labels[i]}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <AnimatePresence mode="wait">
@@ -690,6 +713,30 @@ export default function StudentRegisterPage() {
                           </p>
                         )}
                       </div>
+                    </div>
+                    {/* Entry Mode */}
+                    <div>
+                      <Label className="text-xs font-medium mb-1.5 block">
+                        Entry Mode <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={entryMode}
+                        onValueChange={(v) => setEntryMode(v as "UTME" | "DE")}
+                      >
+                        <SelectTrigger data-ocid="student_register.entry_mode.select">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="UTME">
+                            UTME (Regular Admission)
+                          </SelectItem>
+                          <SelectItem value="DE">Direct Entry (DE)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        UTME: min 120 credits, 8–12 semesters. DE: min 90
+                        credits, 6–10 semesters.
+                      </p>
                     </div>
                   </div>
 

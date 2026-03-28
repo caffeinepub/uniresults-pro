@@ -800,6 +800,7 @@ function StudentsTab() {
     state: "",
     lga: "",
     status: "accepted",
+    entryMode: "UTME",
   });
 
   const [scanImage, setScanImage] = useState<string | null>(null);
@@ -848,6 +849,7 @@ function StudentsTab() {
       state: "",
       lga: "",
       status: "accepted",
+      entryMode: "UTME",
     });
   }
 
@@ -871,6 +873,7 @@ function StudentsTab() {
       regNo: form.regNo || undefined,
       state: form.state || undefined,
       lga: form.lga || undefined,
+      entryMode: (form.entryMode as any) || "UTME",
     } as any);
     resetManualForm();
     setOpen(false);
@@ -1207,6 +1210,23 @@ function StudentsTab() {
                           <SelectItem value="graduated">Graduated</SelectItem>
                           <SelectItem value="withdrawn">Withdrawn</SelectItem>
                           <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Entry Mode</Label>
+                      <Select
+                        value={form.entryMode}
+                        onValueChange={(v) =>
+                          setForm((f) => ({ ...f, entryMode: v }))
+                        }
+                      >
+                        <SelectTrigger data-ocid="students.entry_mode.select">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="UTME">UTME (Regular)</SelectItem>
+                          <SelectItem value="DE">Direct Entry (DE)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

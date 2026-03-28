@@ -47,6 +47,8 @@ export type ExtendedStudent = Student & {
   photoUrl?: string;
   oLevelResults?: Array<{ subject: string; grade: string }>;
   password?: string;
+  entryMode?: "UTME" | "DE";
+  semestersRegistered?: number;
 };
 
 export type ExtendedResult = AcademicResult & {
@@ -56,6 +58,17 @@ export type ExtendedResult = AcademicResult & {
 export type ExtendedDepartment = Department & {
   facultyId?: bigint;
 };
+
+export type ExtendedCourse = Course & {
+  isCore: boolean;
+  prerequisiteIds?: string[];
+};
+
+/** Returns true if a course is a core (required) course based on its code */
+export function isCourseCore(code: string): boolean {
+  const prefix = code.replace(/\d.*/, "");
+  return !["GSE", "GNS", "PED", "GES", "CED"].includes(prefix);
+}
 
 export interface Faculty {
   id: bigint;
