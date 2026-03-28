@@ -70,6 +70,24 @@ export function isCourseCore(code: string): boolean {
   return !["GSE", "GNS", "PED", "GES", "CED"].includes(prefix);
 }
 
+export interface JambScanBatch {
+  id: string;
+  date: string;
+  image: string | null;
+  docType: string;
+  rows: Array<{
+    sn: string;
+    regNo: string;
+    name: string;
+    deptName: string;
+    level: string;
+    state: string;
+    gender: string;
+    status: string;
+  }>;
+  importedCount: number;
+}
+
 export interface Faculty {
   id: bigint;
   name: string;
@@ -413,6 +431,7 @@ interface AppState {
   siwesRecords: SIWESRecord[];
   evaluationWindowOpen: boolean;
   selfRegistrationOpen: boolean;
+  jambScanBatches: JambScanBatch[];
 }
 
 interface AppContextValue extends AppState {
@@ -529,6 +548,8 @@ interface AppContextValue extends AppState {
   updateSIWESRecord: (record: SIWESRecord) => void;
   setEvaluationWindowOpen: (open: boolean) => void;
   setSelfRegistrationOpen: (open: boolean) => void;
+  addJambScanBatch: (batch: JambScanBatch) => void;
+  removeJambScanBatch: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -1927,6 +1948,655 @@ const FULL_COURSES: Course[] = [
     creditUnits: BigInt(3),
     departmentId: BigInt(26),
     lecturerPrincipal: "lecturer-3",
+    semester: "Second",
+  },
+  // Biology Education (dept 27) - Federal University of Education, Kontagora
+  {
+    id: BigInt(148),
+    name: "Communication in English",
+    code: "GST111",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(149),
+    name: "Use of Library and Study",
+    code: "GST113",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(150),
+    name: "Introduction to Teaching and Foundations of Education",
+    code: "EDU101",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(151),
+    name: "General Biology I",
+    code: "BIO101",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(152),
+    name: "General Biology Practical I",
+    code: "BIO107",
+    creditUnits: BigInt(1),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(153),
+    name: "Introduction to Computer Science",
+    code: "COS101",
+    creditUnits: BigInt(3),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(154),
+    name: "General Chemistry I (Inorganic)",
+    code: "CHM101",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(155),
+    name: "General Mathematics I",
+    code: "MTH101",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(156),
+    name: "General Physics I",
+    code: "PHY101",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(157),
+    name: "Nigerian Peoples and Culture",
+    code: "GST112",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(158),
+    name: "Communication in Either Arabic or French",
+    code: "GST114",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(159),
+    name: "General Biology II",
+    code: "BIO102",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(160),
+    name: "General Biology Practical II",
+    code: "BIO108",
+    creditUnits: BigInt(1),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(161),
+    name: "Problem Solving",
+    code: "COS102",
+    creditUnits: BigInt(3),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(162),
+    name: "General Chemistry II",
+    code: "CHM102",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(163),
+    name: "General Mathematics II",
+    code: "MTH102",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(164),
+    name: "General Physics II",
+    code: "PHY102",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(165),
+    name: "Foundation of Science",
+    code: "SED102",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(166),
+    name: "Entrepreneurship and Innovations",
+    code: "ENT211",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(167),
+    name: "Curriculum, Curriculum Delivery and General Teaching Methods",
+    code: "EDU201",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(168),
+    name: "Education Technology and Artificial Intelligence",
+    code: "EDU203",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(169),
+    name: "Genetics I",
+    code: "BIO201",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(170),
+    name: "General Physiology",
+    code: "BIO203",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(171),
+    name: "Introductory Developmental/Cell Biology",
+    code: "BIO205",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(172),
+    name: "Invertebrates",
+    code: "BIO207",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(173),
+    name: "General Microbiology",
+    code: "MCB221",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(174),
+    name: "Philosophy, Logic and Human Existence",
+    code: "GST212",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(175),
+    name: "Microteaching (Theory and Practice)",
+    code: "EDU202",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(176),
+    name: "Introductory Ecology",
+    code: "BIO202",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(177),
+    name: "Biology Techniques",
+    code: "BIO204",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(178),
+    name: "Hydrobiology",
+    code: "BIO206",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(179),
+    name: "Biostatistics",
+    code: "BIO208",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(180),
+    name: "Vertebrata",
+    code: "BIO210",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(181),
+    name: "Cryptogamic Botany",
+    code: "BIO212",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(182),
+    name: "Method of Teaching Biology I",
+    code: "SED202",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(183),
+    name: "Teaching Practice I",
+    code: "EDU301",
+    creditUnits: BigInt(3),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(184),
+    name: "Education Administration and Planning",
+    code: "EDU303",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(185),
+    name: "Genetics II",
+    code: "BIO301",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(186),
+    name: "Biogeography and Soil Biology",
+    code: "BIO303",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(187),
+    name: "Field Course",
+    code: "BIO307",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(188),
+    name: "Plant Physiology",
+    code: "BIO309",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(189),
+    name: "Basic Entomology and Nematology",
+    code: "BIO311",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(190),
+    name: "Mycology",
+    code: "MCB301",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(191),
+    name: "Research Methods and Data Analysis",
+    code: "SED301",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(192),
+    name: "Computer Application in Science Education",
+    code: "SED305",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(193),
+    name: "Peace and Conflict Resolution",
+    code: "GST312",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(194),
+    name: "Venture Creation",
+    code: "ENT312",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(195),
+    name: "Educational Measurements, Tests, Research Methods and Statistics",
+    code: "EDU302",
+    creditUnits: BigInt(3),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(196),
+    name: "Population Biology and Evolution",
+    code: "BIO302",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(197),
+    name: "Nigerian Flora and Fauna",
+    code: "BIO304",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(198),
+    name: "Systematic Biology",
+    code: "BIO306",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(199),
+    name: "Spermatophytes",
+    code: "BIO308",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(200),
+    name: "Parasitology and Protozoology",
+    code: "BIO310",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(201),
+    name: "General Biology Methods II",
+    code: "SED302",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(202),
+    name: "Teaching Practice II",
+    code: "EDU401",
+    creditUnits: BigInt(3),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(203),
+    name: "Wildlife Conservation and Management",
+    code: "BIO403",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(204),
+    name: "Fisheries and Aquaculture",
+    code: "BIO405",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(205),
+    name: "Field Course",
+    code: "BIO407",
+    creditUnits: BigInt(1),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(206),
+    name: "Economic Botany",
+    code: "BIO409",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(207),
+    name: "Plant Pathology",
+    code: "BIO411",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(208),
+    name: "Bioinformatics",
+    code: "BIO413",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(209),
+    name: "Seminar in Science and Science Education",
+    code: "SED401",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(210),
+    name: "Primary and Integrated Science Program",
+    code: "SED403",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "First",
+  },
+  {
+    id: BigInt(211),
+    name: "Project",
+    code: "EDU400",
+    creditUnits: BigInt(3),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(212),
+    name: "Guidance and Counselling",
+    code: "EDU402",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(213),
+    name: "Principles of Plant and Animal Breeding",
+    code: "BIO402",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(214),
+    name: "Nigerian Plants and Animals in Prophylactics and Therapeutics",
+    code: "BIO404",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(215),
+    name: "Principles of Pest Management",
+    code: "BIO406",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(216),
+    name: "Applied Biotechnology",
+    code: "BIO408",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(217),
+    name: "Bio-Entrepreneurship Options",
+    code: "BIO410",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(218),
+    name: "Organization and Management of Biology Laboratory",
+    code: "SED402",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
+    semester: "Second",
+  },
+  {
+    id: BigInt(219),
+    name: "Science, Technology and Society",
+    code: "SED404",
+    creditUnits: BigInt(2),
+    departmentId: BigInt(27),
+    lecturerPrincipal: "lecturer-1",
     semester: "Second",
   },
 ];
@@ -4108,6 +4778,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     useState<boolean>(() => lsGet<boolean>("unirp_evalWindowOpen") ?? false);
   const [selfRegistrationOpen, setSelfRegistrationOpenState] =
     useState<boolean>(() => lsGet<boolean>("unirp_selfRegOpen") ?? true);
+  const [jambScanBatches, setJambScanBatches] = useState<JambScanBatch[]>(
+    () => lsGet<JambScanBatch[]>("jamb_scan_batches") ?? [],
+  );
 
   const DEFAULT_INSTITUTION: InstitutionSettings = {
     name: "Federal University of Education Kontagora, Niger State",
@@ -5112,6 +5785,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     lsSet("unirp_selfRegOpen", open);
   }, []);
 
+  const addJambScanBatch = useCallback((batch: JambScanBatch) => {
+    setJambScanBatches((prev) => {
+      const next = [batch, ...prev];
+      lsSet("jamb_scan_batches", next);
+      return next;
+    });
+  }, []);
+
+  const removeJambScanBatch = useCallback((id: string) => {
+    setJambScanBatches((prev) => {
+      const next = prev.filter((b) => b.id !== id);
+      lsSet("jamb_scan_batches", next);
+      return next;
+    });
+  }, []);
+
   const submitCourseResults = useCallback(
     (courseId: bigint) => {
       setResults((prev) =>
@@ -5364,6 +6053,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setEvaluationWindowOpen,
         selfRegistrationOpen,
         setSelfRegistrationOpen,
+        jambScanBatches,
+        addJambScanBatch,
+        removeJambScanBatch,
       }}
     >
       {children}

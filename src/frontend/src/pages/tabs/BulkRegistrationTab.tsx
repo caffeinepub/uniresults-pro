@@ -1,7 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -12,12 +19,16 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle,
+  Clock,
   Download,
   FileUp,
+  History,
   ImagePlus,
   Plus,
   Trash2,
   Upload,
+  X,
+  ZoomIn,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -50,7 +61,15 @@ const emptyRow = (): ImportRow => ({
 });
 
 export default function BulkRegistrationTab() {
-  const { students, departments, faculties, addStudent } = useApp();
+  const {
+    students,
+    departments,
+    faculties,
+    addStudent,
+    addJambScanBatch,
+    removeJambScanBatch,
+    jambScanBatches,
+  } = useApp();
 
   // ── CSV Upload state ────────────────────────────────────────────
   const [csvRows, setCsvRows] = useState<ImportRow[]>([]);
@@ -66,6 +85,8 @@ export default function BulkRegistrationTab() {
   ]);
   const [docType, setDocType] = useState("Student Admission List");
   const [scanImported, setScanImported] = useState(0);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [deleteBatchId, setDeleteBatchId] = useState<string | null>(null);
   const scanFileRef = useRef<HTMLInputElement>(null);
 
   // ── Helpers ─────────────────────────────────────────────────────
@@ -206,7 +227,33 @@ export default function BulkRegistrationTab() {
   }
 
   function handleScanImport() {
+    const imageToSave = scanImage;
+    const rowsToSave = scanRows;
+    const docTypeToSave = docType;
     importRows(scanRows, (count) => {
+      // Save scan batch to history
+      addJambScanBatch({
+        id: Math.random().toString(36).slice(2) + Date.now(),
+        date: new Date().toISOString(),
+        image: imageToSave,
+        docType: docTypeToSave,
+        rows: rowsToSave
+          .filter((r) => r.name.trim() && r.deptId)
+          .map((r) => {
+            const dept = departments.find((d) => String(d.id) === r.deptId);
+            return {
+              sn: r.sn,
+              regNo: r.regNo,
+              name: r.name,
+              deptName: dept?.name ?? r.deptId,
+              level: r.level,
+              state: r.state,
+              gender: r.gender,
+              status: r.status,
+            };
+          }),
+        importedCount: count,
+      });
       setScanImported(count);
       setScanRows([emptyRow(), emptyRow(), emptyRow()]);
       setScanImage(null);
@@ -246,7 +293,7 @@ export default function BulkRegistrationTab() {
       </div>
 
       <Tabs defaultValue="csv" className="w-full">
-        <TabsList className="w-full max-w-sm">
+        <TabsList className="w-full max-w-lg">
           <TabsTrigger
             value="csv"
             data-ocid="bulk_reg.csv.tab"
@@ -262,6 +309,19 @@ export default function BulkRegistrationTab() {
           >
             <ImagePlus className="w-3.5 h-3.5 mr-1.5" />
             Scan &amp; Import
+          </TabsTrigger>
+          <TabsTrigger
+            value="history"
+            data-ocid="bulk_reg.history.tab"
+            className="flex-1"
+          >
+            <History className="w-3.5 h-3.5 mr-1.5" />
+            Scan History
+            {jambScanBatches.length > 0 && (
+              <span className="ml-1.5 bg-primary text-primary-foreground text-[10px] rounded-full px-1.5 py-0.5 font-semibold leading-none">
+                {jambScanBatches.length}
+              </span>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -756,7 +816,243 @@ export default function BulkRegistrationTab() {
             </div>
           </div>
         </TabsContent>
+
+        {/* ── Scan History Tab ───────────────────────────────────── */}
+        <TabsContent value="history" className="space-y-4 pt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">Scanned Documents</span>
+              <span className="bg-muted text-muted-foreground text-xs rounded-full px-2 py-0.5 font-medium">
+                {jambScanBatches.length} document
+                {jambScanBatches.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+
+          {jambScanBatches.length === 0 ? (
+            <div
+              className="flex flex-col items-center justify-center py-16 text-center"
+              data-ocid="bulk_reg.history.empty_state"
+            >
+              <History className="w-12 h-12 text-muted-foreground/30 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">
+                No scanned documents yet
+              </p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Use the Scanner tab to import JAMB documents and they will
+                appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {[...jambScanBatches]
+                .sort(
+                  (a, b) =>
+                    new Date(b.date).getTime() - new Date(a.date).getTime(),
+                )
+                .map((batch, idx) => (
+                  <div
+                    key={batch.id}
+                    className="border border-border rounded-xl overflow-hidden bg-card"
+                    data-ocid={`bulk_reg.history.item.${idx + 1}`}
+                  >
+                    {/* Card header */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-muted/40 border-b border-border">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(batch.date).toLocaleString()}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5 font-medium">
+                          {batch.docType}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-xs bg-success/10 text-success border border-success/20 rounded-full px-2 py-0.5 font-medium">
+                          <CheckCircle className="w-3 h-3" />
+                          {batch.importedCount} student
+                          {batch.importedCount !== 1 ? "s" : ""} imported
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="text-xs text-destructive hover:underline flex items-center gap-1"
+                        data-ocid={`bulk_reg.history.delete_button.${idx + 1}`}
+                        onClick={() => setDeleteBatchId(batch.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
+
+                    {/* Card body */}
+                    <div className="flex flex-col md:flex-row gap-4 p-4">
+                      {/* Thumbnail */}
+                      {batch.image && (
+                        <div className="flex-shrink-0">
+                          <button
+                            type="button"
+                            className="relative group cursor-pointer"
+                            onClick={() => setPreviewImage(batch.image)}
+                          >
+                            <img
+                              src={batch.image}
+                              alt="Scanned document"
+                              className="w-28 h-36 object-cover rounded-lg border border-border shadow-sm"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                              <ZoomIn className="w-5 h-5 text-white" />
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            className="mt-1.5 text-xs text-primary hover:underline flex items-center gap-1"
+                            data-ocid={`bulk_reg.history.view_image_button.${idx + 1}`}
+                            onClick={() => setPreviewImage(batch.image)}
+                          >
+                            <ZoomIn className="w-3 h-3" />
+                            View Full Image
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Rows table */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">
+                          {batch.rows.length} student
+                          {batch.rows.length !== 1 ? "s" : ""} in this batch
+                        </p>
+                        <ScrollArea className="h-48 rounded-lg border border-border">
+                          <table className="w-full text-xs min-w-[600px]">
+                            <thead className="bg-muted/50 border-b border-border sticky top-0">
+                              <tr>
+                                {[
+                                  "S/N",
+                                  "JAMB Reg No",
+                                  "Name",
+                                  "Department",
+                                  "Level",
+                                  "State",
+                                  "Gender",
+                                  "Status",
+                                ].map((h) => (
+                                  <th
+                                    key={h}
+                                    className="text-left font-medium text-muted-foreground px-3 py-2 whitespace-nowrap"
+                                  >
+                                    {h}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {batch.rows.map((row, ri) => (
+                                <tr
+                                  key={`${row.regNo || row.name}-${ri}`}
+                                  className="border-b border-border/40 hover:bg-muted/20"
+                                >
+                                  <td className="px-3 py-1.5 text-muted-foreground">
+                                    {row.sn || String(ri + 1)}
+                                  </td>
+                                  <td className="px-3 py-1.5 font-mono">
+                                    {row.regNo || "—"}
+                                  </td>
+                                  <td className="px-3 py-1.5 font-medium">
+                                    {row.name}
+                                  </td>
+                                  <td className="px-3 py-1.5">
+                                    {row.deptName}
+                                  </td>
+                                  <td className="px-3 py-1.5">{row.level}</td>
+                                  <td className="px-3 py-1.5">
+                                    {row.state || "—"}
+                                  </td>
+                                  <td className="px-3 py-1.5 capitalize">
+                                    {row.gender || "—"}
+                                  </td>
+                                  <td className="px-3 py-1.5">
+                                    <span className="capitalize bg-success/10 text-success text-[10px] rounded-full px-2 py-0.5 font-medium">
+                                      {row.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </ScrollArea>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* ── Image Preview Modal ─────────────────────────────────── */}
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-3xl" data-ocid="bulk_reg.history.modal">
+          <DialogHeader>
+            <DialogTitle>Scanned Document</DialogTitle>
+          </DialogHeader>
+          {previewImage && (
+            <div className="overflow-auto max-h-[70vh]">
+              <img
+                src={previewImage}
+                alt="Scanned document preview"
+                className="w-full object-contain rounded-lg"
+              />
+            </div>
+          )}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5"
+              data-ocid="bulk_reg.history.close_button"
+              onClick={() => setPreviewImage(null)}
+            >
+              <X className="w-4 h-4" />
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Batch Confirmation Dialog ───────────────────── */}
+      <Dialog
+        open={!!deleteBatchId}
+        onOpenChange={() => setDeleteBatchId(null)}
+      >
+        <DialogContent data-ocid="bulk_reg.history.dialog">
+          <DialogHeader>
+            <DialogTitle>Delete Scan Record?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will remove the scan record and all extracted student data from
+            history. The imported students remain in the system.
+          </p>
+          <div className="flex gap-3 justify-end mt-2">
+            <button
+              type="button"
+              className="text-sm text-muted-foreground hover:underline"
+              data-ocid="bulk_reg.history.cancel_button"
+              onClick={() => setDeleteBatchId(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="text-sm bg-destructive text-destructive-foreground px-4 py-1.5 rounded-md hover:bg-destructive/90"
+              data-ocid="bulk_reg.history.confirm_button"
+              onClick={() => {
+                if (deleteBatchId) removeJambScanBatch(deleteBatchId);
+                setDeleteBatchId(null);
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
