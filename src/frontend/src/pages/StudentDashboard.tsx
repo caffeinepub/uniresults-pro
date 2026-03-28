@@ -56,6 +56,7 @@ import {
   useApp,
 } from "../context/AppContext";
 import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
+import { UpcomingEventsWidget } from "./tabs/AcademicCalendarEventsTab";
 import { CarryOverBanner } from "./tabs/CarryOverAutoTab";
 import CourseEvaluationTab from "./tabs/CourseEvaluationTab";
 import CourseRegSlipModal from "./tabs/CourseRegSlipModal";
@@ -67,10 +68,13 @@ import GPATrendChart from "./tabs/GPATrendChart";
 import IDCardTab from "./tabs/IDCardTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import PhotoAvatar from "./tabs/PhotoAvatar";
+import { StudentClearanceCard } from "./tabs/StudentClearanceTab";
 import StudentDocumentsTab from "./tabs/StudentDocumentsTab";
 import StudentIDCardModal from "./tabs/StudentIDCardModal";
 import StudentInboxTab, { InboxUnreadBadge } from "./tabs/StudentInboxTab";
 import StudentProgressTab from "./tabs/StudentProgressTab";
+import ThesisTrackerTab from "./tabs/ThesisTrackerTab";
+import { StudentTranscriptRequestTab } from "./tabs/TranscriptRequestTab";
 
 function classifyDegree(cgpa: number): { label: string; color: string } {
   if (cgpa >= 4.5) return { label: "First Class", color: "text-success" };
@@ -112,11 +116,16 @@ export default function StudentDashboard() {
   else if (activeTab === "transfer") content = <StudentTransferTab />;
   else if (activeTab === "inbox") content = <StudentInboxTab />;
   else if (activeTab === "id_card") content = <IDCardTab mode="student" />;
+  else if (activeTab === "transcript_request")
+    content = <StudentTranscriptRequestTab />;
+  else if (activeTab === "thesis_tracker")
+    content = <ThesisTrackerTab mode="student" />;
   else content = <OverviewTab />;
 
   return (
     <>
       <NoticeBoardPanel userRole="Student" />
+      <UpcomingEventsWidget />
       <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
           <button
@@ -455,6 +464,7 @@ function OverviewTab() {
           </ResponsiveContainer>
         </div>
       )}
+      <StudentClearanceCard />
     </div>
   );
 }

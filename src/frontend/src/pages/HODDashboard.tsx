@@ -52,7 +52,9 @@ import { calcGradePoint, useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
 import type { ExtendedResult, GradeAppeal } from "../context/AppContext";
 import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
+import { UpcomingEventsWidget } from "./tabs/AcademicCalendarEventsTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
+import BroadcastInboxTab from "./tabs/BroadcastInboxTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
@@ -60,6 +62,7 @@ import { HODTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptReportTab from "./tabs/DeptReportTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import ExamSupervisionTab from "./tabs/ExamSupervisionTab";
 import GPATrendChart from "./tabs/GPATrendChart";
 import JambAdmissionScannerTab from "./tabs/JambAdmissionScannerTab";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
@@ -68,6 +71,7 @@ import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
+import ThesisTrackerTab from "./tabs/ThesisTrackerTab";
 
 export default function HODDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -126,11 +130,16 @@ export default function HODDashboard() {
     content = <ResultsProcessingTab userRole="HOD" />;
   else if (activeTab === "bulkReg") content = <BulkRegistrationTab />;
   else if (activeTab === "jamb_import") content = <JambAdmissionScannerTab />;
+  else if (activeTab === "broadcast") content = <BroadcastInboxTab />;
+  else if (activeTab === "exam_supervision") content = <ExamSupervisionTab />;
+  else if (activeTab === "thesis_tracker")
+    content = <ThesisTrackerTab mode="hod" />;
   else content = <OverviewTab />;
 
   return (
     <>
       <NoticeBoardPanel userRole={hodUser?.role ?? "HOD"} />
+      <UpcomingEventsWidget />
       <div className="flex items-center gap-2 mb-2 no-print">
         <InstitutionTypeBanner />
       </div>

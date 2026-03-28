@@ -92,12 +92,17 @@ import {
 import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import { getPendingRegistrations, savePendingRegistrations } from "./LoginPage";
 import type { PendingRegistration } from "./LoginPage";
+import AcademicCalendarEventsTab, {
+  UpcomingEventsWidget,
+} from "./tabs/AcademicCalendarEventsTab";
+import AccreditationReportTab from "./tabs/AccreditationReportTab";
 import AdminInboxTab from "./tabs/AdminInboxTab";
 import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
 import AlumniManagementTab from "./tabs/AlumniManagementTab";
 import AuditLogTabFile from "./tabs/AuditLogTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
+import BroadcastInboxTab from "./tabs/BroadcastInboxTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CameraSecurityTab from "./tabs/CameraSecurityTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
@@ -106,6 +111,7 @@ import DeferralsTab from "./tabs/DefferralsTab";
 import { AdminTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import ExamSupervisionTab from "./tabs/ExamSupervisionTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
 import FinancialClearanceTab from "./tabs/FinancialClearanceTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
@@ -125,9 +131,12 @@ import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
 import StaffTab from "./tabs/StaffTab";
+import StudentClearanceTab from "./tabs/StudentClearanceTab";
 import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
 import SystemHealthTab from "./tabs/SystemHealthTab";
+import ThesisTrackerTab from "./tabs/ThesisTrackerTab";
+import TranscriptRequestTab from "./tabs/TranscriptRequestTab";
 
 export default function AdminDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
@@ -218,6 +227,14 @@ export default function AdminDashboard() {
   else if (activeTab === "audit_log") view = <AuditLogTabFile />;
   else if (activeTab === "graduation_list") view = <GraduationListTab />;
   else if (activeTab === "system_health") view = <SystemHealthTab />;
+  else if (activeTab === "broadcast") view = <BroadcastInboxTab />;
+  else if (activeTab === "transcript_requests") view = <TranscriptRequestTab />;
+  else if (activeTab === "accreditation") view = <AccreditationReportTab />;
+  else if (activeTab === "exam_supervision") view = <ExamSupervisionTab />;
+  else if (activeTab === "student_clearance") view = <StudentClearanceTab />;
+  else if (activeTab === "cal_events") view = <AcademicCalendarEventsTab />;
+  else if (activeTab === "thesis_tracker")
+    view = <ThesisTrackerTab mode="admin" />;
   else view = <OverviewTab />;
 
   return (
@@ -227,6 +244,7 @@ export default function AdminDashboard() {
         onClose={() => setQrScannerOpen(false)}
       />
       <NoticeBoardPanel userRole={adminUser?.role ?? "SuperAdmin"} />
+      <UpcomingEventsWidget />
       <div className="flex items-center gap-2 mb-2 no-print">
         <InstitutionTypeBanner />
       </div>
