@@ -49,9 +49,11 @@ import type {
   GradeAppeal,
 } from "../context/AppContext";
 import { UpcomingEventsWidget } from "./tabs/AcademicCalendarEventsTab";
+import { AnnouncementsNoticesPanel } from "./tabs/AnnouncementsManagerTab";
 import AttendanceTab from "./tabs/AttendanceTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import CourseOutlineTab from "./tabs/CourseOutlineTab";
+import ELibraryUploadTab from "./tabs/ELibraryTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import PhotoAvatar from "./tabs/PhotoAvatar";
@@ -72,11 +74,13 @@ export default function LecturerDashboard() {
     },
     { label: "Mark Attendance", tab: "attendance", icon: ClipboardCheck },
     { label: "View Courses", tab: "overview", icon: BookOpen },
+    { label: "E-Library", tab: "elibrary", icon: BookOpen },
   ];
 
   return (
     <>
       <NoticeBoardPanel userRole="Lecturer" />
+      <AnnouncementsNoticesPanel userRole="Lecturer" />
       <UpcomingEventsWidget />
       <div className="flex flex-wrap gap-2 px-0 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
@@ -110,6 +114,8 @@ export default function LecturerDashboard() {
         <ResultsProcessingTab userRole="Lecturer" />
       ) : activeTab === "course_outlines" ? (
         <CourseOutlineTab />
+      ) : activeTab === "elibrary" ? (
+        <ELibraryUploadTab />
       ) : activeTab === "thesis_tracker" ? (
         <ThesisTrackerTab mode="supervisor" />
       ) : (

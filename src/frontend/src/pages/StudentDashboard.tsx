@@ -60,6 +60,7 @@ import {
 } from "../context/AppContext";
 import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import { UpcomingEventsWidget } from "./tabs/AcademicCalendarEventsTab";
+import { AnnouncementsNoticesPanel } from "./tabs/AnnouncementsManagerTab";
 import { CarryOverBanner } from "./tabs/CarryOverAutoTab";
 import CourseEvaluationTab from "./tabs/CourseEvaluationTab";
 import {
@@ -68,6 +69,7 @@ import {
 } from "./tabs/CourseRegScannerModals";
 import CourseRegSlipModal from "./tabs/CourseRegSlipModal";
 import { StudentTransferTab } from "./tabs/DepartmentTransferTab";
+import { StudentELibraryTab } from "./tabs/ELibraryTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FeeStatusTab from "./tabs/FeeStatusTab";
 import { FeesOutstandingBanner } from "./tabs/FinancialClearanceTab";
@@ -75,6 +77,7 @@ import GPATrendChart from "./tabs/GPATrendChart";
 import IDCardTab from "./tabs/IDCardTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import PhotoAvatar from "./tabs/PhotoAvatar";
+import { StudentScholarshipCard } from "./tabs/ScholarshipTab";
 import { StudentClearanceCard } from "./tabs/StudentClearanceTab";
 import StudentDocumentsTab from "./tabs/StudentDocumentsTab";
 import StudentIDCardModal from "./tabs/StudentIDCardModal";
@@ -104,6 +107,8 @@ export default function StudentDashboard() {
     { label: "Submit Appeal", tab: "appeals", icon: MessageSquare },
     { label: "View Progress", tab: "progress", icon: TrendingUp },
     { label: "My Documents", tab: "documents", icon: Award },
+    { label: "E-Library", tab: "elibrary", icon: BookOpen },
+    { label: "My Awards", tab: "scholarships", icon: Award },
   ];
 
   let content: React.ReactNode;
@@ -129,11 +134,15 @@ export default function StudentDashboard() {
   else if (activeTab === "thesis_tracker")
     content = <ThesisTrackerTab mode="student" />;
   else if (activeTab === "result_slip") content = <StudentResultSlipTab />;
+  else if (activeTab === "elibrary") content = <StudentELibrarySection />;
+  else if (activeTab === "scholarships")
+    content = <StudentScholarshipsSection />;
   else content = <OverviewTab />;
 
   return (
     <>
       <NoticeBoardPanel userRole="Student" />
+      <AnnouncementsNoticesPanel userRole="Student" />
       <UpcomingEventsWidget />
       <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
         {quickActions.map((a) => (
@@ -3379,4 +3388,26 @@ function StudentExamScheduleTab() {
     .filter((c) => myCourseIds.includes(c.id))
     .map((c) => c.code);
   return <ExamScheduleTab filterCourseCodes={myCourseCodes} isAdmin={false} />;
+}
+
+function StudentELibrarySection() {
+  const { currentUser, students, departments } = useApp();
+  const me = students.find((s) => s.userPrincipal === currentUser?.principal);
+  const dept = me
+    ? departments.find((d) => String(d.id) === String(me.departmentId))
+    : null;
+  return <StudentELibraryTab department={dept?.name ?? ""} />;
+}
+
+function StudentScholarshipsSection() {
+  const { currentUser, students } = useApp();
+  const me = students.find((s) => s.userPrincipal === currentUser?.principal);
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold flex items-center gap-2">
+        <span>My Scholarships &amp; Awards</span>
+      </h2>
+      <StudentScholarshipCard matricNo={me?.matricNumber ?? ""} />
+    </div>
+  );
 }

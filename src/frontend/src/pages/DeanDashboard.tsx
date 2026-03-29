@@ -50,10 +50,12 @@ import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CarryoverReportTab from "./tabs/CarryoverReportTab";
+import CombinedResultsTab from "./tabs/CombinedResultsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import DeansListTab from "./tabs/DeansListTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import FacultyCollationTab from "./tabs/FacultyCollationTab";
 import FacultyReportTab from "./tabs/FacultyReportTab";
 import GradeSheetTab from "./tabs/GradeSheetTab";
 import JambAdmissionScannerTab from "./tabs/JambAdmissionScannerTab";
@@ -85,6 +87,8 @@ export default function DeanDashboard() {
       icon: FileUp,
       show: _instConfig.showJAMBImport,
     },
+    { label: "Faculty Collation", tab: "faculty_collation", icon: FileText },
+    { label: "Combined Results", tab: "combined_results", icon: FileText },
   ];
 
   const quickActions = allQuickActions.filter((a) => a.show !== false);
@@ -115,6 +119,9 @@ export default function DeanDashboard() {
   else if (activeTab === "carryover_report") view = <CarryoverReportTab />;
   else if (activeTab === "grade_sheet") view = <GradeSheetTab />;
   else if (activeTab === "pass_fail_list") view = <PassFailGraduatingTab />;
+  else if (activeTab === "faculty_collation")
+    view = <FacultyCollationTab userRole="Dean" />;
+  else if (activeTab === "combined_results") view = <CombinedResultsTab />;
   else view = <OverviewTab />;
 
   return (

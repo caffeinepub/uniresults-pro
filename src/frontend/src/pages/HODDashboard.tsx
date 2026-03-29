@@ -21,6 +21,7 @@ import {
   AlertOctagon,
   AlertTriangle,
   BarChart2,
+  Bell,
   BookOpen,
   CheckCircle,
   ClipboardCheck,
@@ -32,6 +33,7 @@ import {
   MessageSquare,
   RefreshCw,
   ScrollText,
+  UserCheck,
   Users,
   XCircle,
 } from "lucide-react";
@@ -58,6 +60,8 @@ import type { GraduationApplication } from "../context/AppContext";
 import type { ExtendedResult, GradeAppeal } from "../context/AppContext";
 import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import { UpcomingEventsWidget } from "./tabs/AcademicCalendarEventsTab";
+import AdvancedAnalyticsTab from "./tabs/AdvancedAnalyticsTab";
+import AnnouncementsManagerTab from "./tabs/AnnouncementsManagerTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BroadcastInboxTab from "./tabs/BroadcastInboxTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
@@ -71,6 +75,7 @@ import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import ExamSupervisionTab from "./tabs/ExamSupervisionTab";
 import GPATrendChart from "./tabs/GPATrendChart";
 import GradeSheetTab from "./tabs/GradeSheetTab";
+import InvigilationAssignmentTab from "./tabs/InvigilationAssignmentTab";
 import JambAdmissionScannerTab from "./tabs/JambAdmissionScannerTab";
 import LecturerPerformanceTab from "./tabs/LecturerPerformanceTab";
 import MissingResultsTab from "./tabs/MissingResultsTab";
@@ -111,6 +116,8 @@ export default function HODDashboard() {
     { label: "Grade Sheet", tab: "grade_sheet", icon: LayoutGrid },
     { label: "Pass/Fail Lists", tab: "pass_fail_list", icon: FileText },
     { label: "Moderation", tab: "moderation", icon: ClipboardCheck },
+    { label: "Invigilation", tab: "invigilation", icon: UserCheck },
+    { label: "Announcements", tab: "announcements_mgr", icon: Bell },
   ];
 
   const quickActions = allQuickActions.filter((a) => a.show !== false);
@@ -157,6 +164,11 @@ export default function HODDashboard() {
   else if (activeTab === "carryover_report") content = <CarryoverReportTab />;
   else if (activeTab === "grade_sheet") content = <GradeSheetTab />;
   else if (activeTab === "pass_fail_list") content = <PassFailGraduatingTab />;
+  else if (activeTab === "adv_analytics") content = <AdvancedAnalyticsTab />;
+  else if (activeTab === "invigilation")
+    content = <InvigilationAssignmentTab />;
+  else if (activeTab === "announcements_mgr")
+    content = <AnnouncementsManagerTab />;
   else content = <OverviewTab />;
 
   return (

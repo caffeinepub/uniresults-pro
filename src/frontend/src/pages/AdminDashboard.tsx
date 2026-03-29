@@ -54,6 +54,7 @@ import {
   XCircle,
 } from "lucide-react";
 import {
+  Bell,
   Building,
   DollarSign,
   GraduationCap,
@@ -97,8 +98,10 @@ import AcademicCalendarEventsTab, {
 } from "./tabs/AcademicCalendarEventsTab";
 import AccreditationReportTab from "./tabs/AccreditationReportTab";
 import AdminInboxTab from "./tabs/AdminInboxTab";
+import AdvancedAnalyticsTab from "./tabs/AdvancedAnalyticsTab";
 import AdvisorAssignmentTab from "./tabs/AdvisorAssignmentTab";
 import AlumniManagementTab from "./tabs/AlumniManagementTab";
+import AnnouncementsManagerTab from "./tabs/AnnouncementsManagerTab";
 import AuditLogTabFile from "./tabs/AuditLogTab";
 import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
@@ -121,10 +124,12 @@ import GradeSheetTab from "./tabs/GradeSheetTab";
 import GraduationListTab from "./tabs/GraduationListTab";
 import HostelManagementTab from "./tabs/HostelManagementTab";
 import IDCardTab from "./tabs/IDCardTab";
+import InvigilationAssignmentTab from "./tabs/InvigilationAssignmentTab";
 import JambAdmissionScannerTab from "./tabs/JambAdmissionScannerTab";
 import LibraryClearanceTab from "./tabs/LibraryClearanceTab";
 import MissingResultsTab from "./tabs/MissingResultsTab";
 import ModerationWorkflowTab from "./tabs/ModerationWorkflowTab";
+import MultiClearanceTab from "./tabs/MultiClearanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import NoticeManagementTab from "./tabs/NoticeManagementTab";
 import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
@@ -133,6 +138,7 @@ import QRScannerModal from "./tabs/QRScannerModal";
 import ReportMonitorTab from "./tabs/ReportMonitorTab";
 import ResultStatsDashboard from "./tabs/ResultStatsDashboard";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
+import ScholarshipTab from "./tabs/ScholarshipTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
@@ -177,6 +183,11 @@ export default function AdminDashboard() {
     { label: "ID Cards", tab: "id_cards", icon: BarChart3 },
     { label: "Graduation List", tab: "graduation_list", icon: GraduationCap },
     { label: "Data Backup", tab: "data_backup", icon: Shield },
+    { label: "Scholarships", tab: "scholarships", icon: DollarSign },
+    { label: "Analytics", tab: "adv_analytics", icon: BarChart3 },
+    { label: "Invigilation", tab: "invigilation", icon: UserCheck },
+    { label: "Clearance", tab: "multi_clearance", icon: ClipboardList },
+    { label: "Announcements", tab: "announcements_mgr", icon: Bell },
   ];
 
   const quickActions = allQuickActions.filter((a) => a.show !== false);
@@ -249,6 +260,12 @@ export default function AdminDashboard() {
   else if (activeTab === "carryover_report") view = <CarryoverReportTab />;
   else if (activeTab === "grade_sheet") view = <GradeSheetTab />;
   else if (activeTab === "pass_fail_list") view = <PassFailGraduatingTab />;
+  else if (activeTab === "scholarships") view = <ScholarshipTab />;
+  else if (activeTab === "adv_analytics") view = <AdvancedAnalyticsTab />;
+  else if (activeTab === "invigilation") view = <InvigilationAssignmentTab />;
+  else if (activeTab === "multi_clearance") view = <MultiClearanceTab />;
+  else if (activeTab === "announcements_mgr")
+    view = <AnnouncementsManagerTab />;
   else view = <OverviewTab />;
 
   return (

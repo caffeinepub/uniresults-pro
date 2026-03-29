@@ -14,8 +14,10 @@ import { useContext } from "react";
 import { TabContext } from "../components/Layout";
 import { useApp } from "../context/AppContext";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
+import CombinedResultsTab from "./tabs/CombinedResultsTab";
 import DeptAllResultsTab from "./tabs/DeptAllResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
+import FacultyCollationTab from "./tabs/FacultyCollationTab";
 import MissingResultsTab from "./tabs/MissingResultsTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
@@ -144,6 +146,8 @@ export default function ExamOfficerDashboard() {
     { label: "Dept Results", tab: "dept_results", icon: ClipboardList },
     { label: "Exam Schedule", tab: "exam_schedule", icon: CalendarDays },
     { label: "Biometric", tab: "biometric", icon: Fingerprint },
+    { label: "Faculty Collation", tab: "faculty_collation", icon: BarChart2 },
+    { label: "Combined Results", tab: "combined_results", icon: ClipboardList },
   ];
 
   let content: React.ReactNode;
@@ -156,6 +160,9 @@ export default function ExamOfficerDashboard() {
   else if (activeTab === "biometric") content = <BiometricAttendanceTab />;
   else if (activeTab === "supplementary") content = <SupplementaryExamsTab />;
   else if (activeTab === "missing_results") content = <MissingResultsTab />;
+  else if (activeTab === "faculty_collation")
+    content = <FacultyCollationTab userRole="ExamOfficer" />;
+  else if (activeTab === "combined_results") content = <CombinedResultsTab />;
   else content = <OverviewTab />;
 
   return (
