@@ -1954,7 +1954,8 @@ function CoursesTab() {
     deptId: string,
   ): "official" | "auto" | "extra" {
     if (courseSources[courseId]) return courseSources[courseId];
-    if (String(deptId) === BIOLOGY_ED_DEPT_ID) return "official";
+    if (String(deptId) === BIOLOGY_ED_DEPT_ID || String(deptId) === "25")
+      return "official";
     return "auto";
   }
   function handleScanImport(

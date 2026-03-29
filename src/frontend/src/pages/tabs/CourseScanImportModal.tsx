@@ -87,11 +87,124 @@ function getFileTypeBadge(fileType: string) {
   return { label: "File", color: "bg-gray-100 text-gray-700" };
 }
 
+function isMultiLineBlockFormat(lines: string[]): boolean {
+  const codePattern = /^[A-Z]{2,5}[\.\s]*\d{3}$/i;
+  let codeMatches = 0;
+  for (const l of lines) {
+    if (codePattern.test(l.replace(/\s+/g, " ").trim())) codeMatches++;
+  }
+  return lines.length > 3 && codeMatches / lines.length > 0.15;
+}
+
+function normalizeCode(raw: string): string {
+  return raw.replace(/[.\s]/g, "").toUpperCase();
+}
+
+function extractLevel(code: string): string {
+  const m = normalizeCode(code).match(/[A-Z]+(\d)\d{2}/);
+  return m ? `${m[1]}00` : "100";
+}
+
+function normalizeStatus(s: string): "Core" | "Elective" {
+  const u = s.toUpperCase().trim();
+  return u === "C" || u === "CORE" || u === "COMPULSORY" ? "Core" : "Elective";
+}
+
+function normSemester(s: string): "First" | "Second" {
+  return s === "Second" || s === "2nd" || s === "II" || s === "2"
+    ? "Second"
+    : "First";
+}
+
+function parseMultiLineBlocks(
+  lines: string[],
+  rawText: string,
+): CourseScanRow[] {
+  const codePattern = /^[A-Z]{2,5}[\.\s]*\d{3}$/i;
+  const noisePattern =
+    /^(s\/n|course\s*code|course\s*title|credit|status|unit|total|note|direct|students)/i;
+
+  const rawLower = rawText.toLowerCase();
+  const semesterMarkers: { pos: number; semester: "First" | "Second" }[] = [];
+  const semMatches = [
+    ...rawLower.matchAll(/(first|second)\s+semester\s+\d{3}\s*level/gi),
+  ];
+  for (const match of semMatches) {
+    const sem: "First" | "Second" = match[0].startsWith("second")
+      ? "Second"
+      : "First";
+    semesterMarkers.push({ pos: match.index ?? 0, semester: sem });
+  }
+
+  const results: CourseScanRow[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i].replace(/\s+/g, " ").trim();
+    if (noisePattern.test(line) || !line) {
+      i++;
+      continue;
+    }
+    if (codePattern.test(line)) {
+      let titleIdx = i + 1;
+      while (
+        titleIdx < lines.length &&
+        (noisePattern.test(lines[titleIdx].trim()) ||
+          /^\d+$/.test(lines[titleIdx].trim()))
+      )
+        titleIdx++;
+      const title = lines[titleIdx]?.trim() || "";
+      let unitsIdx = titleIdx + 1;
+      while (unitsIdx < lines.length && !/^\d+$/.test(lines[unitsIdx].trim()))
+        unitsIdx++;
+      const creditUnits = lines[unitsIdx]?.trim() || "2";
+      let statusIdx = unitsIdx + 1;
+      while (
+        statusIdx < lines.length &&
+        !/^(core|elective|c|e)$/i.test(lines[statusIdx].trim())
+      )
+        statusIdx++;
+      const status = normalizeStatus(lines[statusIdx]?.trim() || "Core");
+
+      const codePos = rawText.toUpperCase().indexOf(normalizeCode(line));
+      let semester: "First" | "Second" = "First";
+      for (const marker of semesterMarkers) {
+        if (marker.pos <= codePos) semester = marker.semester;
+      }
+
+      if (title) {
+        results.push({
+          sn: results.length + 1,
+          courseCode: normalizeCode(line),
+          title,
+          creditUnits,
+          level: extractLevel(line),
+          semester,
+          status,
+        } as CourseScanRow);
+      }
+      i = Math.max(statusIdx + 1, i + 4);
+    } else {
+      i++;
+    }
+  }
+  return results;
+}
+
 function parseCourseLines(text: string): CourseScanRow[] {
-  const lines = text
+  const rawLines = text
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
+  const skipPatterns =
+    /^(s\/n|course code|course title|credit unit|status|unit|title|total|#)/i;
+  const lines = rawLines.filter((l) => !skipPatterns.test(l));
+
+  if (isMultiLineBlockFormat(lines)) {
+    return parseMultiLineBlocks(lines, text).filter(
+      (r) => r.courseCode && r.title,
+    );
+  }
+
   const firstLower = lines[0]?.toLowerCase() || "";
   const startIdx =
     firstLower.includes("course") ||
@@ -99,81 +212,44 @@ function parseCourseLines(text: string): CourseScanRow[] {
     firstLower.includes("s/n")
       ? 1
       : 0;
+
   return lines
     .slice(startIdx)
     .map((line, idx) => {
       const sep = line.includes("\t") ? "\t" : ",";
       const parts = line.split(sep).map((p) => p.trim().replace(/^"|"$/g, ""));
-      // Support formats: SN, Code, Title, Units, Level, Semester, Status
-      //                  Code, Title, Units, Status
-      //                  Code, Title, Units
       let courseCode = "";
       let title = "";
       let creditUnits = "2";
       let level = "";
       let semester = "First";
       let status = "C";
-
       if (parts.length >= 5) {
-        // Likely: SN, Code, Title, Units, Status (or similar with 5+ cols)
-        // Detect if first col is numeric (S/N)
         const firstIsNum = /^\d+$/.test(parts[0]);
         if (firstIsNum) {
-          courseCode = parts[1] || "";
-          title = parts[2] || "";
-          creditUnits = parts[3] || "2";
-          status = parts[4] || "C";
+          [, courseCode, title, creditUnits, status] = parts;
         } else {
-          courseCode = parts[0] || "";
-          title = parts[1] || "";
-          creditUnits = parts[2] || "2";
-          status = parts[3] || "C";
-          level = parts[4] || "";
-          semester = parts[5] || "First";
+          [courseCode, title, creditUnits, status, level, semester] = parts;
         }
       } else if (parts.length >= 3) {
-        courseCode = parts[0];
-        title = parts[1];
-        creditUnits = parts[2];
+        [courseCode, title, creditUnits] = parts;
         status = parts[3] || "C";
       } else if (parts.length >= 2) {
-        courseCode = parts[0];
-        title = parts[1];
-      } else {
-        return null;
-      }
+        [courseCode, title] = parts;
+      } else return null;
 
-      // Try extract level from course code (e.g. BIO101 → 100, EDU301 → 300)
       if (!level) {
-        const m = courseCode
-          .replace(/[\.\s]/g, "")
-          .match(/([A-Za-z]+)(\d)(\d{2})/);
-        if (m) level = `${m[2]}00`;
+        const mm = courseCode.replace(/[.\s]/g, "").match(/[A-Za-z]+(\d)\d{2}/);
+        if (mm) level = `${mm[1]}00`;
       }
-
-      // Normalize status
-      const statusNorm = status.toUpperCase();
-      const normalizedStatus =
-        statusNorm === "C" ||
-        statusNorm === "CORE" ||
-        statusNorm === "COMPULSORY"
-          ? "Core"
-          : "Elective";
-
-      // Normalize semester from level context if not provided
-      const normalizedSemester =
-        semester === "Second" || semester === "2nd" || semester === "II"
-          ? "Second"
-          : "First";
-
       return {
         sn: idx + 1,
-        courseCode: courseCode.replace(/[\.\s]/g, "").toUpperCase(),
-        title: title,
+        courseCode: courseCode.replace(/[.\s]/g, "").toUpperCase(),
+        title,
         creditUnits: creditUnits || "2",
         level: level || "100",
-        semester: normalizedSemester,
-        status: normalizedStatus,
+        semester: normSemester(semester),
+        status: normalizeStatus(status),
       } as CourseScanRow;
     })
     .filter(
