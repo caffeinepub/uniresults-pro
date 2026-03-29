@@ -1908,6 +1908,8 @@ function StudentsTab() {
 function CoursesTab() {
   const { courses, departments, addCourse, bulkAddCourses } = useApp();
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkPasteText, setBulkPasteText] = useState("");
+  const [bulkFileError, setBulkFileError] = useState("");
   const [bulkRows, setBulkRows] = useState<
     {
       courseCode: string;
@@ -1928,37 +1930,72 @@ function CoursesTab() {
     URL.revokeObjectURL(a.href);
   }
 
+  function parseCourseText(text: string) {
+    const lines = text.split("\n").filter(Boolean);
+    const firstLine = lines[0]?.toLowerCase() || "";
+    const startIdx =
+      firstLine.includes("code") || firstLine.includes("course") ? 1 : 0;
+    return lines
+      .slice(startIdx)
+      .map((line) => {
+        // support comma or tab separated
+        const sep = line.includes("\t") ? "\t" : ",";
+        const [
+          courseCode,
+          courseName,
+          creditUnits,
+          department,
+          level,
+          description,
+        ] = line.split(sep);
+        return {
+          courseCode: courseCode?.trim().replace(/^["']|["']$/g, "") || "",
+          courseName: courseName?.trim().replace(/^["']|["']$/g, "") || "",
+          creditUnits: creditUnits?.trim().replace(/^["']|["']$/g, "") || "3",
+          department: department?.trim().replace(/^["']|["']$/g, "") || "",
+          level: level?.trim().replace(/^["']|["']$/g, "") || "",
+          description: description?.trim().replace(/^["']|["']$/g, "") || "",
+        };
+      })
+      .filter((r) => r.courseCode && r.courseName);
+  }
+
   function handleBulkFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setBulkFileError("");
+    // Reject non-CSV files
+    if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
+      setBulkFileError(
+        "Only CSV files are supported. Please save your Word/Excel document as CSV first, or use the Paste option below.",
+      );
+      setBulkRows([]);
+      e.target.value = "";
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const lines = text.split("\n").filter(Boolean);
-      const rows = lines
-        .slice(1)
-        .map((line) => {
-          const [
-            courseCode,
-            courseName,
-            creditUnits,
-            department,
-            level,
-            description,
-          ] = line.split(",");
-          return {
-            courseCode: courseCode?.trim() || "",
-            courseName: courseName?.trim() || "",
-            creditUnits: creditUnits?.trim() || "3",
-            department: department?.trim() || "",
-            level: level?.trim() || "",
-            description: description?.trim() || "",
-          };
-        })
-        .filter((r) => r.courseCode && r.courseName);
+      const rows = parseCourseText(text);
+      if (rows.length === 0) {
+        setBulkFileError(
+          "No valid courses found in the CSV. Make sure columns are: Course Code, Course Name, Credit Units, Department, Level.",
+        );
+      }
       setBulkRows(rows);
     };
     reader.readAsText(file);
+  }
+
+  function handleBulkPaste() {
+    setBulkFileError("");
+    const rows = parseCourseText(bulkPasteText);
+    if (rows.length === 0) {
+      setBulkFileError(
+        "Could not parse any courses from the pasted text. Make sure each row has: Course Code, Course Name, Credit Units (tab or comma separated).",
+      );
+    }
+    setBulkRows(rows);
   }
 
   function handleBulkImport() {
@@ -2169,6 +2206,42 @@ function CoursesTab() {
                   className="block w-full text-sm mt-1"
                   onChange={handleBulkFile}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Only .csv files accepted. To upload from Word/Excel, save the
+                  file as CSV first.
+                </p>
+                {bulkFileError && (
+                  <div className="mt-2 p-2 bg-destructive/10 border border-destructive/30 rounded text-xs text-destructive">
+                    ⚠️ {bulkFileError}
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label>Or Paste Course Data</Label>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Paste rows from Word/Excel (tab or comma separated: Code,
+                  Name, Credits, Department, Level)
+                </p>
+                <textarea
+                  className="w-full border rounded p-2 text-xs font-mono min-h-[80px] mt-1"
+                  placeholder={
+                    "BIO 101\tGeneral Biology I\t2\tBiology Education\t100\nGST 111\tCommunication in English\t2\tAll\t100"
+                  }
+                  value={bulkPasteText}
+                  onChange={(e) => {
+                    setBulkPasteText(e.target.value);
+                    setBulkRows([]);
+                    setBulkFileError("");
+                  }}
+                />
+                <button
+                  type="button"
+                  className="mt-1 px-3 py-1 text-xs bg-secondary text-secondary-foreground rounded hover:bg-secondary/80"
+                  onClick={handleBulkPaste}
+                  disabled={!bulkPasteText.trim()}
+                >
+                  Parse Pasted Data
+                </button>
               </div>
               {bulkRows.length > 0 && (
                 <div className="overflow-auto max-h-48 border rounded">
@@ -2201,6 +2274,8 @@ function CoursesTab() {
                 onClick={() => {
                   setBulkOpen(false);
                   setBulkRows([]);
+                  setBulkPasteText("");
+                  setBulkFileError("");
                 }}
                 data-ocid="courses.bulk.cancel_button"
               >
