@@ -110,6 +110,9 @@ import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CameraSecurityTab from "./tabs/CameraSecurityTab";
 import CarryoverReportTab from "./tabs/CarryoverReportTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
+import CourseScanImportModal, {
+  type CourseScanRow,
+} from "./tabs/CourseScanImportModal";
 import DataBackupTab from "./tabs/DataBackupTab";
 import DeansListTab from "./tabs/DeansListTab";
 import DeferralsTab from "./tabs/DefferralsTab";
@@ -1925,6 +1928,88 @@ function StudentsTab() {
 function CoursesTab() {
   const { courses, departments, addCourse, bulkAddCourses } = useApp();
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [extraOpen, setExtraOpen] = useState(false);
+  const [extraForm, setExtraForm] = useState({
+    name: "",
+    code: "",
+    credits: "2",
+    deptId: "",
+    semester: "First",
+    status: "Elective",
+  });
+  // Track course source types in localStorage
+  const [courseSources, setCourseSources] = useState<
+    Record<string, "official" | "auto" | "extra">
+  >(() => {
+    try {
+      return JSON.parse(localStorage.getItem("courseSources") || "{}");
+    } catch {
+      return {};
+    }
+  });
+  const BIOLOGY_ED_DEPT_ID = "27";
+  function getCourseSource(
+    courseId: string,
+    deptId: string,
+  ): "official" | "auto" | "extra" {
+    if (courseSources[courseId]) return courseSources[courseId];
+    if (String(deptId) === BIOLOGY_ED_DEPT_ID) return "official";
+    return "auto";
+  }
+  function handleScanImport(
+    deptId: string,
+    rows: CourseScanRow[],
+    _fileName: string,
+    _fileType: string,
+  ) {
+    const newCourses = rows.map(
+      (r, i) =>
+        ({
+          id: BigInt(Date.now() + i),
+          name: r.title,
+          code: r.courseCode,
+          creditUnits: BigInt(r.creditUnits || "2"),
+          departmentId: BigInt(deptId),
+          lecturerPrincipal: "unassigned",
+          semester: r.semester,
+        }) as import("../backend.d").Course,
+    );
+    bulkAddCourses(newCourses);
+    const newSources: Record<string, "official" | "auto" | "extra"> = {};
+    for (const c of newCourses) {
+      newSources[String(c.id)] = "official";
+    }
+    const updated = { ...courseSources, ...newSources };
+    setCourseSources(updated);
+    localStorage.setItem("courseSources", JSON.stringify(updated));
+  }
+  function handleAddExtra() {
+    if (!extraForm.name || !extraForm.code || !extraForm.deptId) return;
+    const id = BigInt(Date.now());
+    addCourse({
+      id,
+      name: extraForm.name,
+      code: extraForm.code,
+      creditUnits: BigInt(extraForm.credits),
+      departmentId: BigInt(extraForm.deptId),
+      lecturerPrincipal: "unassigned",
+      semester: extraForm.semester,
+    });
+    const updated = { ...courseSources, [String(id)]: "extra" as const };
+    setCourseSources(updated);
+    localStorage.setItem("courseSources", JSON.stringify(updated));
+    setExtraForm({
+      name: "",
+      code: "",
+      credits: "2",
+      deptId: "",
+      semester: "First",
+      status: "Elective",
+    });
+    setExtraOpen(false);
+    toast.success("Extra course added");
+  }
   const [bulkPasteText, setBulkPasteText] = useState("");
   const [bulkFileError, setBulkFileError] = useState("");
   const [bulkRows, setBulkRows] = useState<
@@ -2077,7 +2162,25 @@ function CoursesTab() {
             {courses.length} courses
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            data-ocid="courses.scan.open_modal_button"
+            variant="outline"
+            size="sm"
+            className="border-violet-300 text-violet-700 hover:bg-violet-50"
+            onClick={() => setScanOpen(true)}
+          >
+            <ScanLine className="w-4 h-4 mr-1" /> Scan &amp; Import
+          </Button>
+          <Button
+            data-ocid="courses.extra.open_modal_button"
+            variant="outline"
+            size="sm"
+            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+            onClick={() => setExtraOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-1" /> Add Extra Course
+          </Button>
           <Button
             data-ocid="courses.bulk_upload_button"
             variant="outline"
@@ -2319,6 +2422,7 @@ function CoursesTab() {
               <TableHead>Department</TableHead>
               <TableHead>Credits</TableHead>
               <TableHead>Semester</TableHead>
+              <TableHead>Source</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -2342,12 +2446,151 @@ function CoursesTab() {
                     {String(c.creditUnits)}
                   </TableCell>
                   <TableCell className="text-sm">{c.semester}</TableCell>
+                  <TableCell>
+                    {getCourseSource(String(c.id), String(c.departmentId)) ===
+                    "official" ? (
+                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs border-0">
+                        Official
+                      </Badge>
+                    ) : getCourseSource(
+                        String(c.id),
+                        String(c.departmentId),
+                      ) === "extra" ? (
+                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-xs border-0">
+                        Extra
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">
+                        Auto
+                      </Badge>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
       </div>
+
+      {/* Scan & Import Modal */}
+      <CourseScanImportModal
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        departments={departments}
+        onImport={handleScanImport}
+      />
+
+      {/* Add Extra Course Dialog */}
+      <Dialog open={extraOpen} onOpenChange={setExtraOpen}>
+        <DialogContent data-ocid="courses.extra.dialog">
+          <DialogHeader>
+            <DialogTitle>Add Extra Course</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-2 mb-2">
+            Extra courses get a blue badge and do not affect official course
+            lists.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <Label>Course Name</Label>
+              <Input
+                data-ocid="courses.extra.name.input"
+                value={extraForm.name}
+                onChange={(e) =>
+                  setExtraForm((f) => ({ ...f, name: e.target.value }))
+                }
+                placeholder="e.g. Special Topics in Education"
+              />
+            </div>
+            <div>
+              <Label>Course Code</Label>
+              <Input
+                data-ocid="courses.extra.code.input"
+                value={extraForm.code}
+                onChange={(e) =>
+                  setExtraForm((f) => ({ ...f, code: e.target.value }))
+                }
+                placeholder="e.g. EDU499"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Credit Units</Label>
+                <Select
+                  value={extraForm.credits}
+                  onValueChange={(v) =>
+                    setExtraForm((f) => ({ ...f, credits: v }))
+                  }
+                >
+                  <SelectTrigger data-ocid="courses.extra.credits.select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["1", "2", "3", "4", "6"].map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c} unit{c !== "1" ? "s" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Semester</Label>
+                <Select
+                  value={extraForm.semester}
+                  onValueChange={(v) =>
+                    setExtraForm((f) => ({ ...f, semester: v }))
+                  }
+                >
+                  <SelectTrigger data-ocid="courses.extra.semester.select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="First">First</SelectItem>
+                    <SelectItem value="Second">Second</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Department</Label>
+              <Select
+                value={extraForm.deptId}
+                onValueChange={(v) =>
+                  setExtraForm((f) => ({ ...f, deptId: v }))
+                }
+              >
+                <SelectTrigger data-ocid="courses.extra.dept.select">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((d) => (
+                    <SelectItem key={String(d.id)} value={String(d.id)}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setExtraOpen(false)}
+              data-ocid="courses.extra.cancel_button"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddExtra}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              data-ocid="courses.extra.submit_button"
+            >
+              Add Extra Course
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
