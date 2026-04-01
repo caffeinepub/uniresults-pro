@@ -78,6 +78,7 @@ import IDCardTab from "./tabs/IDCardTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import PhotoAvatar from "./tabs/PhotoAvatar";
 import { StudentScholarshipCard } from "./tabs/ScholarshipTab";
+import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import { StudentClearanceCard } from "./tabs/StudentClearanceTab";
 import StudentDocumentsTab from "./tabs/StudentDocumentsTab";
 import StudentIDCardModal from "./tabs/StudentIDCardModal";
@@ -107,6 +108,7 @@ export default function StudentDashboard() {
     { label: "Submit Appeal", tab: "appeals", icon: MessageSquare },
     { label: "View Progress", tab: "progress", icon: TrendingUp },
     { label: "My Documents", tab: "documents", icon: Award },
+    { label: "Academic Record", tab: "academic_record", icon: BookOpen },
     { label: "E-Library", tab: "elibrary", icon: BookOpen },
     { label: "My Awards", tab: "scholarships", icon: Award },
   ];
@@ -134,6 +136,8 @@ export default function StudentDashboard() {
   else if (activeTab === "thesis_tracker")
     content = <ThesisTrackerTab mode="student" />;
   else if (activeTab === "result_slip") content = <StudentResultSlipTab />;
+  else if (activeTab === "academic_record")
+    content = <StudentAcademicRecordTab mode="student" />;
   else if (activeTab === "elibrary") content = <StudentELibrarySection />;
   else if (activeTab === "scholarships")
     content = <StudentScholarshipsSection />;

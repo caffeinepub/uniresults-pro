@@ -85,6 +85,7 @@ import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
+import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
 import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 import ThesisTrackerTab from "./tabs/ThesisTrackerTab";
@@ -100,6 +101,7 @@ export default function HODDashboard() {
     { label: "Results Pipeline", tab: "results_processing", icon: BarChart2 },
     { label: "View Analytics", tab: "analytics", icon: BarChart2 },
     { label: "Dept Report", tab: "dept_report", icon: ClipboardList },
+    { label: "Academic Record", tab: "academic_record", icon: BookOpen },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
     { label: "Dept. Results", tab: "dept_results", icon: ClipboardList },
     { label: "Students", tab: "students", icon: Users },
@@ -165,6 +167,8 @@ export default function HODDashboard() {
   else if (activeTab === "grade_sheet") content = <GradeSheetTab />;
   else if (activeTab === "pass_fail_list") content = <PassFailGraduatingTab />;
   else if (activeTab === "adv_analytics") content = <AdvancedAnalyticsTab />;
+  else if (activeTab === "academic_record")
+    content = <StudentAcademicRecordTab mode="admin" />;
   else if (activeTab === "invigilation")
     content = <InvigilationAssignmentTab />;
   else if (activeTab === "announcements_mgr")

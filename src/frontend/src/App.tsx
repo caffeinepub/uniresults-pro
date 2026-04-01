@@ -8,6 +8,7 @@ import DeanDashboard from "./pages/DeanDashboard";
 import HODDashboard from "./pages/HODDashboard";
 import LecturerDashboard from "./pages/LecturerDashboard";
 import LoginPage from "./pages/LoginPage";
+import PublicResultsPage from "./pages/PublicResultsPage";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentRegisterPage from "./pages/StudentRegisterPage";
 
@@ -17,6 +18,7 @@ function DashboardRouter() {
   const { currentUser } = useApp();
   if (window.location.pathname === "/student-register")
     return <StudentRegisterPage />;
+  if (window.location.pathname === "/results") return <PublicResultsPage />;
   if (!currentUser) return <LoginPage />;
   const role = currentUser.role;
   return (

@@ -22,6 +22,7 @@ import MissingResultsTab from "./tabs/MissingResultsTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
+import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 
 function OverviewTab() {
@@ -147,6 +148,7 @@ export default function ExamOfficerDashboard() {
     { label: "Exam Schedule", tab: "exam_schedule", icon: CalendarDays },
     { label: "Biometric", tab: "biometric", icon: Fingerprint },
     { label: "Faculty Collation", tab: "faculty_collation", icon: BarChart2 },
+    { label: "Academic Record", tab: "academic_record", icon: ClipboardList },
     { label: "Combined Results", tab: "combined_results", icon: ClipboardList },
   ];
 
@@ -163,6 +165,8 @@ export default function ExamOfficerDashboard() {
   else if (activeTab === "faculty_collation")
     content = <FacultyCollationTab userRole="ExamOfficer" />;
   else if (activeTab === "combined_results") content = <CombinedResultsTab />;
+  else if (activeTab === "academic_record")
+    content = <StudentAcademicRecordTab mode="admin" />;
   else content = <OverviewTab />;
 
   return (

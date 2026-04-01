@@ -59,6 +59,7 @@ import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import PhotoAvatar from "./tabs/PhotoAvatar";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
+import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import ThesisTrackerTab from "./tabs/ThesisTrackerTab";
 
 export default function LecturerDashboard() {
@@ -75,6 +76,7 @@ export default function LecturerDashboard() {
     { label: "Mark Attendance", tab: "attendance", icon: ClipboardCheck },
     { label: "View Courses", tab: "overview", icon: BookOpen },
     { label: "E-Library", tab: "elibrary", icon: BookOpen },
+    { label: "Academic Record", tab: "academic_record", icon: BookOpen },
   ];
 
   return (
@@ -116,6 +118,8 @@ export default function LecturerDashboard() {
         <CourseOutlineTab />
       ) : activeTab === "elibrary" ? (
         <ELibraryUploadTab />
+      ) : activeTab === "academic_record" ? (
+        <StudentAcademicRecordTab mode="admin" />
       ) : activeTab === "thesis_tracker" ? (
         <ThesisTrackerTab mode="supervisor" />
       ) : (

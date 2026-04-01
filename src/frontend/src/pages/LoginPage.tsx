@@ -706,6 +706,13 @@ export default function LoginPage() {
                 >
                   Complete your registration
                 </a>
+                {" · "}
+                <a
+                  href="/results"
+                  className="text-primary font-medium hover:underline"
+                >
+                  View Results
+                </a>
               </p>
             </div>
           )}

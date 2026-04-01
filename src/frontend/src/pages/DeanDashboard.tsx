@@ -65,6 +65,7 @@ import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
+import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
 import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 
@@ -74,6 +75,7 @@ export default function DeanDashboard() {
 
   const allQuickActions = [
     { label: "Faculty Report", tab: "faculty_report", icon: FileText },
+    { label: "Academic Record", tab: "academic_record", icon: BookOpen },
     { label: "Score Sheet", tab: "score_sheet", icon: FileText },
     { label: "Results Pipeline", tab: "results_processing", icon: FileText },
     { label: "Approve Results", tab: "approvals", icon: CheckCircle },
@@ -122,6 +124,8 @@ export default function DeanDashboard() {
   else if (activeTab === "faculty_collation")
     view = <FacultyCollationTab userRole="Dean" />;
   else if (activeTab === "combined_results") view = <CombinedResultsTab />;
+  else if (activeTab === "academic_record")
+    view = <StudentAcademicRecordTab mode="admin" />;
   else view = <OverviewTab />;
 
   return (

@@ -146,6 +146,7 @@ import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
 import StaffTab from "./tabs/StaffTab";
+import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import StudentClearanceTab from "./tabs/StudentClearanceTab";
 import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
@@ -171,6 +172,7 @@ export default function AdminDashboard() {
     { label: "Add Course", tab: "courses", icon: BookOpen },
     { label: "Settings", tab: "settings", icon: Settings2 },
     { label: "Senate Report", tab: "senate_report", icon: ScrollText },
+    { label: "Academic Record", tab: "academic_record", icon: BookOpen },
     { label: "Score Sheet", tab: "score_sheet", icon: ScrollText },
     { label: "Results Pipeline", tab: "results_processing", icon: BarChart3 },
     { label: "Dept. Results", tab: "dept_results", icon: BarChart3 },
@@ -265,6 +267,8 @@ export default function AdminDashboard() {
   else if (activeTab === "pass_fail_list") view = <PassFailGraduatingTab />;
   else if (activeTab === "scholarships") view = <ScholarshipTab />;
   else if (activeTab === "adv_analytics") view = <AdvancedAnalyticsTab />;
+  else if (activeTab === "academic_record")
+    view = <StudentAcademicRecordTab mode="admin" />;
   else if (activeTab === "invigilation") view = <InvigilationAssignmentTab />;
   else if (activeTab === "multi_clearance") view = <MultiClearanceTab />;
   else if (activeTab === "announcements_mgr")
