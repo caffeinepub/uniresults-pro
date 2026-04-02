@@ -19,6 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, GraduationCap, Printer, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
+import PassFailListReport from "../../components/PassFailListReport";
 import {
   getDegreeClassification,
   getStudentDepartment,
@@ -41,82 +42,6 @@ export default function PassFailGraduatingTab() {
     }
     return Array.from(s);
   }, [results]);
-
-  // Pass list
-  const passList = useMemo(() => {
-    return students
-      .map((student) => {
-        const dept = getStudentDepartment(student, departments);
-        if (filterDept !== "all" && String(dept?.id) !== filterDept)
-          return null;
-        if (filterLevel !== "all" && String(student.level) !== filterLevel)
-          return null;
-        const sr = results.filter(
-          (r) =>
-            String(r.studentId) === String(student.id) &&
-            ["approved", "published"].includes(r.status) &&
-            (filterSession === "all" || (r as any).session === filterSession) &&
-            (filterSemester === "all" ||
-              (r as any).semester === filterSemester),
-        );
-        if (sr.length === 0) return null;
-        if (!sr.every((r) => r.grade !== "F")) return null;
-        return { student, dept };
-      })
-      .filter(Boolean) as Array<{
-      student: (typeof students)[0];
-      dept: ReturnType<typeof getStudentDepartment>;
-    }>;
-  }, [
-    students,
-    results,
-    departments,
-    filterDept,
-    filterLevel,
-    filterSession,
-    filterSemester,
-  ]);
-
-  // Fail list
-  const failList = useMemo(() => {
-    return students
-      .map((student) => {
-        const dept = getStudentDepartment(student, departments);
-        if (filterDept !== "all" && String(dept?.id) !== filterDept)
-          return null;
-        if (filterLevel !== "all" && String(student.level) !== filterLevel)
-          return null;
-        const sr = results.filter(
-          (r) =>
-            String(r.studentId) === String(student.id) &&
-            ["approved", "published"].includes(r.status) &&
-            (filterSession === "all" || (r as any).session === filterSession) &&
-            (filterSemester === "all" ||
-              (r as any).semester === filterSemester),
-        );
-        const failed = sr.filter((r) => r.grade === "F");
-        if (failed.length === 0) return null;
-        const failedCourses = failed.map((r) => {
-          const c = courses.find((c) => String(c.id) === String(r.courseId));
-          return c ? `${c.code} \u2014 ${c.name}` : String(r.courseId);
-        });
-        return { student, dept, failedCourses };
-      })
-      .filter(Boolean) as Array<{
-      student: (typeof students)[0];
-      dept: ReturnType<typeof getStudentDepartment>;
-      failedCourses: string[];
-    }>;
-  }, [
-    students,
-    results,
-    courses,
-    departments,
-    filterDept,
-    filterLevel,
-    filterSession,
-    filterSemester,
-  ]);
 
   // Graduating list
   const graduatingList = useMemo(() => {
@@ -177,7 +102,7 @@ export default function PassFailGraduatingTab() {
     filterLevel,
   ]);
 
-  const filterBar = (
+  const graduatingFilterBar = (
     <div className="flex flex-wrap gap-3 mb-4 no-print">
       <Select value={filterSession} onValueChange={setFilterSession}>
         <SelectTrigger className="w-36" data-ocid="pfg.session.select">
@@ -243,20 +168,14 @@ export default function PassFailGraduatingTab() {
   return (
     <div className="space-y-4">
       <Tabs defaultValue="pass">
-        <TabsList className="no-print">
+        <TabsList className="no-print flex-wrap h-auto gap-1">
           <TabsTrigger value="pass" data-ocid="pfg.pass.tab">
             <CheckCircle className="w-3.5 h-3.5 mr-1.5 text-green-500" />
             Pass List
-            <Badge className="ml-1.5 bg-green-100 text-green-800 text-[10px] border-green-300">
-              {passList.length}
-            </Badge>
           </TabsTrigger>
           <TabsTrigger value="fail" data-ocid="pfg.fail.tab">
             <XCircle className="w-3.5 h-3.5 mr-1.5 text-red-500" />
             Failure List
-            <Badge className="ml-1.5 bg-red-100 text-red-800 text-[10px] border-red-300">
-              {failList.length}
-            </Badge>
           </TabsTrigger>
           <TabsTrigger value="graduating" data-ocid="pfg.graduating.tab">
             <GraduationCap className="w-3.5 h-3.5 mr-1.5 text-blue-500" />
@@ -267,121 +186,31 @@ export default function PassFailGraduatingTab() {
           </TabsTrigger>
         </TabsList>
 
+        {/* ── Pass List – Official Format ── */}
         <TabsContent value="pass" className="pt-4">
-          {filterBar}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">
-                Pass List \u2014 Students Who Passed All Courses (
-                {passList.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {passList.length === 0 ? (
-                <div
-                  className="text-center py-8 text-muted-foreground"
-                  data-ocid="pfg.pass.empty_state"
-                >
-                  No students match the current filter.
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>S/N</TableHead>
-                      <TableHead>Matric No</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Level</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {passList.map(({ student, dept }, idx) => (
-                      <TableRow
-                        key={String(student.id)}
-                        data-ocid={`pfg.pass.item.${idx + 1}`}
-                      >
-                        <TableCell>{idx + 1}</TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {(student as any).matricNo ||
-                            (student as any).regNo ||
-                            "\u2014"}
-                        </TableCell>
-                        <TableCell>{student.name}</TableCell>
-                        <TableCell className="text-xs">{dept?.name}</TableCell>
-                        <TableCell>{student.level}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+            <CardContent className="pt-4">
+              <PassFailListReport listType="pass" />
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ── Failure List – Official Format ── */}
         <TabsContent value="fail" className="pt-4">
-          {filterBar}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">
-                Failure List \u2014 Students with Failed Courses (
-                {failList.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {failList.length === 0 ? (
-                <div
-                  className="text-center py-8 text-muted-foreground"
-                  data-ocid="pfg.fail.empty_state"
-                >
-                  No students with failed courses.
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>S/N</TableHead>
-                      <TableHead>Matric No</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Level</TableHead>
-                      <TableHead>Failed Courses</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {failList.map(({ student, dept, failedCourses }, idx) => (
-                      <TableRow
-                        key={String(student.id)}
-                        data-ocid={`pfg.fail.item.${idx + 1}`}
-                      >
-                        <TableCell>{idx + 1}</TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {(student as any).matricNo ||
-                            (student as any).regNo ||
-                            "\u2014"}
-                        </TableCell>
-                        <TableCell>{student.name}</TableCell>
-                        <TableCell className="text-xs">{dept?.name}</TableCell>
-                        <TableCell>{student.level}</TableCell>
-                        <TableCell className="text-xs text-destructive max-w-48">
-                          {failedCourses.join("; ")}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+            <CardContent className="pt-4">
+              <PassFailListReport listType="fail" />
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ── Graduating List ── */}
         <TabsContent value="graduating" className="pt-4">
-          {filterBar}
+          {graduatingFilterBar}
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">
-                Graduating List \u2014 Eligible Students (
-                {graduatingList.length})
+                Graduating List — Eligible Students ({graduatingList.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -427,7 +256,7 @@ export default function PassFailGraduatingTab() {
                             <TableCell className="font-mono text-xs">
                               {(student as any).matricNo ||
                                 (student as any).regNo ||
-                                "\u2014"}
+                                "—"}
                             </TableCell>
                             <TableCell className="font-medium">
                               {student.name}
