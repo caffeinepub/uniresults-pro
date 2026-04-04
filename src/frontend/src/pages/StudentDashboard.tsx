@@ -61,6 +61,7 @@ import {
 import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import { UpcomingEventsWidget } from "./tabs/AcademicCalendarEventsTab";
 import { AnnouncementsNoticesPanel } from "./tabs/AnnouncementsManagerTab";
+import CBTExamTab from "./tabs/CBTExamTab";
 import { CarryOverBanner } from "./tabs/CarryOverAutoTab";
 import CourseEvaluationTab from "./tabs/CourseEvaluationTab";
 import {
@@ -139,6 +140,7 @@ export default function StudentDashboard() {
   else if (activeTab === "academic_record")
     content = <StudentAcademicRecordTab mode="student" />;
   else if (activeTab === "elibrary") content = <StudentELibrarySection />;
+  else if (activeTab === "cbt_exam") content = <CBTExamTab />;
   else if (activeTab === "scholarships")
     content = <StudentScholarshipsSection />;
   else content = <OverviewTab />;

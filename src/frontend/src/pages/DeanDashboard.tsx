@@ -53,6 +53,7 @@ import CarryoverReportTab from "./tabs/CarryoverReportTab";
 import CombinedResultsTab from "./tabs/CombinedResultsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import DeansListTab from "./tabs/DeansListTab";
+import DepartmentBudgetTab from "./tabs/DepartmentBudgetTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import FacultyCollationTab from "./tabs/FacultyCollationTab";
@@ -65,6 +66,7 @@ import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
+import StaffAppraisalTab from "./tabs/StaffAppraisalTab";
 import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
 import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
@@ -126,6 +128,8 @@ export default function DeanDashboard() {
   else if (activeTab === "combined_results") view = <CombinedResultsTab />;
   else if (activeTab === "academic_record")
     view = <StudentAcademicRecordTab mode="admin" />;
+  else if (activeTab === "dept_budget") view = <DepartmentBudgetTab />;
+  else if (activeTab === "staff_appraisal") view = <StaffAppraisalTab />;
   else view = <OverviewTab />;
 
   return (

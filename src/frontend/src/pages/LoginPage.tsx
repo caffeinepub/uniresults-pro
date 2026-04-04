@@ -713,6 +713,20 @@ export default function LoginPage() {
                 >
                   View Results
                 </a>
+                {" · "}
+                <a
+                  href="/parent"
+                  className="text-primary font-medium hover:underline"
+                >
+                  Parent Portal
+                </a>
+                {" · "}
+                <a
+                  href="/pg-apply"
+                  className="text-primary font-medium hover:underline"
+                >
+                  PG Apply
+                </a>
               </p>
             </div>
           )}

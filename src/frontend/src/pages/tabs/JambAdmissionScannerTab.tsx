@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertCircle,
   CheckCircle,
+  ClipboardPaste,
   Download,
   FileText,
   ImagePlus,
@@ -21,10 +22,12 @@ import {
   Trash2,
   Upload,
   Users,
+  X,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useApp } from "../../context/AppContext";
+import { parseStudentText } from "../../utils/documentExtractor";
 
 interface JambRow {
   id: string;
@@ -117,10 +120,13 @@ export default function JambAdmissionScannerTab() {
     emptyRow(),
     emptyRow(),
   ]);
-  const [scanning, setScanning] = useState(false);
   const [scanImported, setScanImported] = useState(0);
   const [academicSession, setAcademicSession] = useState("2025/2026");
   const scanFileRef = useRef<HTMLInputElement>(null);
+
+  // ── Paste modal state ────────────────────────────────────────────
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
+  const [pasteModalText, setPasteModalText] = useState("");
 
   // ── CSV Paste state ──────────────────────────────────────────────
   const [csvText, setCsvText] = useState("");
@@ -154,100 +160,42 @@ export default function JambAdmissionScannerTab() {
     return `${code}/${year}/${seq}`;
   }
 
-  // ── Simulate AI scanning with structured data extraction ─────────
-  function simulateScan() {
-    setScanning(true);
-    setTimeout(() => {
-      // Simulate extracted rows from scanned JAMB document
-      const extracted: JambRow[] = [
-        {
-          id: Math.random().toString(36).slice(2),
-          sn: "1",
-          jambRegNo: "34521098CA",
-          name: "ADAMU IBRAHIM MUSA",
-          courseAdmitted: "Computer Science Education",
-          deptId: "",
-          state: "Niger",
-          lga: "Shiroro",
-          gender: "Male",
-          jambScore: "287",
-          aggregate: "49.6",
-          status: "Accepted",
-        },
-        {
-          id: Math.random().toString(36).slice(2),
-          sn: "2",
-          jambRegNo: "34812345CB",
-          name: "FATIMA BELLO USMAN",
-          courseAdmitted: "Biology Education",
-          deptId: "",
-          state: "Kebbi",
-          lga: "Birnin Kebbi",
-          gender: "Female",
-          jambScore: "271",
-          aggregate: "47.2",
-          status: "Accepted",
-        },
-        {
-          id: Math.random().toString(36).slice(2),
-          sn: "3",
-          jambRegNo: "35019876CC",
-          name: "YAKUBU SALIHU DANLADI",
-          courseAdmitted: "Mathematics Education",
-          deptId: "",
-          state: "Kaduna",
-          lga: "Zaria",
-          gender: "Male",
-          jambScore: "264",
-          aggregate: "46.0",
-          status: "Accepted",
-        },
-        {
-          id: Math.random().toString(36).slice(2),
-          sn: "4",
-          jambRegNo: "35234567CD",
-          name: "AMINA SULEIMAN GARBA",
-          courseAdmitted: "Chemistry Education",
-          deptId: "",
-          state: "Kano",
-          lga: "Gwale",
-          gender: "Female",
-          jambScore: "258",
-          aggregate: "45.1",
-          status: "Accepted",
-        },
-        {
-          id: Math.random().toString(36).slice(2),
-          sn: "5",
-          jambRegNo: "35456789CE",
-          name: "JOHN PETER NDIDI",
-          courseAdmitted: "Physics Education",
-          deptId: "",
-          state: "Kogi",
-          lga: "Lokoja",
-          gender: "Male",
-          jambScore: "245",
-          aggregate: "43.5",
-          status: "Accepted",
-        },
-      ];
-      // Auto-match departments by course name
-      const filled = extracted.map((row) => {
-        const match = departments.find(
-          (d) =>
-            d.name
-              .toLowerCase()
-              .includes(row.courseAdmitted.toLowerCase().split(" ")[0]) ||
-            row.courseAdmitted.toLowerCase().includes(d.name.toLowerCase()),
-        );
-        return { ...row, deptId: match ? String(match.id) : "" };
-      });
-      setScanRows(filled);
-      setScanning(false);
-      toast.success(
-        `Extracted ${filled.length} candidates from scanned document`,
+  // ── Paste candidates from text into scan rows ─────────────────────
+  function handlePasteModalSubmit() {
+    if (!pasteModalText.trim()) {
+      toast.error("Paste some candidate data first.");
+      return;
+    }
+    const extracted = parseStudentText(pasteModalText, departments);
+    if (extracted.length === 0) {
+      toast.error(
+        "Could not parse any rows. Try: Reg No, Name, Course, State, LGA, Gender",
       );
-    }, 2000);
+      return;
+    }
+    const newRows: JambRow[] = extracted.map((r) => {
+      const matchedDept = departments.find((d) => String(d.id) === r.deptId);
+      return {
+        id: Math.random().toString(36).slice(2),
+        sn: r.sn,
+        jambRegNo: r.regNo,
+        name: r.name,
+        courseAdmitted: matchedDept?.name ?? r.deptName ?? "",
+        deptId: r.deptId,
+        state: r.state,
+        lga: r.lga,
+        gender: r.gender,
+        jambScore: r.jambScore,
+        aggregate: r.aggregate,
+        status: r.status || "Accepted",
+      };
+    });
+    setScanRows(newRows);
+    setPasteModalOpen(false);
+    setPasteModalText("");
+    toast.success(
+      `${newRows.length} candidates loaded from paste. Review before importing.`,
+    );
   }
 
   function handleScanFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -318,47 +266,24 @@ export default function JambAdmissionScannerTab() {
 
   // ── CSV Parse ────────────────────────────────────────────────────
   function parseCSV(text: string): JambRow[] {
-    const lines = text.trim().split("\n").filter(Boolean);
-    const rows: JambRow[] = [];
-    let dataStart = 0;
-    // skip header line
-    if (
-      lines[0]?.toLowerCase().includes("reg") ||
-      lines[0]?.toLowerCase().includes("name")
-    ) {
-      dataStart = 1;
-    }
-    for (let i = dataStart; i < lines.length; i++) {
-      const cols = lines[i]
-        .split(",")
-        .map((c) => c.trim().replace(/^"|"$/g, ""));
-      if (cols.length < 2) continue;
-      rows.push({
+    const extracted = parseStudentText(text, departments);
+    return extracted.map((r) => {
+      const matchedDept = departments.find((d) => String(d.id) === r.deptId);
+      return {
         id: Math.random().toString(36).slice(2),
-        sn: cols[0] ?? String(i),
-        jambRegNo: cols[1] ?? "",
-        name: cols[2] ?? "",
-        courseAdmitted: cols[3] ?? "",
-        deptId: (() => {
-          const courseName = cols[3] ?? "";
-          const match = departments.find(
-            (d) =>
-              d.name
-                .toLowerCase()
-                .includes(courseName.toLowerCase().split(" ")[0]) ||
-              courseName.toLowerCase().includes(d.name.toLowerCase()),
-          );
-          return match ? String(match.id) : "";
-        })(),
-        state: cols[4] ?? "",
-        lga: cols[5] ?? "",
-        gender: cols[6] ?? "",
-        jambScore: cols[7] ?? "",
-        aggregate: cols[8] ?? "",
-        status: "Accepted",
-      });
-    }
-    return rows;
+        sn: r.sn,
+        jambRegNo: r.regNo,
+        name: r.name,
+        courseAdmitted: matchedDept?.name ?? r.deptName ?? "",
+        deptId: r.deptId,
+        state: r.state,
+        lga: r.lga,
+        gender: r.gender,
+        jambScore: r.jambScore,
+        aggregate: r.aggregate,
+        status: r.status || "Accepted",
+      };
+    });
   }
 
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -520,11 +445,23 @@ export default function JambAdmissionScannerTab() {
         <TabsContent value="scanner" className="space-y-4">
           <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200 flex gap-2">
             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-            <span>
-              Upload a scanned JAMB admission list (photo or scan). The AI will
-              attempt to extract candidate data. Review and correct before
-              importing.
-            </span>
+            <div>
+              <span className="font-semibold">
+                How to import JAMB candidates:
+              </span>
+              <ul className="mt-1 space-y-0.5 text-xs list-disc list-inside">
+                <li>
+                  <strong>Option 1 — Upload image:</strong> Upload a photo/scan
+                  of the JAMB list, then manually enter the candidate details in
+                  the table below.
+                </li>
+                <li>
+                  <strong>Option 2 — Paste text:</strong> Click "Paste
+                  Candidates", paste candidate data copied from Word/Excel/CSV,
+                  and click Parse to auto-populate the table.
+                </li>
+              </ul>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-3 items-end">
@@ -543,22 +480,21 @@ export default function JambAdmissionScannerTab() {
                 variant="outline"
                 size="sm"
                 onClick={() => scanFileRef.current?.click()}
+                data-ocid="jamb.scan.upload_button"
               >
                 <ImagePlus className="w-3.5 h-3.5 mr-1.5" />
                 Upload Document
               </Button>
             </div>
-            {scanImage && (
-              <Button
-                size="sm"
-                onClick={simulateScan}
-                disabled={scanning}
-                data-ocid="jamb.scan.extract_button"
-              >
-                <ScanLine className="w-3.5 h-3.5 mr-1.5" />
-                {scanning ? "Scanning..." : "Scan & Extract"}
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPasteModalOpen(true)}
+              data-ocid="jamb.scan.paste_button"
+            >
+              <ClipboardPaste className="w-3.5 h-3.5 mr-1.5" />
+              Paste Candidates
+            </Button>
             <Button variant="outline" size="sm" onClick={addScanRow}>
               <Plus className="w-3.5 h-3.5 mr-1" />
               Add Row
@@ -591,6 +527,11 @@ export default function JambAdmissionScannerTab() {
                     alt="JAMB document"
                     className="w-full object-contain rounded"
                   />
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-950/20 border-t border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                  💡 Review the document above. Enter candidate details in the
+                  table, or click <strong>Paste Candidates</strong> to
+                  auto-populate from copied text.
                 </div>
               </div>
             ) : (
@@ -1081,6 +1022,66 @@ export default function JambAdmissionScannerTab() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* ── Paste Candidates Modal ─────────────────────────────────── */}
+      {pasteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background border border-border rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold flex items-center gap-2">
+                <ClipboardPaste className="w-4 h-4 text-primary" />
+                Paste JAMB Candidate Data
+              </h3>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setPasteModalOpen(false);
+                  setPasteModalText("");
+                }}
+                data-ocid="jamb.paste.close_button"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Copy candidate rows from Word, Excel, or a JAMB printout and paste
+              below. Supported formats: tab-separated, comma-separated (CSV), or
+              space-separated. Column order: Reg No, Full Name, Course Admitted,
+              State, LGA, Sex, JAMB Score.
+            </p>
+            <textarea
+              className="w-full h-44 text-xs border border-border rounded-lg p-3 font-mono bg-background resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder={
+                "34521098CA\tADAMU IBRAHIM MUSA\tComputer Science Education\tNiger\tShiroro\tMale\t287\n34812345CB\tFATIMA BELLO USMAN\tBiology Education\tKebbi\tBirnin Kebbi\tFemale\t271"
+              }
+              value={pasteModalText}
+              onChange={(e) => setPasteModalText(e.target.value)}
+              data-ocid="jamb.paste.textarea"
+            />
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPasteModalOpen(false);
+                  setPasteModalText("");
+                }}
+                data-ocid="jamb.paste.cancel_button"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePasteModalSubmit}
+                disabled={!pasteModalText.trim()}
+                data-ocid="jamb.paste.submit_button"
+              >
+                <ScanLine className="w-4 h-4 mr-2" />
+                Parse & Load Candidates
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

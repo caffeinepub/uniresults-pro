@@ -59,6 +59,7 @@ import {
   DollarSign,
   GraduationCap,
   Mail,
+  Monitor,
   QrCode,
   Shield,
   UserCheck,
@@ -107,6 +108,7 @@ import BenchmarkingTab from "./tabs/BenchmarkingTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BroadcastInboxTab from "./tabs/BroadcastInboxTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
+import CBTExamTab from "./tabs/CBTExamTab";
 import CameraSecurityTab from "./tabs/CameraSecurityTab";
 import CarryoverReportTab from "./tabs/CarryoverReportTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
@@ -116,6 +118,7 @@ import CourseScanImportModal, {
 import DataBackupTab from "./tabs/DataBackupTab";
 import DeansListTab from "./tabs/DeansListTab";
 import DeferralsTab from "./tabs/DefferralsTab";
+import DepartmentBudgetTab from "./tabs/DepartmentBudgetTab";
 import { AdminTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
@@ -135,6 +138,7 @@ import ModerationWorkflowTab from "./tabs/ModerationWorkflowTab";
 import MultiClearanceTab from "./tabs/MultiClearanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import NoticeManagementTab from "./tabs/NoticeManagementTab";
+import PGAdmissionTab from "./tabs/PGAdmissionTab";
 import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
 import PayrollTab from "./tabs/PayrollTab";
 import QRScannerModal from "./tabs/QRScannerModal";
@@ -145,6 +149,7 @@ import ScholarshipTab from "./tabs/ScholarshipTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
+import StaffAppraisalTab from "./tabs/StaffAppraisalTab";
 import StaffTab from "./tabs/StaffTab";
 import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import StudentClearanceTab from "./tabs/StudentClearanceTab";
@@ -193,6 +198,10 @@ export default function AdminDashboard() {
     { label: "Invigilation", tab: "invigilation", icon: UserCheck },
     { label: "Clearance", tab: "multi_clearance", icon: ClipboardList },
     { label: "Announcements", tab: "announcements_mgr", icon: Bell },
+    { label: "Budget", tab: "dept_budget", icon: DollarSign },
+    { label: "Appraisal", tab: "staff_appraisal", icon: ClipboardList },
+    { label: "CBT Exams", tab: "cbt_exam", icon: Monitor },
+    { label: "PG Admission", tab: "pg_admission", icon: GraduationCap },
   ];
 
   const quickActions = allQuickActions.filter((a) => a.show !== false);
@@ -273,6 +282,10 @@ export default function AdminDashboard() {
   else if (activeTab === "multi_clearance") view = <MultiClearanceTab />;
   else if (activeTab === "announcements_mgr")
     view = <AnnouncementsManagerTab />;
+  else if (activeTab === "dept_budget") view = <DepartmentBudgetTab />;
+  else if (activeTab === "staff_appraisal") view = <StaffAppraisalTab />;
+  else if (activeTab === "cbt_exam") view = <CBTExamTab />;
+  else if (activeTab === "pg_admission") view = <PGAdmissionTab />;
   else view = <OverviewTab />;
 
   return (

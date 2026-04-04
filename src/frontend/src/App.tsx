@@ -8,6 +8,8 @@ import DeanDashboard from "./pages/DeanDashboard";
 import HODDashboard from "./pages/HODDashboard";
 import LecturerDashboard from "./pages/LecturerDashboard";
 import LoginPage from "./pages/LoginPage";
+import PGApplyPage from "./pages/PGApplyPage";
+import ParentPortalPage from "./pages/ParentPortalPage";
 import PublicResultsPage from "./pages/PublicResultsPage";
 import StudentDashboard from "./pages/StudentDashboard";
 import StudentRegisterPage from "./pages/StudentRegisterPage";
@@ -19,6 +21,8 @@ function DashboardRouter() {
   if (window.location.pathname === "/student-register")
     return <StudentRegisterPage />;
   if (window.location.pathname === "/results") return <PublicResultsPage />;
+  if (window.location.pathname === "/parent") return <ParentPortalPage />;
+  if (window.location.pathname === "/pg-apply") return <PGApplyPage />;
   if (!currentUser) return <LoginPage />;
   const role = currentUser.role;
   return (

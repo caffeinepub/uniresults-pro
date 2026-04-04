@@ -68,6 +68,7 @@ import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CarryoverReportTab from "./tabs/CarryoverReportTab";
 import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
+import DepartmentBudgetTab from "./tabs/DepartmentBudgetTab";
 import { HODTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptReportTab from "./tabs/DeptReportTab";
 import DeptResultsTab from "./tabs/DeptResultsTab";
@@ -85,6 +86,7 @@ import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
+import StaffAppraisalTab from "./tabs/StaffAppraisalTab";
 import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
 import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
@@ -171,6 +173,8 @@ export default function HODDashboard() {
     content = <StudentAcademicRecordTab mode="admin" />;
   else if (activeTab === "invigilation")
     content = <InvigilationAssignmentTab />;
+  else if (activeTab === "dept_budget") content = <DepartmentBudgetTab />;
+  else if (activeTab === "staff_appraisal") content = <StaffAppraisalTab />;
   else if (activeTab === "announcements_mgr")
     content = <AnnouncementsManagerTab />;
   else content = <OverviewTab />;

@@ -19,6 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  CheckCircle,
   ClipboardPaste,
   Eye,
   FileSpreadsheet,
@@ -32,6 +33,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { parseCourseText } from "../../utils/documentExtractor";
 
 export interface CourseScanRow {
   sn: number;
@@ -85,176 +87,6 @@ function getFileTypeBadge(fileType: string) {
   )
     return { label: "Image", color: "bg-purple-100 text-purple-700" };
   return { label: "File", color: "bg-gray-100 text-gray-700" };
-}
-
-function isMultiLineBlockFormat(lines: string[]): boolean {
-  const codePattern = /^[A-Z]{2,5}[\.\s]*\d{3}$/i;
-  let codeMatches = 0;
-  for (const l of lines) {
-    if (codePattern.test(l.replace(/\s+/g, " ").trim())) codeMatches++;
-  }
-  return lines.length > 3 && codeMatches / lines.length > 0.15;
-}
-
-function normalizeCode(raw: string): string {
-  return raw.replace(/[.\s]/g, "").toUpperCase();
-}
-
-function extractLevel(code: string): string {
-  const m = normalizeCode(code).match(/[A-Z]+(\d)\d{2}/);
-  return m ? `${m[1]}00` : "100";
-}
-
-function normalizeStatus(s: string): "Core" | "Elective" {
-  const u = s.toUpperCase().trim();
-  return u === "C" || u === "CORE" || u === "COMPULSORY" ? "Core" : "Elective";
-}
-
-function normSemester(s: string): "First" | "Second" {
-  return s === "Second" || s === "2nd" || s === "II" || s === "2"
-    ? "Second"
-    : "First";
-}
-
-function parseMultiLineBlocks(
-  lines: string[],
-  rawText: string,
-): CourseScanRow[] {
-  const codePattern = /^[A-Z]{2,5}[\.\s]*\d{3}$/i;
-  const noisePattern =
-    /^(s\/n|course\s*code|course\s*title|credit|status|unit|total|note|direct|students)/i;
-
-  const rawLower = rawText.toLowerCase();
-  const semesterMarkers: { pos: number; semester: "First" | "Second" }[] = [];
-  const semMatches = [
-    ...rawLower.matchAll(/(first|second)\s+semester\s+\d{3}\s*level/gi),
-  ];
-  for (const match of semMatches) {
-    const sem: "First" | "Second" = match[0].startsWith("second")
-      ? "Second"
-      : "First";
-    semesterMarkers.push({ pos: match.index ?? 0, semester: sem });
-  }
-
-  const results: CourseScanRow[] = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i].replace(/\s+/g, " ").trim();
-    if (noisePattern.test(line) || !line) {
-      i++;
-      continue;
-    }
-    if (codePattern.test(line)) {
-      let titleIdx = i + 1;
-      while (
-        titleIdx < lines.length &&
-        (noisePattern.test(lines[titleIdx].trim()) ||
-          /^\d+$/.test(lines[titleIdx].trim()))
-      )
-        titleIdx++;
-      const title = lines[titleIdx]?.trim() || "";
-      let unitsIdx = titleIdx + 1;
-      while (unitsIdx < lines.length && !/^\d+$/.test(lines[unitsIdx].trim()))
-        unitsIdx++;
-      const creditUnits = lines[unitsIdx]?.trim() || "2";
-      let statusIdx = unitsIdx + 1;
-      while (
-        statusIdx < lines.length &&
-        !/^(core|elective|c|e)$/i.test(lines[statusIdx].trim())
-      )
-        statusIdx++;
-      const status = normalizeStatus(lines[statusIdx]?.trim() || "Core");
-
-      const codePos = rawText.toUpperCase().indexOf(normalizeCode(line));
-      let semester: "First" | "Second" = "First";
-      for (const marker of semesterMarkers) {
-        if (marker.pos <= codePos) semester = marker.semester;
-      }
-
-      if (title) {
-        results.push({
-          sn: results.length + 1,
-          courseCode: normalizeCode(line),
-          title,
-          creditUnits,
-          level: extractLevel(line),
-          semester,
-          status,
-        } as CourseScanRow);
-      }
-      i = Math.max(statusIdx + 1, i + 4);
-    } else {
-      i++;
-    }
-  }
-  return results;
-}
-
-function parseCourseLines(text: string): CourseScanRow[] {
-  const rawLines = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-  const skipPatterns =
-    /^(s\/n|course code|course title|credit unit|status|unit|title|total|#)/i;
-  const lines = rawLines.filter((l) => !skipPatterns.test(l));
-
-  if (isMultiLineBlockFormat(lines)) {
-    return parseMultiLineBlocks(lines, text).filter(
-      (r) => r.courseCode && r.title,
-    );
-  }
-
-  const firstLower = lines[0]?.toLowerCase() || "";
-  const startIdx =
-    firstLower.includes("course") ||
-    firstLower.includes("code") ||
-    firstLower.includes("s/n")
-      ? 1
-      : 0;
-
-  return lines
-    .slice(startIdx)
-    .map((line, idx) => {
-      const sep = line.includes("\t") ? "\t" : ",";
-      const parts = line.split(sep).map((p) => p.trim().replace(/^"|"$/g, ""));
-      let courseCode = "";
-      let title = "";
-      let creditUnits = "2";
-      let level = "";
-      let semester = "First";
-      let status = "C";
-      if (parts.length >= 5) {
-        const firstIsNum = /^\d+$/.test(parts[0]);
-        if (firstIsNum) {
-          [, courseCode, title, creditUnits, status] = parts;
-        } else {
-          [courseCode, title, creditUnits, status, level, semester] = parts;
-        }
-      } else if (parts.length >= 3) {
-        [courseCode, title, creditUnits] = parts;
-        status = parts[3] || "C";
-      } else if (parts.length >= 2) {
-        [courseCode, title] = parts;
-      } else return null;
-
-      if (!level) {
-        const mm = courseCode.replace(/[.\s]/g, "").match(/[A-Za-z]+(\d)\d{2}/);
-        if (mm) level = `${mm[1]}00`;
-      }
-      return {
-        sn: idx + 1,
-        courseCode: courseCode.replace(/[.\s]/g, "").toUpperCase(),
-        title,
-        creditUnits: creditUnits || "2",
-        level: level || "100",
-        semester: normSemester(semester),
-        status: normalizeStatus(status),
-      } as CourseScanRow;
-    })
-    .filter(
-      (r): r is CourseScanRow => r !== null && !!r.courseCode && !!r.title,
-    );
 }
 
 function EditableCoursesTable({
@@ -437,126 +269,105 @@ export default function CourseScanImportModal({
   const [history, setHistory] = useState<CourseScanBatch[]>(loadHistory);
   const [viewBatch, setViewBatch] = useState<CourseScanBatch | null>(null);
 
+  // Upload tab guidance state
+  const [uploadGuidance, setUploadGuidance] = useState("");
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadFileName(file.name);
     setUploadPreviewSrc(null);
     setUploadRows([]);
+    setUploadGuidance("");
     setScanning(true);
 
     const ext = file.name.toLowerCase().split(".").pop() || "";
     setUploadFileType(ext);
 
-    const isImage = ["png", "jpg", "jpeg", "gif", "webp"].includes(ext);
-    const isCsv = ext === "csv";
+    const isImage = [
+      "png",
+      "jpg",
+      "jpeg",
+      "gif",
+      "webp",
+      "bmp",
+      "tiff",
+    ].includes(ext);
+    const isTextReadable = ["csv", "txt"].includes(ext);
 
     if (isImage) {
       const reader = new FileReader();
       reader.onload = (ev) => {
         setUploadPreviewSrc(ev.target?.result as string);
-        // Mock extraction after scanning
-        setTimeout(() => {
-          setScanning(false);
-          setUploadRows([
-            {
-              sn: 1,
-              courseCode: "GST111",
-              title: "Communication in English",
-              creditUnits: "2",
-              level: "100",
-              semester: "First",
-              status: "Core",
-            },
-            {
-              sn: 2,
-              courseCode: "BIO101",
-              title: "General Biology I",
-              creditUnits: "2",
-              level: "100",
-              semester: "First",
-              status: "Core",
-            },
-            {
-              sn: 3,
-              courseCode: "CHM101",
-              title: "General Chemistry I",
-              creditUnits: "2",
-              level: "100",
-              semester: "First",
-              status: "Core",
-            },
-          ]);
-          toast.info(
-            "Image scanned — please review and correct the extracted data before importing",
-          );
-        }, 2000);
+        setScanning(false);
+        setUploadGuidance("image");
+        toast.info(
+          "Image uploaded — switch to the Paste Data tab and paste the course text from the document.",
+        );
       };
       reader.readAsDataURL(file);
-    } else if (isCsv) {
+    } else if (isTextReadable) {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const text = ev.target?.result as string;
-        const rows = parseCourseLines(text);
+        const extracted = parseCourseText(text);
+        const rows: CourseScanRow[] = extracted.map((r) => ({
+          sn: r.sn,
+          courseCode: r.courseCode,
+          title: r.title,
+          creditUnits: r.creditUnits,
+          level: r.level,
+          semester: r.semester,
+          status: r.status,
+        }));
         setScanning(false);
         setUploadRows(rows);
         if (rows.length === 0) {
-          toast.error("No valid courses found in CSV. Check column format.");
+          toast.error(
+            "No valid courses found. Check that the file contains course codes and titles.",
+          );
         } else {
-          toast.success(`${rows.length} courses extracted from CSV`);
+          toast.success(`${rows.length} courses extracted from file`);
         }
       };
       reader.readAsText(file);
     } else {
-      // PDF/DOC/DOCX/XLSX — mock extraction
-      setTimeout(() => {
-        setScanning(false);
-        setUploadRows([
-          {
-            sn: 1,
-            courseCode: "EDU101",
-            title: "Introduction to Teaching",
-            creditUnits: "2",
-            level: "100",
-            semester: "First",
-            status: "Core",
-          },
-          {
-            sn: 2,
-            courseCode: "GST111",
-            title: "Communication in English",
-            creditUnits: "2",
-            level: "100",
-            semester: "First",
-            status: "Core",
-          },
-          {
-            sn: 3,
-            courseCode: "BIO201",
-            title: "Genetics I",
-            creditUnits: "2",
-            level: "200",
-            semester: "First",
-            status: "Core",
-          },
-        ]);
-        toast.info(
-          "Document processed — please review and correct the extracted data before importing",
-        );
-      }, 2500);
+      // PDF/DOC/DOCX/XLSX — cannot be read directly
+      setScanning(false);
+      setUploadGuidance("binary");
+      toast.info(
+        "Open the file, select all course text, copy it, then switch to the Paste Data tab.",
+      );
     }
   }
 
+  // Paste tab step state
+  const [pasteStep, setPasteStep] = useState(1);
+
   function handleParse() {
     setPasteError("");
-    const rows = parseCourseLines(pasteText);
+    const extracted = parseCourseText(pasteText);
+    const rows: CourseScanRow[] = extracted.map((r) => ({
+      sn: r.sn,
+      courseCode: r.courseCode,
+      title: r.title,
+      creditUnits: r.creditUnits,
+      level: r.level,
+      semester: r.semester,
+      status: r.status,
+    }));
     if (rows.length === 0) {
       setPasteError(
-        "Could not parse any courses. Ensure each row has: Course Code, Title, Credit Units (tab or comma separated).",
+        "Could not parse any courses. Ensure each row has: Course Code, Title, Credit Units (tab or comma separated, or multi-line block format).",
       );
     } else {
       setPasteRows(rows);
-      toast.success(`${rows.length} courses parsed`);
+      setPasteStep(2);
+      // Count unique levels for summary
+      const levels = [...new Set(rows.map((r) => r.level))].sort();
+      toast.success(
+        `Extracted ${rows.length} courses from ${levels.length} level(s): ${levels.join(", ")}`,
+      );
     }
   }
 
@@ -645,6 +456,34 @@ export default function CourseScanImportModal({
 
             {/* ── Upload File Tab ── */}
             <TabsContent value="upload" className="space-y-4 pt-3">
+              {/* 3-step progress indicator */}
+              <div className="flex items-center gap-1 mb-1">
+                {["1. Upload File", "2. Review & Edit", "3. Import"].map(
+                  (label, idx) => (
+                    <div key={label} className="flex items-center gap-1">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                          uploadRows.length > 0 && !scanning
+                            ? idx === 0
+                              ? "bg-success/20 text-success"
+                              : idx === 1
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground"
+                            : idx === 0
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {uploadRows.length > 0 && !scanning && idx === 0
+                          ? "✓ "
+                          : ""}
+                        {label}
+                      </span>
+                      {idx < 2 && <div className="w-5 h-px bg-border" />}
+                    </div>
+                  ),
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 {/* Left: Upload + Preview */}
                 <div className="space-y-3">
@@ -702,11 +541,42 @@ export default function CourseScanImportModal({
                   )}
 
                   {!scanning && uploadRows.length > 0 && (
-                    <div className="text-xs p-2 bg-green-50 border border-green-200 rounded text-green-700">
-                      ✓ {uploadRows.length} courses extracted — review &amp;
-                      edit before importing
+                    <div className="text-xs p-2 bg-green-50 border border-green-200 rounded text-green-700 flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>
+                        {uploadRows.length} courses extracted — review &amp;
+                        edit before importing
+                      </span>
                     </div>
                   )}
+
+                  {!scanning &&
+                    uploadGuidance === "image" &&
+                    uploadRows.length === 0 && (
+                      <div className="text-xs p-3 bg-amber-50 border border-amber-200 rounded text-amber-800 space-y-1">
+                        <p className="font-semibold">📷 Image uploaded</p>
+                        <p>
+                          Switch to the <strong>Paste Data</strong> tab and
+                          paste the course text from the document. You can open
+                          the image in another window to read the course codes.
+                        </p>
+                      </div>
+                    )}
+
+                  {!scanning &&
+                    uploadGuidance === "binary" &&
+                    uploadRows.length === 0 && (
+                      <div className="text-xs p-3 bg-blue-50 border border-blue-200 rounded text-blue-800 space-y-1">
+                        <p className="font-semibold">
+                          📄 File cannot be read directly
+                        </p>
+                        <p>
+                          Open the file in Word/Excel, select all course data,
+                          copy it (Ctrl+C), then switch to the{" "}
+                          <strong>Paste Data</strong> tab and paste.
+                        </p>
+                      </div>
+                    )}
 
                   <div>
                     <Label>Department</Label>
@@ -775,46 +645,101 @@ export default function CourseScanImportModal({
 
             {/* ── Paste Data Tab ── */}
             <TabsContent value="paste" className="space-y-4 pt-3">
-              <div>
-                <Label>Paste course data from Word or Excel</Label>
-                <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-                  Paste rows directly from a Word document or Excel spreadsheet.
-                  Accepted formats: tab or comma separated with columns: S/N,
-                  Course Code, Title, Credit Units, Status.
-                </p>
-                <Textarea
-                  data-ocid="courses.scan.paste.textarea"
-                  className="font-mono text-xs min-h-[140px]"
-                  placeholder={
-                    "S/N\tCourse Code\tTitle\tUnit\tStatus\n1\tGST111\tCommunication in English\t2\tC\n2\tBIO101\tGeneral Biology I\t2\tC"
-                  }
-                  value={pasteText}
-                  onChange={(e) => {
-                    setPasteText(e.target.value);
-                    setPasteRows([]);
-                    setPasteError("");
-                  }}
-                />
-                {pasteError && (
-                  <p className="text-xs text-destructive mt-1">{pasteError}</p>
+              {/* 3-step progress indicator */}
+              <div className="flex items-center gap-1 mb-1">
+                {["1. Paste", "2. Review & Edit", "3. Import"].map(
+                  (label, idx) => (
+                    <div key={label} className="flex items-center gap-1">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                          idx + 1 === pasteStep
+                            ? "bg-primary text-primary-foreground"
+                            : idx + 1 < pasteStep
+                              ? "bg-success/20 text-success"
+                              : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {idx + 1 < pasteStep ? "✓ " : ""}
+                        {label}
+                      </span>
+                      {idx < 2 && <div className="w-5 h-px bg-border" />}
+                    </div>
+                  ),
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={handleParse}
-                  disabled={!pasteText.trim()}
-                  data-ocid="courses.scan.parse_button"
-                >
-                  <ScanLine className="w-4 h-4 mr-1" /> Parse
-                </Button>
               </div>
 
-              {pasteRows.length > 0 && (
+              {pasteStep === 1 && (
+                <div>
+                  <Label>Paste course data from Word or Excel</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                    Paste rows directly from a Word document or Excel
+                    spreadsheet. Supported formats: multi-line block
+                    (code/title/units/status on separate lines), tab-separated,
+                    or comma-separated. Semester headings like "First Semester
+                    100 Level" are auto-detected.
+                  </p>
+                  <Textarea
+                    data-ocid="courses.scan.paste.textarea"
+                    className="font-mono text-xs min-h-[160px]"
+                    placeholder={
+                      "Paste course data here — multi-line block, tab-separated, or comma-separated\n\nExample (tab-separated):\nS/N\tCourse Code\tTitle\tUnit\tStatus\n1\tGST111\tCommunication in English\t2\tC\n\nOr multi-line block (one field per line):\nGST111\nCommunication in English\n2\nC"
+                    }
+                    value={pasteText}
+                    onChange={(e) => {
+                      setPasteText(e.target.value);
+                      setPasteRows([]);
+                      setPasteError("");
+                      setPasteStep(1);
+                    }}
+                    onBlur={() => {
+                      if (pasteText.trim() && pasteRows.length === 0) {
+                        // Auto-trigger parse on blur if not yet parsed
+                      }
+                    }}
+                  />
+                  {pasteError && (
+                    <p className="text-xs text-destructive mt-1">
+                      {pasteError}
+                    </p>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={handleParse}
+                    disabled={!pasteText.trim()}
+                    data-ocid="courses.scan.parse_button"
+                  >
+                    <ScanLine className="w-4 h-4 mr-1" /> Parse Pasted Data
+                  </Button>
+                </div>
+              )}
+
+              {pasteStep >= 2 && pasteRows.length > 0 && (
                 <div className="space-y-3">
-                  <div className="text-xs p-2 bg-green-50 border border-green-200 rounded text-green-700">
-                    ✓ {pasteRows.length} courses parsed — review &amp; edit
-                    below before importing
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs p-2 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded text-green-700 dark:text-green-300 flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>
+                        Extracted {pasteRows.length} courses from{" "}
+                        {
+                          [...new Set(pasteRows.map((r) => r.level))].sort()
+                            .length
+                        }{" "}
+                        level(s) — review &amp; edit below
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => {
+                        setPasteStep(1);
+                        setPasteRows([]);
+                      }}
+                    >
+                      ← Change Data
+                    </Button>
                   </div>
                   <EditableCoursesTable
                     rows={pasteRows}
@@ -822,12 +747,18 @@ export default function CourseScanImportModal({
                   />
                   <div>
                     <Label>Department</Label>
-                    <Select value={pasteDeptId} onValueChange={setPasteDeptId}>
+                    <Select
+                      value={pasteDeptId}
+                      onValueChange={(v) => {
+                        setPasteDeptId(v);
+                        setPasteStep(3);
+                      }}
+                    >
                       <SelectTrigger
                         className="mt-1"
                         data-ocid="courses.scan.paste.dept.select"
                       >
-                        <SelectValue placeholder="Select department" />
+                        <SelectValue placeholder="Select department to import into" />
                       </SelectTrigger>
                       <SelectContent>
                         {departments.map((d) => (

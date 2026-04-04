@@ -52,6 +52,7 @@ import { UpcomingEventsWidget } from "./tabs/AcademicCalendarEventsTab";
 import { AnnouncementsNoticesPanel } from "./tabs/AnnouncementsManagerTab";
 import AttendanceTab from "./tabs/AttendanceTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
+import CBTExamTab from "./tabs/CBTExamTab";
 import CourseOutlineTab from "./tabs/CourseOutlineTab";
 import ELibraryUploadTab from "./tabs/ELibraryTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
@@ -77,6 +78,7 @@ export default function LecturerDashboard() {
     { label: "View Courses", tab: "overview", icon: BookOpen },
     { label: "E-Library", tab: "elibrary", icon: BookOpen },
     { label: "Academic Record", tab: "academic_record", icon: BookOpen },
+    { label: "CBT Exams", tab: "cbt_exam", icon: ClipboardCheck },
   ];
 
   return (
@@ -120,6 +122,8 @@ export default function LecturerDashboard() {
         <ELibraryUploadTab />
       ) : activeTab === "academic_record" ? (
         <StudentAcademicRecordTab mode="admin" />
+      ) : activeTab === "cbt_exam" ? (
+        <CBTExamTab />
       ) : activeTab === "thesis_tracker" ? (
         <ThesisTrackerTab mode="supervisor" />
       ) : (
