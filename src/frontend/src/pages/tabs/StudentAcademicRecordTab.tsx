@@ -19,6 +19,61 @@ import {
   useApp,
 } from "../../context/AppContext";
 
+// ─── Institution-Type helpers ─────────────────────────────────────────────────
+function getLevelLabel(level: number, institutionType?: string): string {
+  const t = (institutionType ?? "university").toLowerCase();
+  if (t === "nce") {
+    const nceMap: Record<number, string> = {
+      100: "NCE 1 (100 Level)",
+      200: "NCE 2 (200 Level)",
+      300: "NCE 3 (300 Level)",
+    };
+    return nceMap[level] ?? `NCE ${level / 100}`;
+  }
+  if (t === "polytechnic") {
+    const polyMap: Record<number, string> = {
+      100: "ND 1 (100 Level)",
+      200: "ND 2 (200 Level)",
+      300: "HND 1 (300 Level)",
+      400: "HND 2 (400 Level)",
+    };
+    return polyMap[level] ?? `Level ${level}`;
+  }
+  // University / UG
+  const ugMap: Record<number, string> = {
+    100: "100 Level",
+    200: "200 Level",
+    300: "300 Level",
+    400: "400 Level",
+    500: "500 Level",
+    600: "600 Level",
+  };
+  return ugMap[level] ?? `${level} Level`;
+}
+
+function getValidLevels(institutionType?: string): number[] {
+  const t = (institutionType ?? "university").toLowerCase();
+  if (t === "nce") return [100, 200, 300];
+  if (t === "polytechnic") return [100, 200, 300, 400];
+  // University: 100-600
+  return [100, 200, 300, 400, 500, 600];
+}
+
+function getRecordTitle(institutionType?: string): string {
+  const t = (institutionType ?? "university").toLowerCase();
+  if (t === "nce") return "NCE Student Academic Record";
+  if (t === "polytechnic") return "ND/HND Student Academic Record";
+  return "Student Academic Record"; // UG
+}
+
+function getRecordSubtitle(institutionType?: string): string {
+  const t = (institutionType ?? "university").toLowerCase();
+  if (t === "nce") return "Official per-student academic record — NCE format";
+  if (t === "polytechnic")
+    return "Official per-student academic record — ND/HND format";
+  return "Official per-student academic record — Undergraduate (UG) format";
+}
+
 // ─── NCE Grading Scale ────────────────────────────────────────────────────────
 function nceGrade(score: number): {
   grade: string;
@@ -55,13 +110,6 @@ const NCE_DEPARTMENTS = [
   { code: "ENG", label: "English Education (ENG)" },
   { code: "AGR", label: "Agriculture Education (AGR)" },
 ];
-
-// ─── NCE Level Labels ─────────────────────────────────────────────────────────
-const NCE_LEVELS: Record<number, string> = {
-  100: "NCE 1 (100 Level)",
-  200: "NCE 2 (200 Level)",
-  300: "NCE 3 (300 Level)",
-};
 
 // ─── Subject prefix mapping ───────────────────────────────────────────────────
 const SUBJECT_GROUPS: Array<{
@@ -129,17 +177,39 @@ const CSC_CHE_GROUP = {
   borderClass: "border-teal-200 dark:border-teal-800",
 };
 
-// ─── Sample NCE data generator ───────────────────────────────────────────────
+// ─── Sample data generator (institution-type-aware) ──────────────────────────
 function makeSampleNceData(
   student: ExtendedStudent,
   allCourses: ExtendedCourse[],
+  institutionType?: string,
 ): ExtendedResult[] {
   const dept = (student as any).department ?? "GSE";
-  const levelScores: Record<number, number[]> = {
-    100: [72, 65, 55, 78, 47, 80, 61, 58, 73],
-    200: [68, 74, 52, 63, 70, 45, 81, 57],
-    300: [75, 60, 83, 50, 67, 71, 56, 79],
-  };
+  const t = (institutionType ?? "university").toLowerCase();
+
+  let levelScores: Record<number, number[]>;
+  if (t === "nce") {
+    levelScores = {
+      100: [72, 65, 55, 78, 47, 80, 61, 58, 73],
+      200: [68, 74, 52, 63, 70, 45, 81, 57],
+      300: [75, 60, 83, 50, 67, 71, 56, 79],
+    };
+  } else if (t === "polytechnic") {
+    levelScores = {
+      100: [72, 65, 55, 78, 47, 80, 61],
+      200: [68, 74, 52, 63, 70, 45, 81],
+      300: [75, 60, 83, 50, 67, 71, 56],
+      400: [80, 70, 65, 72, 68, 74, 78],
+    };
+  } else {
+    // University / UG
+    levelScores = {
+      100: [72, 65, 55, 78, 47, 80, 61, 58],
+      200: [68, 74, 52, 63, 70, 45, 81, 57],
+      300: [75, 60, 83, 50, 67, 71, 56, 79],
+      400: [80, 70, 65, 72, 68, 74, 78, 76],
+    };
+  }
+
   const results: ExtendedResult[] = [];
   let idCounter = BigInt(90000) + student.id * BigInt(100);
 
@@ -366,6 +436,7 @@ interface StudentAcademicRecordProps {
   institutionName: string;
   academicYear?: string;
   studyMode?: string;
+  institutionType?: string;
   printMode?: boolean;
   onPrint?: () => void;
 }
@@ -377,6 +448,7 @@ function StudentAcademicRecord({
   institutionName,
   academicYear,
   studyMode,
+  institutionType,
   printMode = false,
   onPrint,
 }: StudentAcademicRecordProps) {
@@ -415,7 +487,7 @@ function StudentAcademicRecord({
         ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-300"
         : "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300";
 
-  const levels = [100, 200, 300];
+  const levels = getValidLevels(institutionType);
   const levelsWithData = levels.filter(
     (l) => (levelResults[l]?.length ?? 0) > 0,
   );
@@ -452,7 +524,7 @@ function StudentAcademicRecord({
             </span>
           </div>
           <h3 className="text-sm font-bold uppercase tracking-widest text-primary pt-1">
-            Student Academic Record
+            {getRecordTitle(institutionType)}
           </h3>
         </div>
 
@@ -492,7 +564,7 @@ function StudentAcademicRecord({
           {levelsWithData.map((level) => {
             const rows = levelResults[level] ?? [];
             const summary = computeSummary(rows);
-            const nceLabel = NCE_LEVELS[level] ?? `Level ${level}`;
+            const nceLabel = getLevelLabel(level, institutionType);
             return (
               <div key={level}>
                 <div className="flex items-center gap-2 mt-3 mb-1">
@@ -648,6 +720,9 @@ export default function StudentAcademicRecordTab({
   const institutionName =
     institutionSettings?.name ?? "Federal University of Education, Kontagora";
 
+  const institutionType =
+    (institutionSettings as any)?.institutionType ?? "university";
+
   const [selectedDept, setSelectedDept] = useState("ALL");
   const [selectedSession, setSelectedSession] = useState("2024/2025");
 
@@ -699,9 +774,20 @@ export default function StudentAcademicRecordTab({
     const effectiveResults =
       studentResults.length > 0
         ? studentResults
-        : makeSampleNceData(student, courses as ExtendedCourse[]);
+        : makeSampleNceData(
+            student,
+            courses as ExtendedCourse[],
+            institutionType,
+          );
 
     const byLevel: Record<number, LevelResult[]> = {};
+
+    const maxLevel =
+      institutionType === "nce"
+        ? 300
+        : institutionType === "polytechnic"
+          ? 400
+          : 600;
 
     for (const r of effectiveResults) {
       const course = courses.find((c) => String(c.id) === String(r.courseId));
@@ -716,11 +802,12 @@ export default function StudentAcademicRecordTab({
         const match = (course.code ?? "").match(/(\d+)/);
         const codeNum = match ? Number(match[1]) : 0;
         level = Math.floor(codeNum / 100) * 100;
-        if (level < 100 || level > 300) level = Number(student.level) || 100;
+        if (level < 100 || level > maxLevel)
+          level = Number(student.level) || 100;
       } else {
         level = Number(student.level) || 100;
       }
-      if (level > 300) level = 300;
+      if (level > maxLevel) level = maxLevel;
       if (level < 100) level = 100;
 
       if (!byLevel[level]) byLevel[level] = [];
@@ -788,10 +875,10 @@ export default function StudentAcademicRecordTab({
           <BookOpen className="w-5 h-5 text-primary" />
           <div>
             <h2 className="text-lg font-semibold">
-              NCE Student Academic Record
+              {getRecordTitle(institutionType)}
             </h2>
             <p className="text-xs text-muted-foreground">
-              Official per-student academic record — NCE format
+              {getRecordSubtitle(institutionType)}
             </p>
           </div>
         </div>
@@ -906,6 +993,7 @@ export default function StudentAcademicRecordTab({
                     institutionName={institutionName}
                     academicYear={selectedSession}
                     studyMode={(student as any).studyMode ?? "Full Time"}
+                    institutionType={institutionType}
                     onPrint={() => handlePrintStudent(mno)}
                   />
                 </div>
@@ -928,6 +1016,7 @@ export default function StudentAcademicRecordTab({
               institutionName={institutionName}
               academicYear={selectedSession}
               studyMode={(currentStudent as any).studyMode ?? "Full Time"}
+              institutionType={institutionType}
               printMode={false}
             />
           );

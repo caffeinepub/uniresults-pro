@@ -93,20 +93,29 @@ function cgpaLabel(cgpa: number): { grade: string; remark: string } {
 
 // ─── Level labels ─────────────────────────────────────────────────────────────
 function levelLabel(level: number, type: string): string {
-  if (type === "NCE") {
-    if (level === 100) return "NCE 1";
-    if (level === 200) return "NCE 2";
-    if (level === 300) return "NCE 3";
+  const t = type.toLowerCase();
+  if (t === "nce") {
+    if (level === 100) return "NCE 1 (100 Level)";
+    if (level === 200) return "NCE 2 (200 Level)";
+    if (level === 300) return "NCE 3 (300 Level)";
     return `NCE ${Math.floor(level / 100)}`;
   }
-  if (type === "Polytechnic") {
-    if (level === 100) return "ND 1";
-    if (level === 200) return "ND 2";
-    if (level === 300) return "HND 1";
-    if (level === 400) return "HND 2";
+  if (t === "polytechnic") {
+    if (level === 100) return "ND 1 (100 Level)";
+    if (level === 200) return "ND 2 (200 Level)";
+    if (level === 300) return "HND 1 (300 Level)";
+    if (level === 400) return "HND 2 (400 Level)";
     return `Level ${level}`;
   }
   return `${level} Level`;
+}
+
+// ─── Record title helper ─────────────────────────────────────────────────────
+function getPublicRecordTitle(institutionType: string): string {
+  const t = institutionType.toLowerCase();
+  if (t === "nce") return "NCE STUDENT ACADEMIC RECORD";
+  if (t === "polytechnic") return "ND/HND STUDENT ACADEMIC RECORD";
+  return "STUDENT ACADEMIC RECORD"; // UG / University
 }
 
 // ─── Subject groups ───────────────────────────────────────────────────────────
@@ -461,7 +470,7 @@ export default function PublicResultsPage() {
             </Badge>
           </div>
           <h2 className="text-base font-bold uppercase tracking-widest text-blue-900 pt-1">
-            STUDENT ACADEMIC RECORD
+            {getPublicRecordTitle(institutionType)}
           </h2>
         </div>
 
