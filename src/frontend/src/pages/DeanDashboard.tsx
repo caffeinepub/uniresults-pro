@@ -40,6 +40,9 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import DashboardSidebar, {
+  type SidebarItem,
+} from "../components/DashboardSidebar";
 import { InstitutionTypeBanner } from "../components/InstitutionTypeBanner";
 import { TabContext } from "../components/Layout";
 import StatCard from "../components/StatCard";
@@ -63,6 +66,7 @@ import JambAdmissionScannerTab from "./tabs/JambAdmissionScannerTab";
 import MissingResultsTab from "./tabs/MissingResultsTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
+import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
@@ -130,7 +134,40 @@ export default function DeanDashboard() {
     view = <StudentAcademicRecordTab mode="admin" />;
   else if (activeTab === "dept_budget") view = <DepartmentBudgetTab />;
   else if (activeTab === "staff_appraisal") view = <StaffAppraisalTab />;
+  else if (activeTab === "result_amendment")
+    view = <ResultAmendmentTab userRole="Dean" />;
   else view = <OverviewTab />;
+
+  const sidebarItems: SidebarItem[] = [
+    { id: "overview", label: "Overview", group: "Dashboard" },
+    { id: "students", label: "Students", group: "Academic" },
+    { id: "bulkReg", label: "Bulk Registration", group: "Academic" },
+    { id: "jamb_import", label: "JAMB Import", group: "Academic" },
+    { id: "approvals", label: "Approve Results", group: "Results" },
+    { id: "score_sheet", label: "Score Sheet", group: "Results" },
+    { id: "results_processing", label: "Results Pipeline", group: "Results" },
+    { id: "dept_results", label: "Dept Results", group: "Results" },
+    { id: "faculty_report", label: "Faculty Report", group: "Results" },
+    { id: "senate_report", label: "Senate Report", group: "Results" },
+    { id: "academic_record", label: "Academic Record", group: "Results" },
+    { id: "faculty_collation", label: "Faculty Collation", group: "Results" },
+    { id: "combined_results", label: "Combined Results", group: "Results" },
+    { id: "supplementary", label: "Supplementary Exams", group: "Results" },
+    { id: "missing_results", label: "Missing Results", group: "Results" },
+    { id: "deans_list", label: "Dean's List", group: "Results" },
+    { id: "carryover_report", label: "Carryover Report", group: "Results" },
+    { id: "grade_sheet", label: "Grade Sheet", group: "Results" },
+    { id: "pass_fail_list", label: "Pass/Fail Lists", group: "Results" },
+    { id: "result_amendment", label: "Result Amendment", group: "Results" },
+    { id: "graduation", label: "Graduation", group: "Graduation" },
+    { id: "biometric", label: "Biometric", group: "Supervision" },
+    { id: "departments", label: "Departments", group: "Admin" },
+    { id: "dept_budget", label: "Budget", group: "Admin" },
+    { id: "staff_appraisal", label: "Staff Appraisal", group: "Admin" },
+  ].map((item) => {
+    const found = quickActions.find((a) => a.tab === item.id);
+    return { ...item, icon: found?.icon ?? (() => null) } as SidebarItem;
+  });
 
   return (
     <>
@@ -138,21 +175,15 @@ export default function DeanDashboard() {
       <div className="flex items-center gap-2 mb-2 no-print">
         <InstitutionTypeBanner />
       </div>
-      <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
-        {quickActions.map((a) => (
-          <button
-            key={a.tab}
-            type="button"
-            data-ocid={`dean_quick.${a.tab}.button`}
-            onClick={() => setActiveTab(a.tab)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === a.tab ? "bg-primary/10 text-primary border-primary/30" : ""}`}
-          >
-            <a.icon className="w-3 h-3" />
-            {a.label}
-          </button>
-        ))}
+      <div className="flex min-h-[calc(100vh-8rem)]">
+        <DashboardSidebar
+          items={sidebarItems}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          roleName="Dean"
+        />
+        <div className="flex-1 min-w-0 overflow-auto">{view}</div>
       </div>
-      {view}
     </>
   );
 }

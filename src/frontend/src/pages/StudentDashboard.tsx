@@ -1,7 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -10,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertCircle,
   Award,
@@ -46,12 +61,17 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import DashboardSidebar, {
+  type SidebarItem,
+} from "../components/DashboardSidebar";
 import { TabContext } from "../components/Layout";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import {
+  type AmendmentRequest,
   type GradeAppeal,
   type GraduationApplication,
+  calcGradePoint,
   getAcademicStanding,
   getStudentDepartment,
   getStudentFaculty,
@@ -141,44 +161,62 @@ export default function StudentDashboard() {
     content = <StudentAcademicRecordTab mode="student" />;
   else if (activeTab === "elibrary") content = <StudentELibrarySection />;
   else if (activeTab === "cbt_exam") content = <CBTExamTab />;
+  else if (activeTab === "my_amendments") content = <StudentAmendmentsTab />;
   else if (activeTab === "scholarships")
     content = <StudentScholarshipsSection />;
   else content = <OverviewTab />;
+
+  const sidebarItems: SidebarItem[] = [
+    { id: "overview", label: "Dashboard", group: "My Portal" },
+    { id: "course_reg", label: "Course Registration", group: "My Portal" },
+    { id: "results", label: "My Results", group: "Academic" },
+    { id: "semester_summary", label: "Semester Summary", group: "Academic" },
+    { id: "gpa", label: "GPA / CGPA", group: "Academic" },
+    { id: "transcript", label: "Transcript", group: "Academic" },
+    { id: "academic_record", label: "Academic Record", group: "Academic" },
+    { id: "result_slip", label: "Result Slip", group: "Academic" },
+    { id: "my_amendments", label: "My Amendments", group: "Academic" },
+    { id: "graduation", label: "Graduation", group: "Academic" },
+    { id: "progress", label: "My Progress", group: "Academic" },
+    { id: "timetable", label: "Timetable", group: "Schedule" },
+    { id: "exam_schedule", label: "Exam Schedule", group: "Schedule" },
+    { id: "deferral", label: "Deferral", group: "Schedule" },
+    { id: "fee_status", label: "Fee Status", group: "Finance" },
+    { id: "scholarships", label: "My Awards", group: "Finance" },
+    { id: "documents", label: "My Documents", group: "Resources" },
+    { id: "elibrary", label: "E-Library", group: "Resources" },
+    { id: "cbt_exam", label: "CBT Exams", group: "Resources" },
+    { id: "thesis_tracker", label: "Thesis Tracker", group: "Resources" },
+    { id: "course_eval", label: "Course Evaluation", group: "Feedback" },
+    { id: "appeals", label: "Grade Appeals", group: "Feedback" },
+    { id: "inbox", label: "Inbox", group: "Communication" },
+    { id: "id_card", label: "My ID Card", group: "Communication" },
+    { id: "transfer", label: "Transfer", group: "Communication" },
+    {
+      id: "transcript_request",
+      label: "Transcript Request",
+      group: "Communication",
+    },
+  ].map((item) => {
+    const found = quickActions.find((a) => a.tab === item.id);
+    return { ...item, icon: found?.icon ?? (() => null) } as SidebarItem;
+  });
 
   return (
     <>
       <NoticeBoardPanel userRole="Student" />
       <AnnouncementsNoticesPanel userRole="Student" />
       <UpcomingEventsWidget />
-      <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
-        {quickActions.map((a) => (
-          <button
-            key={a.tab}
-            type="button"
-            data-ocid={`student_quick.${a.tab}.button`}
-            onClick={() => setActiveTab(a.tab)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === a.tab ? "bg-primary/10 text-primary border-primary/30" : ""}`}
-          >
-            <a.icon className="w-3 h-3" />
-            {a.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          data-ocid="student_quick.inbox.button"
-          onClick={() => setActiveTab("inbox")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
-            activeTab === "inbox"
-              ? "bg-primary/10 text-primary border-primary/30"
-              : ""
-          }`}
-        >
-          <Bell className="w-3 h-3" />
-          Inbox
-          {me && <InboxUnreadBadge studentId={String(me.id)} />}
-        </button>
+      <div className="flex min-h-[calc(100vh-8rem)]">
+        <DashboardSidebar
+          items={sidebarItems}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          roleName="Student"
+          institutionName={me?.name ?? ""}
+        />
+        <div className="flex-1 min-w-0 overflow-auto">{content}</div>
       </div>
-      {content}
     </>
   );
 }
@@ -3414,6 +3452,264 @@ function StudentScholarshipsSection() {
         <span>My Scholarships &amp; Awards</span>
       </h2>
       <StudentScholarshipCard matricNo={me?.matricNumber ?? ""} />
+    </div>
+  );
+}
+
+function StudentAmendmentsTab() {
+  const {
+    amendmentRequests,
+    addAmendmentRequest,
+    results,
+    courses,
+    students,
+    currentUser,
+    logAudit,
+  } = useApp();
+  const me = students.find((s) => s.userPrincipal === currentUser?.principal);
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [form, setForm] = useState({
+    courseId: "",
+    reason: "",
+    evidence: "",
+  });
+
+  const myAmendments = amendmentRequests.filter(
+    (a) => me && String(a.studentId) === String(me.id),
+  );
+
+  const myResults = results.filter(
+    (r) =>
+      me &&
+      String(r.studentId) === String(me.id) &&
+      (r.status === "published" || r.status === "approved"),
+  );
+
+  const STATUS_LABELS: Record<AmendmentRequest["status"], string> = {
+    pending_hod: "Pending HOD Review",
+    pending_dean: "Pending Dean Review",
+    pending_registrar: "Pending Registrar",
+    approved: "Approved & Applied",
+    rejected: "Rejected",
+  };
+
+  function statusColor(status: AmendmentRequest["status"]) {
+    switch (status) {
+      case "approved":
+        return "bg-success/10 text-success border-success/30";
+      case "rejected":
+        return "bg-destructive/10 text-destructive border-destructive/30";
+      default:
+        return "bg-warning/10 text-warning border-warning/30";
+    }
+  }
+
+  function handleSubmitRequest() {
+    if (!form.courseId || !form.reason) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+    if (!me) {
+      toast.error("Student record not found");
+      return;
+    }
+    const origResult = myResults.find(
+      (r) => String(r.courseId) === form.courseId,
+    );
+    if (!origResult) {
+      toast.error("No published result found for this course");
+      return;
+    }
+    const req: AmendmentRequest = {
+      id: BigInt(Date.now()),
+      resultId: origResult.id,
+      studentId: origResult.studentId,
+      courseId: origResult.courseId,
+      originalCa: origResult.caScore ?? 0,
+      originalExam: origResult.examScore ?? 0,
+      newCa: origResult.caScore ?? 0,
+      newExam: origResult.examScore ?? 0,
+      reason: form.reason,
+      lecturerName: me.name,
+      status: "pending_hod",
+      createdAt: new Date().toISOString(),
+      studentInitiated: true,
+      attachmentUrl: form.evidence || undefined,
+    };
+    addAmendmentRequest(req);
+    logAudit(
+      currentUser?.name ?? "",
+      currentUser?.role ?? "",
+      "Amendment Request (Student)",
+      `Student ${me.name} requested amendment for course ${form.courseId}`,
+    );
+    toast.success("Amendment request submitted successfully");
+    setRequestOpen(false);
+    setForm({ courseId: "", reason: "", evidence: "" });
+  }
+
+  return (
+    <div className="space-y-6 p-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-bold">My Amendment Requests</h2>
+          <p className="text-sm text-muted-foreground">
+            Request corrections to your published results
+          </p>
+        </div>
+        <Button
+          size="sm"
+          data-ocid="student_amendment.open_modal_button"
+          onClick={() => setRequestOpen(true)}
+        >
+          <FileText className="w-4 h-4 mr-1" /> Request Amendment
+        </Button>
+      </div>
+
+      {myAmendments.length === 0 ? (
+        <div
+          className="text-center py-12 text-muted-foreground"
+          data-ocid="student_amendment.empty_state"
+        >
+          <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">No amendment requests submitted yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {myAmendments.map((a, i) => {
+            const course = courses.find(
+              (c) => String(c.id) === String(a.courseId),
+            );
+            return (
+              <div
+                key={String(a.id)}
+                className="border border-border rounded-lg p-4 space-y-2"
+                data-ocid={`student_amendment.item.${i + 1}`}
+              >
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <span className="font-semibold text-sm">
+                      {course?.code ?? "?"} — {course?.name ?? "Unknown Course"}
+                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      Submitted:{" "}
+                      {new Date(a.createdAt).toLocaleDateString("en-NG")}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${statusColor(a.status)}`}
+                  >
+                    {STATUS_LABELS[a.status]}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <strong>Reason:</strong> {a.reason}
+                </p>
+                {a.status === "rejected" && a.rejectionReason && (
+                  <p className="text-xs text-destructive bg-destructive/5 rounded p-2">
+                    <strong>Rejection Reason:</strong> {a.rejectionReason}
+                  </p>
+                )}
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  <span>
+                    Original: {a.originalCa}/{a.originalExam} (
+                    {a.originalCa + a.originalExam})
+                  </span>
+                  {a.status === "approved" && (
+                    <span className="text-success">
+                      New: {a.newCa}/{a.newExam} ({a.newCa + a.newExam}) —
+                      Grade: {calcGradePoint(a.newCa + a.newExam).grade}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Request Dialog */}
+      <Dialog
+        open={requestOpen}
+        onOpenChange={setRequestOpen}
+        data-ocid="student_amendment.modal"
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request Score Amendment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs text-amber-800 dark:text-amber-200">
+              ⚠️ Only submit if you believe there was a clerical error in score
+              recording. All requests are reviewed by your HOD and Registrar.
+            </div>
+            <div className="grid gap-2">
+              <Label>Course</Label>
+              <Select
+                value={form.courseId}
+                onValueChange={(v) => setForm((f) => ({ ...f, courseId: v }))}
+              >
+                <SelectTrigger data-ocid="student_amendment.course.select">
+                  <SelectValue placeholder="Select course" />
+                </SelectTrigger>
+                <SelectContent>
+                  {myResults.map((r) => {
+                    const c = courses.find(
+                      (c) => String(c.id) === String(r.courseId),
+                    );
+                    return c ? (
+                      <SelectItem
+                        key={String(r.courseId)}
+                        value={String(r.courseId)}
+                      >
+                        {c.code} — {c.name} (Score: {r.totalScore})
+                      </SelectItem>
+                    ) : null;
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Reason for Amendment</Label>
+              <Textarea
+                data-ocid="student_amendment.reason.textarea"
+                rows={3}
+                value={form.reason}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, reason: e.target.value }))
+                }
+                placeholder="Describe the error you believe occurred (e.g., CA score not recorded, exam script not marked)..."
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Supporting Evidence (optional)</Label>
+              <Input
+                data-ocid="student_amendment.evidence.input"
+                value={form.evidence}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, evidence: e.target.value }))
+                }
+                placeholder="Reference or description of supporting document..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              data-ocid="student_amendment.cancel_button"
+              onClick={() => setRequestOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              data-ocid="student_amendment.submit_button"
+              onClick={handleSubmitRequest}
+            >
+              Submit Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

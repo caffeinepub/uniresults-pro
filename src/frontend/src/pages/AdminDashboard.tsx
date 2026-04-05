@@ -78,6 +78,9 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import type { Course } from "../backend.d";
+import DashboardSidebar, {
+  type SidebarItem,
+} from "../components/DashboardSidebar";
 import { InstitutionTypeBanner } from "../components/InstitutionTypeBanner";
 import { TabContext } from "../components/Layout";
 import StatCard from "../components/StatCard";
@@ -143,6 +146,7 @@ import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
 import PayrollTab from "./tabs/PayrollTab";
 import QRScannerModal from "./tabs/QRScannerModal";
 import ReportMonitorTab from "./tabs/ReportMonitorTab";
+import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultStatsDashboard from "./tabs/ResultStatsDashboard";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScholarshipTab from "./tabs/ScholarshipTab";
@@ -204,7 +208,7 @@ export default function AdminDashboard() {
     { label: "PG Admission", tab: "pg_admission", icon: GraduationCap },
   ];
 
-  const quickActions = allQuickActions.filter((a) => a.show !== false);
+  const _quickActions = allQuickActions.filter((a) => a.show !== false);
 
   let view: React.ReactNode;
   if (activeTab === "overview") view = <OverviewTab />;
@@ -286,7 +290,97 @@ export default function AdminDashboard() {
   else if (activeTab === "staff_appraisal") view = <StaffAppraisalTab />;
   else if (activeTab === "cbt_exam") view = <CBTExamTab />;
   else if (activeTab === "pg_admission") view = <PGAdmissionTab />;
+  else if (activeTab === "result_amendment")
+    view = <ResultAmendmentTab userRole="Registrar" />;
   else view = <OverviewTab />;
+
+  const sidebarItems: SidebarItem[] = [
+    { id: "overview", label: "Overview", group: "Dashboard" },
+    { id: "students", label: "Students", group: "Academic" },
+    { id: "staff", label: "Staff", group: "Academic" },
+    { id: "faculties", label: "Faculties", group: "Academic" },
+    { id: "departments", label: "Departments", group: "Academic" },
+    { id: "courses", label: "Courses", group: "Academic" },
+    { id: "course_mgmt", label: "Course Management", group: "Academic" },
+    { id: "bulkReg", label: "Bulk Registration", group: "Academic" },
+    { id: "jamb_import", label: "JAMB Import", group: "Academic" },
+    { id: "pg_admission", label: "PG Admission", group: "Academic" },
+    {
+      id: "pending_registrations",
+      label: "Pending Registrations",
+      group: "Academic",
+      badge: pendingCount,
+    },
+    { id: "score_sheet", label: "Score Sheet", group: "Results" },
+    { id: "results_processing", label: "Results Pipeline", group: "Results" },
+    { id: "results", label: "Publish Results", group: "Results" },
+    { id: "dept_results", label: "Dept Results", group: "Results" },
+    { id: "senate_report", label: "Senate Report", group: "Results" },
+    { id: "academic_record", label: "Academic Record", group: "Results" },
+    { id: "summaries", label: "Result Summaries", group: "Results" },
+    { id: "supplementary", label: "Supplementary Exams", group: "Results" },
+    { id: "missing_results", label: "Missing Results", group: "Results" },
+    { id: "moderation", label: "Moderation", group: "Results" },
+    { id: "deans_list", label: "Dean's List", group: "Results" },
+    { id: "carryover_report", label: "Carryover Report", group: "Results" },
+    { id: "grade_sheet", label: "Grade Sheet", group: "Results" },
+    { id: "pass_fail_list", label: "Pass/Fail Lists", group: "Results" },
+    { id: "result_amendment", label: "Result Amendment", group: "Results" },
+    { id: "result_stats", label: "Result Stats", group: "Results" },
+    { id: "graduation", label: "Graduation", group: "Graduation" },
+    { id: "graduation_list", label: "Graduation List", group: "Graduation" },
+    {
+      id: "student_clearance",
+      label: "Student Clearance",
+      group: "Graduation",
+    },
+    { id: "multi_clearance", label: "Multi Clearance", group: "Graduation" },
+    { id: "alumni", label: "Alumni", group: "Graduation" },
+    { id: "timetable", label: "Timetable", group: "Scheduling" },
+    { id: "exam_schedule", label: "Exam Schedule", group: "Scheduling" },
+    { id: "invigilation", label: "Invigilation", group: "Scheduling" },
+    { id: "calendar", label: "Academic Calendar", group: "Scheduling" },
+    { id: "cal_events", label: "Calendar Events", group: "Scheduling" },
+    { id: "fee_management", label: "Fee Management", group: "Finance" },
+    {
+      id: "financial_clearance",
+      label: "Financial Clearance",
+      group: "Finance",
+    },
+    { id: "scholarships", label: "Scholarships", group: "Finance" },
+    { id: "payroll", label: "Payroll", group: "Finance" },
+    { id: "hostel", label: "Hostel", group: "Admin" },
+    { id: "library", label: "Library", group: "Admin" },
+    { id: "admin_inbox", label: "Inbox", group: "Admin" },
+    { id: "broadcast", label: "Broadcast", group: "Admin" },
+    { id: "notices_mgmt", label: "Notice Board", group: "Admin" },
+    { id: "announcements_mgr", label: "Announcements", group: "Admin" },
+    { id: "id_cards", label: "ID Cards", group: "Admin" },
+    { id: "biometric", label: "Biometric", group: "Admin" },
+    { id: "transfers", label: "Transfers", group: "Admin" },
+    { id: "deferrals", label: "Deferrals", group: "Admin" },
+    { id: "dept_budget", label: "Dept Budget", group: "Admin" },
+    { id: "staff_appraisal", label: "Staff Appraisal", group: "Admin" },
+    { id: "adv_analytics", label: "Analytics", group: "Reports" },
+    { id: "accreditation", label: "Accreditation", group: "Reports" },
+    { id: "benchmarking", label: "Benchmarking", group: "Reports" },
+    { id: "report_monitor", label: "Report Monitor", group: "Reports" },
+    { id: "thesis_tracker", label: "Thesis Tracker", group: "Reports" },
+    { id: "cbt_exam", label: "CBT Exams", group: "Reports" },
+    { id: "settings", label: "Settings", group: "System" },
+    { id: "grade_scale", label: "Grade Scale", group: "System" },
+    { id: "advisors", label: "Advisors", group: "System" },
+    { id: "roles", label: "User Roles", group: "System" },
+    { id: "audit_log", label: "Audit Log", group: "System" },
+    { id: "data_backup", label: "Data Backup", group: "System" },
+    { id: "cam_security", label: "Cam Security", group: "System" },
+  ].map((item) => {
+    const found = allQuickActions.find((a) => a.tab === item.id);
+    return {
+      ...item,
+      icon: found?.icon ?? (() => null),
+    } as SidebarItem;
+  });
 
   return (
     <>
@@ -299,109 +393,16 @@ export default function AdminDashboard() {
       <div className="flex items-center gap-2 mb-2 no-print">
         <InstitutionTypeBanner />
       </div>
-      <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
-        {quickActions.map((a) => (
-          <button
-            key={a.tab}
-            type="button"
-            data-ocid={`admin_quick.${a.tab}.button`}
-            onClick={() => setActiveTab(a.tab)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === a.tab ? "bg-primary/10 text-primary border-primary/30" : ""}`}
-          >
-            <a.icon className="w-3 h-3" />
-            {a.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          data-ocid="admin_quick.scan_id.button"
-          onClick={() => setQrScannerOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <QrCode className="w-3 h-3" />
-          Scan ID
-        </button>
-        <button
-          type="button"
-          data-ocid="admin_quick.pending_registrations.button"
-          onClick={() => setActiveTab("pending_registrations")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === "pending_registrations" ? "bg-primary/10 text-primary border-primary/30" : ""}`}
-        >
-          <UserCheck className="w-3 h-3" />
-          Pending Registrations
-          {pendingCount > 0 && (
-            <span className="ml-1 bg-destructive text-destructive-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-              {pendingCount}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          data-ocid="admin_quick.alumni.button"
-          onClick={() => setActiveTab("alumni")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
-            activeTab === "alumni"
-              ? "bg-primary/10 text-primary border-primary/30"
-              : ""
-          }`}
-        >
-          <GraduationCap className="w-3 h-3" />
-          Alumni
-        </button>
-        <button
-          type="button"
-          data-ocid="admin_quick.payroll.button"
-          onClick={() => setActiveTab("payroll")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
-            activeTab === "payroll"
-              ? "bg-primary/10 text-primary border-primary/30"
-              : ""
-          }`}
-        >
-          <DollarSign className="w-3 h-3" />
-          Payroll
-        </button>
-        <button
-          type="button"
-          data-ocid="admin_quick.hostel.button"
-          onClick={() => setActiveTab("hostel")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
-            activeTab === "hostel"
-              ? "bg-primary/10 text-primary border-primary/30"
-              : ""
-          }`}
-        >
-          <Building className="w-3 h-3" />
-          Hostel
-        </button>
-        <button
-          type="button"
-          data-ocid="admin_quick.library.button"
-          onClick={() => setActiveTab("library")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
-            activeTab === "library"
-              ? "bg-primary/10 text-primary border-primary/30"
-              : ""
-          }`}
-        >
-          <BookOpen className="w-3 h-3" />
-          Library
-        </button>
-        <button
-          type="button"
-          data-ocid="admin_quick.admin_inbox.button"
-          onClick={() => setActiveTab("admin_inbox")}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
-            activeTab === "admin_inbox"
-              ? "bg-primary/10 text-primary border-primary/30"
-              : ""
-          }`}
-        >
-          <Mail className="w-3 h-3" />
-          Inbox
-        </button>
+      <div className="flex min-h-[calc(100vh-8rem)]">
+        <DashboardSidebar
+          items={sidebarItems}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          roleName="Admin / Registrar"
+          institutionName={adminUser?.name ?? "UniResults Pro"}
+        />
+        <div className="flex-1 min-w-0 overflow-auto">{view}</div>
       </div>
-      {view}
     </>
   );
 }

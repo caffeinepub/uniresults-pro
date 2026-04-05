@@ -11,6 +11,9 @@ import {
   Users,
 } from "lucide-react";
 import { useContext } from "react";
+import DashboardSidebar, {
+  type SidebarItem,
+} from "../components/DashboardSidebar";
 import { TabContext } from "../components/Layout";
 import { useApp } from "../context/AppContext";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
@@ -169,33 +172,40 @@ export default function ExamOfficerDashboard() {
     content = <StudentAcademicRecordTab mode="admin" />;
   else content = <OverviewTab />;
 
+  const sidebarItems: SidebarItem[] = [
+    { id: "overview", label: "Overview", group: "Dashboard" },
+    {
+      id: "score_sheet",
+      label: "Score Sheet",
+      group: "Results",
+      badge: pendingCount,
+    },
+    { id: "results_processing", label: "Results Pipeline", group: "Results" },
+    { id: "dept_results", label: "Dept Results", group: "Results" },
+    { id: "supplementary", label: "Supplementary Exams", group: "Results" },
+    { id: "missing_results", label: "Missing Results", group: "Results" },
+    { id: "faculty_collation", label: "Faculty Collation", group: "Results" },
+    { id: "combined_results", label: "Combined Results", group: "Results" },
+    { id: "academic_record", label: "Academic Record", group: "Results" },
+    { id: "exam_schedule", label: "Exam Schedule", group: "Scheduling" },
+    { id: "biometric", label: "Biometric", group: "Scheduling" },
+  ].map((item) => {
+    const found = quickActions.find((a) => a.tab === item.id);
+    return { ...item, icon: found?.icon ?? (() => null) } as SidebarItem;
+  });
+
   return (
     <>
       <NoticeBoardPanel userRole="ExamOfficer" />
-      <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
-        {quickActions.map((a) => (
-          <button
-            key={a.tab}
-            type="button"
-            data-ocid={`exam_officer.${a.tab}.button`}
-            onClick={() => setActiveTab(a.tab)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${
-              activeTab === a.tab
-                ? "bg-primary/10 text-primary border-primary/30"
-                : ""
-            }`}
-          >
-            <a.icon className="w-3 h-3" />
-            {a.label}
-            {a.tab === "score_sheet" && pendingCount > 0 && (
-              <Badge className="ml-1 h-4 w-4 p-0 text-[10px] flex items-center justify-center bg-amber-500 text-white">
-                {pendingCount}
-              </Badge>
-            )}
-          </button>
-        ))}
+      <div className="flex min-h-[calc(100vh-8rem)]">
+        <DashboardSidebar
+          items={sidebarItems}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          roleName="Exam Officer"
+        />
+        <div className="flex-1 min-w-0 overflow-auto">{content}</div>
       </div>
-      {content}
     </>
   );
 }

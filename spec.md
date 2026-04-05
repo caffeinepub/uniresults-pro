@@ -1,82 +1,32 @@
 # UniResults Pro
 
 ## Current State
-Version 77 of UniResults Pro is a comprehensive academic management system with:
-- Multi-institution support (University, NCE, Polytechnic, Secondary, Primary, Pre-Nursery)
-- Full student management, JAMB import, course registration, results pipeline
-- Role-based dashboards: Admin, Registrar, HOD, Dean, Lecturer, Exam Officer, Student
-- Result reports: Department, Faculty, Senate, Academic Record (NCE/University/Polytechnic)
-- Pass List, Failure List, Graduating List, Dean's List
-- Accreditation reports (AccreditationReportTab.tsx) -- EXISTS
-- Broadcast in-app SMS (BroadcastInboxTab.tsx) -- EXISTS
-- Result amendment requests (ResultAmendmentTab.tsx) -- EXISTS
-- Advanced analytics, E-Library, PG Thesis Tracker, Scholarship tracking, etc.
+
+Version 79 with full academic management system. All role dashboards (Admin, Registrar, HOD, Dean, Lecturer, Exam Officer, Student) use a **horizontal scrollable quick-action button bar** for navigation. PGAdmissionTab has only 4 status states (pending → shortlisted → admitted → rejected) with no full workflow (no interview scheduling, no admission letter, no matriculation, no PG-specific registration). ResultAmendmentTab exists but is NOT imported/wired into any dashboard tabs — students can request via StudentDashboard but HOD/Dean/Registrar see amendments only inline in their overview, not in a dedicated tab. AccreditationReportTab is basic (staff list, course list, facilities checklist) without result statistics, graduation rates, or NUC/NCCE self-study sections.
 
 ## Requested Changes (Diff)
 
 ### Add
-1. **Departmental Budget Management** -- New tab `DepartmentBudgetTab.tsx`
-   - HOD/Dean set departmental budget allocations per category (Personnel, Equipment, Library, Research, Admin, Misc)
-   - Track expenditures against allocations with remaining balance
-   - Budget approval workflow: HOD proposes → Dean approves → Registrar/Admin finalizes
-   - Print/export budget reports per department and session
-   - Wire into HODDashboard (tab: "dept_budget"), DeanDashboard (tab: "dept_budget"), AdminDashboard (tab: "dept_budget")
-
-2. **Staff Appraisal System** -- New tab `StaffAppraisalTab.tsx`
-   - Annual performance appraisal form for academic and non-academic staff
-   - Criteria: Teaching/Work Effectiveness, Research Output, Community Service, Punctuality/Attendance, Cooperation, Student Feedback Score
-   - Self-appraisal section (staff fills their own), HOD assessment section, Dean endorsement
-   - Appraisal status workflow: Draft → Submitted → HOD Reviewed → Dean Endorsed
-   - Aggregated scores, printable appraisal report per staff member
-   - Wire into AdminDashboard (tab: "staff_appraisal"), HODDashboard (tab: "staff_appraisal"), DeanDashboard (tab: "staff_appraisal")
-
-3. **Online CBT/Exam Module** -- New tab `CBTExamTab.tsx`
-   - Question bank: Admin/Lecturer creates questions (MCQ, True/False, Short Answer) per course
-   - Schedule CBT exams: assign course, duration, date/time, allowed students
-   - Student-facing exam interface: countdown timer, question navigator, submit button
-   - Auto-grading for MCQ/True-False; manual grading for Short Answer
-   - Results appear in CBT results dashboard with score, grade, pass/fail
-   - Wire into AdminDashboard (tab: "cbt_exam"), LecturerDashboard (tab: "cbt_exam"), StudentDashboard (tab: "cbt_exam")
-
-4. **Parent Portal** -- New page `ParentPortalPage.tsx` with route `/parent`
-   - Login page for parents using ward's matric number + a parent PIN
-   - Dashboard shows: ward's photo, name, level, dept, CGPA, attendance %, fee status
-   - Results tab: view published results per semester (read-only)
-   - Attendance tab: see attendance % per course, highlight below 75%
-   - Fees tab: see outstanding fees and payment status
-   - Inbox tab: receive messages from Registrar/HOD
-   - Add "Parent Login" tab to LoginPage.tsx alongside existing Student/Staff tabs
-   - Add parent PIN management to student records in AppContext and Admin student forms
-
-5. **Postgraduate Admission Portal** -- New tab `PGAdmissionTab.tsx`
-   - Public-facing PG application form at `/pg-apply` (no login required)
-   - Form fields: Full Name, Email, Phone, Date of Birth, NIN, Previous Qualification (BSc/HND/etc.), Class of Degree, Institution, Year, Programme Applied (MSc/PGDE/PhD/MBA), Department, Session
-   - Upload supporting documents (transcript, certificate, referee letters)
-   - Application status tracking by application reference number
-   - Admin/Registrar dashboard view: list all PG applications, filter by programme/status, approve/reject/shortlist with reason
-   - Shortlisted applicants converted to student records with PG level (700/800)
-   - Wire into AdminDashboard (tab: "pg_admission"), and add link to LoginPage
+- **Sidebar Navigation**: Collapsible sidebar on ALL screens (Admin, Registrar, HOD, Dean, Lecturer, Exam Officer, Student dashboards). Default closed/icon-only, expands on hover or hamburger click. Shows institution name + role at top when expanded. Groups menu items by category (Academic, Results, Administration, etc.).
+- **PG Admission Full Pipeline**: Extend PGApplication interface with stages: screening_scheduled, interview_scheduled, interview_done, shortlisted, admission_letter_issued, registered, matriculated, active_pg_student. Add: interview scheduling (date/time/venue), document upload checklist, admission letter generation (printable), PG registration form (courses at 700/800 level), matriculation record.
+- **Result Amendment Full Pipeline**: Wire ResultAmendmentTab into Admin, HOD, Dean dashboards as a proper tab ("result_amendment" tab key). Add "Student Amendment Request" tab in StudentDashboard so students can initiate from a dedicated tab (not just inline in results). Add evidence file attachment field to AmendmentRequest interface. Full pipeline: Student requests → Lecturer notified → HOD reviews → Dean reviews → Registrar approves/rejects → student notified in inbox.
+- **Accreditation Reports Enhancement**: Add NUC/NCCE self-study sections: Student enrolment statistics by level/gender, Graduation rates by session, Staff qualifications table, Result statistics (pass rate, grade distribution by course), Facilities assessment, Programme learning outcomes, Compliance checklist. Export/print as formatted report.
 
 ### Modify
-- **AdminDashboard.tsx**: Add routing and quick action buttons for: `dept_budget`, `staff_appraisal`, `cbt_exam`, `pg_admission`
-- **HODDashboard.tsx**: Add routing for `dept_budget`, `staff_appraisal`
-- **DeanDashboard.tsx**: Add routing for `dept_budget`, `staff_appraisal`
-- **LecturerDashboard.tsx**: Add routing for `cbt_exam`
-- **StudentDashboard.tsx**: Add routing for `cbt_exam`
-- **App.tsx**: Add routes for `/parent` (ParentPortalPage) and `/pg-apply` (public PG application)
-- **LoginPage.tsx**: Add Parent Login tab and PG Apply link
-- **AppContext.tsx**: Add state for budgets, appraisals, cbt questions/exams, parent PINs, pg applications
+- All dashboard main layout: replace horizontal quick-action button bar with a collapsible sidebar. The sidebar is always collapsed (icon-only) by default and can be toggled. The main content area takes full width when sidebar is collapsed.
+- PGAdmissionTab: extend status enum and add new workflow stages UI.
+- AppContext AmendmentRequest: add `attachmentUrl?: string` and `studentInitiated: boolean` fields.
 
 ### Remove
-- Nothing removed
+- Horizontal quick-action button pills in Admin/HOD/Dean/Lecturer/ExamOfficer/Student dashboards (replaced by sidebar).
 
 ## Implementation Plan
-1. Extend AppContext with new state slices: budgets, appraisals, cbtQuestions, cbtExams, cbtResults, parentPins, pgApplications
-2. Create DepartmentBudgetTab.tsx with allocation table, expenditure tracking, approval workflow, print
-3. Create StaffAppraisalTab.tsx with self-appraisal form, HOD assessment, Dean endorsement, status badges
-4. Create CBTExamTab.tsx with question bank CRUD, exam scheduler, student exam-taking interface, auto-grading, results
-5. Create ParentPortalPage.tsx with login, results/attendance/fees/inbox read-only views
-6. Create PGAdmissionTab.tsx (admin side) and a public PGApplyPage.tsx at /pg-apply
-7. Wire all new tabs into respective dashboards with quick action buttons
-8. Add Parent Login tab and PG Apply link to LoginPage.tsx
-9. Add routes in App.tsx
+
+1. Create a shared `DashboardSidebar.tsx` component in `src/frontend/src/components/` that renders a collapsible icon sidebar. Accept props: `items` (array of {label, tab, icon, badge?, group}), `activeTab`, `onTabChange`, `roleName`, `institutionName`. Collapsed = 56px wide showing icons + tooltips. Expanded = 220px wide. Toggle button (hamburger/chevron) at top.
+2. Update `AdminDashboard.tsx`, `HODDashboard.tsx`, `DeanDashboard.tsx`, `LecturerDashboard.tsx`, `ExamOfficerDashboard.tsx`, `StudentDashboard.tsx`, and the Registrar view (if in AdminDashboard) to use DashboardSidebar instead of the button bar. Wrap content in a flex layout: sidebar on left, content on right.
+3. Add `result_amendment` tab key to Admin, HOD, Dean, and Registrar navigation items. Import and render `<ResultAmendmentTab userRole={...} />` for each.
+4. Add `amendments` tab in StudentDashboard showing the student's own amendment requests with status tracking and a button to file a new request.
+5. Extend `PGAdmissionTab.tsx`: add interview scheduling modal, document checklist, admission letter modal (printable), PG registration step, matriculation step. Update status flow with new stages.
+6. Update `PGApplyPage.tsx` public form to upload supporting documents (any file type).
+7. Update `AccreditationReportTab.tsx`: add tabbed sections for Enrolment Stats, Graduation Rates, Staff Qualifications, Result Statistics, Facilities, Programme Outcomes, Compliance Checklist.
+8. All changes must preserve existing functionality and all previous components.

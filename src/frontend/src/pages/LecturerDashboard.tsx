@@ -40,6 +40,9 @@ import {
 } from "lucide-react";
 import { useContext, useRef, useState } from "react";
 import { toast } from "sonner";
+import DashboardSidebar, {
+  type SidebarItem,
+} from "../components/DashboardSidebar";
 import { TabContext } from "../components/Layout";
 import StatusBadge from "../components/StatusBadge";
 import { calcGradePoint, useApp } from "../context/AppContext";
@@ -58,6 +61,7 @@ import ELibraryUploadTab from "./tabs/ELibraryTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import PhotoAvatar from "./tabs/PhotoAvatar";
+import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
@@ -81,54 +85,74 @@ export default function LecturerDashboard() {
     { label: "CBT Exams", tab: "cbt_exam", icon: ClipboardCheck },
   ];
 
+  const sidebarItems: SidebarItem[] = [
+    { id: "overview", label: "My Courses", group: "Teaching" },
+    { id: "results", label: "Enter Results", group: "Teaching" },
+    { id: "score_sheet", label: "Score Sheet", group: "Teaching" },
+    { id: "results_processing", label: "Results Pipeline", group: "Teaching" },
+    { id: "bulk_upload", label: "Bulk Upload", group: "Teaching" },
+    { id: "course_outlines", label: "Course Outlines", group: "Teaching" },
+    { id: "elibrary", label: "E-Library", group: "Teaching" },
+    { id: "cbt_exam", label: "CBT Exams", group: "Teaching" },
+    { id: "academic_record", label: "Academic Record", group: "Teaching" },
+    { id: "attendance", label: "Attendance", group: "Supervision" },
+    { id: "biometric", label: "Biometric", group: "Supervision" },
+    { id: "exam_schedule", label: "Exam Schedule", group: "Supervision" },
+    { id: "thesis_tracker", label: "Thesis Tracker", group: "Supervision" },
+    { id: "schedule", label: "Schedule", group: "Supervision" },
+    { id: "appeals", label: "Grade Appeals", group: "Admin" },
+    { id: "result_amendment", label: "Result Amendment", group: "Admin" },
+  ].map((item) => {
+    const found = quickActions.find((a) => a.tab === item.id);
+    return { ...item, icon: found?.icon ?? (() => null) } as SidebarItem;
+  });
+
   return (
     <>
       <NoticeBoardPanel userRole="Lecturer" />
       <AnnouncementsNoticesPanel userRole="Lecturer" />
       <UpcomingEventsWidget />
-      <div className="flex flex-wrap gap-2 px-0 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
-        {quickActions.map((a) => (
-          <button
-            key={a.tab}
-            type="button"
-            data-ocid={`lecturer_quick.${a.tab}.button`}
-            onClick={() => setActiveTab(a.tab)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === a.tab ? "bg-primary/10 text-primary border-primary/30" : ""}`}
-          >
-            <a.icon className="w-3 h-3" />
-            {a.label}
-          </button>
-        ))}
+      <div className="flex min-h-[calc(100vh-8rem)]">
+        <DashboardSidebar
+          items={sidebarItems}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          roleName="Lecturer"
+        />
+        <div className="flex-1 min-w-0 overflow-auto">
+          {activeTab === "result_amendment" ? (
+            <ResultAmendmentTab userRole="Lecturer" />
+          ) : activeTab === "bulk_upload" ? (
+            <BulkUploadView />
+          ) : activeTab === "appeals" ? (
+            <LecturerAppealsTab />
+          ) : activeTab === "schedule" ? (
+            <TeachingScheduleTab />
+          ) : activeTab === "attendance" ? (
+            <AttendanceTab />
+          ) : activeTab === "biometric" ? (
+            <BiometricAttendanceTab />
+          ) : activeTab === "exam_schedule" ? (
+            <LecturerExamScheduleTab />
+          ) : activeTab === "score_sheet" ? (
+            <ScoreEntrySheetTab />
+          ) : activeTab === "results_processing" ? (
+            <ResultsProcessingTab userRole="Lecturer" />
+          ) : activeTab === "course_outlines" ? (
+            <CourseOutlineTab />
+          ) : activeTab === "elibrary" ? (
+            <ELibraryUploadTab />
+          ) : activeTab === "academic_record" ? (
+            <StudentAcademicRecordTab mode="admin" />
+          ) : activeTab === "cbt_exam" ? (
+            <CBTExamTab />
+          ) : activeTab === "thesis_tracker" ? (
+            <ThesisTrackerTab mode="supervisor" />
+          ) : (
+            <CoursesView />
+          )}
+        </div>
       </div>
-      {activeTab === "bulk_upload" ? (
-        <BulkUploadView />
-      ) : activeTab === "appeals" ? (
-        <LecturerAppealsTab />
-      ) : activeTab === "schedule" ? (
-        <TeachingScheduleTab />
-      ) : activeTab === "attendance" ? (
-        <AttendanceTab />
-      ) : activeTab === "biometric" ? (
-        <BiometricAttendanceTab />
-      ) : activeTab === "exam_schedule" ? (
-        <LecturerExamScheduleTab />
-      ) : activeTab === "score_sheet" ? (
-        <ScoreEntrySheetTab />
-      ) : activeTab === "results_processing" ? (
-        <ResultsProcessingTab userRole="Lecturer" />
-      ) : activeTab === "course_outlines" ? (
-        <CourseOutlineTab />
-      ) : activeTab === "elibrary" ? (
-        <ELibraryUploadTab />
-      ) : activeTab === "academic_record" ? (
-        <StudentAcademicRecordTab mode="admin" />
-      ) : activeTab === "cbt_exam" ? (
-        <CBTExamTab />
-      ) : activeTab === "thesis_tracker" ? (
-        <ThesisTrackerTab mode="supervisor" />
-      ) : (
-        <CoursesView />
-      )}
     </>
   );
 }

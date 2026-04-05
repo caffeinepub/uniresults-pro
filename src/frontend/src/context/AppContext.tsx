@@ -217,6 +217,9 @@ export interface AmendmentRequest {
     | "approved"
     | "rejected";
   createdAt: string;
+  attachmentUrl?: string;
+  studentInitiated?: boolean;
+  rejectionReason?: string;
 }
 
 export interface AcademicCalendar {

@@ -51,6 +51,9 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
+import DashboardSidebar, {
+  type SidebarItem,
+} from "../components/DashboardSidebar";
 import { InstitutionTypeBanner } from "../components/InstitutionTypeBanner";
 import { TabContext } from "../components/Layout";
 import StatCard from "../components/StatCard";
@@ -83,6 +86,7 @@ import MissingResultsTab from "./tabs/MissingResultsTab";
 import ModerationWorkflowTab from "./tabs/ModerationWorkflowTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
+import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
@@ -177,7 +181,53 @@ export default function HODDashboard() {
   else if (activeTab === "staff_appraisal") content = <StaffAppraisalTab />;
   else if (activeTab === "announcements_mgr")
     content = <AnnouncementsManagerTab />;
+  else if (activeTab === "result_amendment")
+    content = <ResultAmendmentTab userRole="HOD" />;
   else content = <OverviewTab />;
+
+  const sidebarItems: SidebarItem[] = [
+    { id: "overview", label: "Overview", group: "Academic" },
+    { id: "students", label: "Students", group: "Academic" },
+    { id: "courses", label: "Courses", group: "Academic" },
+    {
+      id: "course_assignments",
+      label: "Course Assignments",
+      group: "Academic",
+    },
+    { id: "bulkReg", label: "Bulk Registration", group: "Academic" },
+    { id: "jamb_import", label: "JAMB Import", group: "Academic" },
+    { id: "approvals", label: "Approve Results", group: "Results" },
+    { id: "score_sheet", label: "Score Sheet", group: "Results" },
+    { id: "results_processing", label: "Results Pipeline", group: "Results" },
+    { id: "dept_results", label: "Dept Results", group: "Results" },
+    { id: "senate_report", label: "Senate Report", group: "Results" },
+    { id: "academic_record", label: "Academic Record", group: "Results" },
+    { id: "supplementary", label: "Supplementary Exams", group: "Results" },
+    { id: "missing_results", label: "Missing Results", group: "Results" },
+    { id: "moderation", label: "Moderation", group: "Results" },
+    { id: "carryover_report", label: "Carryover Report", group: "Results" },
+    { id: "grade_sheet", label: "Grade Sheet", group: "Results" },
+    { id: "pass_fail_list", label: "Pass/Fail Lists", group: "Results" },
+    { id: "result_amendment", label: "Result Amendment", group: "Results" },
+    { id: "analytics", label: "Analytics", group: "Reports" },
+    { id: "dept_report", label: "Dept Report", group: "Reports" },
+    { id: "adv_analytics", label: "Adv Analytics", group: "Reports" },
+    { id: "graduation", label: "Graduation", group: "Reports" },
+    { id: "carryovers", label: "Carry-overs", group: "Reports" },
+    { id: "biometric", label: "Biometric", group: "Supervision" },
+    { id: "invigilation", label: "Invigilation", group: "Supervision" },
+    { id: "exam_schedule", label: "Exam Schedule", group: "Supervision" },
+    { id: "exam_supervision", label: "Exam Supervision", group: "Supervision" },
+    { id: "thesis_tracker", label: "Thesis Tracker", group: "Supervision" },
+    { id: "hod_transfers", label: "Transfers", group: "Admin" },
+    { id: "broadcast", label: "Broadcast", group: "Admin" },
+    { id: "announcements_mgr", label: "Announcements", group: "Admin" },
+    { id: "dept_budget", label: "Budget", group: "Admin" },
+    { id: "staff_appraisal", label: "Staff Appraisal", group: "Admin" },
+  ].map((item) => {
+    const found = quickActions.find((a) => a.tab === item.id);
+    return { ...item, icon: found?.icon ?? (() => null) } as SidebarItem;
+  });
 
   return (
     <>
@@ -186,21 +236,16 @@ export default function HODDashboard() {
       <div className="flex items-center gap-2 mb-2 no-print">
         <InstitutionTypeBanner />
       </div>
-      <div className="flex flex-wrap gap-2 pb-3 pt-1 border-b border-border/50 mb-4 no-print">
-        {quickActions.map((a) => (
-          <button
-            key={a.tab}
-            type="button"
-            data-ocid={`hod_quick.${a.tab}.button`}
-            onClick={() => setActiveTab(a.tab)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors ${activeTab === a.tab ? "bg-primary/10 text-primary border-primary/30" : ""}`}
-          >
-            <a.icon className="w-3 h-3" />
-            {a.label}
-          </button>
-        ))}
+      <div className="flex min-h-[calc(100vh-8rem)]">
+        <DashboardSidebar
+          items={sidebarItems}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          roleName="Head of Department"
+          institutionName={hodUser?.name ?? ""}
+        />
+        <div className="flex-1 min-w-0 overflow-auto">{content}</div>
       </div>
-      {content}
     </>
   );
 }
