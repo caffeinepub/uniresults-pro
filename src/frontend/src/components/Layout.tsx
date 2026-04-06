@@ -177,6 +177,19 @@ const NAV_BY_ROLE: Record<string, NavItem[]> = {
     { id: "faculty_report", label: "Faculty Report", icon: FileText },
     { id: "biometric", label: "Biometric", icon: Camera },
   ],
+  ExamOfficer: [
+    { id: "overview", label: "Overview", icon: LayoutDashboard },
+    { id: "score_sheet", label: "Score Entry", icon: ClipboardList },
+    { id: "results_processing", label: "Results Pipeline", icon: BarChart3 },
+    { id: "dept_results", label: "Dept Results", icon: FileText },
+    { id: "faculty_collation", label: "Faculty Collation", icon: Building2 },
+    { id: "supplementary", label: "Supplementary", icon: RefreshCw },
+    { id: "missing_results", label: "Missing Results", icon: ClipboardList },
+    { id: "combined_results", label: "Combined Results", icon: FileText },
+    { id: "academic_record", label: "Academic Record", icon: ScrollText },
+    { id: "exam_schedule", label: "Exam Schedule", icon: CalendarDays },
+    { id: "biometric", label: "Biometric", icon: Camera },
+  ],
 };
 
 export const ActiveTabContext = { current: "overview" };

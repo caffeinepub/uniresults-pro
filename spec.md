@@ -1,32 +1,58 @@
-# UniResults Pro
+# UniResults Pro — Full Package Integration (Version 81)
 
 ## Current State
 
-Version 79 with full academic management system. All role dashboards (Admin, Registrar, HOD, Dean, Lecturer, Exam Officer, Student) use a **horizontal scrollable quick-action button bar** for navigation. PGAdmissionTab has only 4 status states (pending → shortlisted → admitted → rejected) with no full workflow (no interview scheduling, no admission letter, no matriculation, no PG-specific registration). ResultAmendmentTab exists but is NOT imported/wired into any dashboard tabs — students can request via StudentDashboard but HOD/Dean/Registrar see amendments only inline in their overview, not in a dedicated tab. AccreditationReportTab is basic (staff list, course list, facilities checklist) without result statistics, graduation rates, or NUC/NCCE self-study sections.
+UniResults Pro is at Version 80 (draft expired). The app is a comprehensive academic management system for Nigerian tertiary and pre-tertiary institutions. It has:
+
+- Multi-institution support (University, NCE, Polytechnic, Secondary, Primary, Pre-Nursery)
+- Full role-based dashboards (Admin, Registrar, HOD, Dean, Lecturer, Exam Officer, Student)
+- Sidebar navigation (collapsible on all screens)
+- 80+ features covering student management, course management, results processing, reports, portals
+- Official course lists: Biology Education (71 courses) and Computer Science Education (73 courses)
+- React frontend with localStorage-based state management (AppContext.tsx ~5011 lines)
+- Motoko backend with core CRUD operations
+- Components: authorization, blob-storage, camera, qr-code are already integrated
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Sidebar Navigation**: Collapsible sidebar on ALL screens (Admin, Registrar, HOD, Dean, Lecturer, Exam Officer, Student dashboards). Default closed/icon-only, expands on hover or hamburger click. Shows institution name + role at top when expanded. Groups menu items by category (Academic, Results, Administration, etc.).
-- **PG Admission Full Pipeline**: Extend PGApplication interface with stages: screening_scheduled, interview_scheduled, interview_done, shortlisted, admission_letter_issued, registered, matriculated, active_pg_student. Add: interview scheduling (date/time/venue), document upload checklist, admission letter generation (printable), PG registration form (courses at 700/800 level), matriculation record.
-- **Result Amendment Full Pipeline**: Wire ResultAmendmentTab into Admin, HOD, Dean dashboards as a proper tab ("result_amendment" tab key). Add "Student Amendment Request" tab in StudentDashboard so students can initiate from a dedicated tab (not just inline in results). Add evidence file attachment field to AmendmentRequest interface. Full pipeline: Student requests → Lecturer notified → HOD reviews → Dean reviews → Registrar approves/rejects → student notified in inbox.
-- **Accreditation Reports Enhancement**: Add NUC/NCCE self-study sections: Student enrolment statistics by level/gender, Graduation rates by session, Staff qualifications table, Result statistics (pass rate, grade distribution by course), Facilities assessment, Programme learning outcomes, Compliance checklist. Export/print as formatted report.
+- Ensure all previously built features are preserved and fully functional
+- Verify sidebar navigation is working on all role dashboards
+- Add ExamOfficer role dashboard (currently missing from DashboardRouter)
+- Add public routes: /results (matric lookup), /student-register, /feedback, /pg-apply, /parent
+- Ensure session persistence so the draft doesn't expire/lose state between navigations
+- Complete PG admission workflow (application → screening → interview → shortlist → admission letter → matriculation)
+- Result amendment request workflow (student submits → HOD/Dean/Registrar reviews)
+- Accreditation reports (NUC/NCCE format)
+- Student Academic Record fully wired to score entry data
+- Pass List, Failure List, Graduating List from real score data
+- Faculty collation dashboard for Exam Officer
+- Combined programme handling (EDU+CSC, NCE CSC+PHY+MAT)
+- All scanners functional (student import, course import, JAMB import)
+- CBT/Online exam module
+- Parent portal (/parent route)
+- Departmental budget management
+- Staff appraisal system
+- All result processing modules (supplementary, moderation, dean's list, carryover, etc.)
 
 ### Modify
-- All dashboard main layout: replace horizontal quick-action button bar with a collapsible sidebar. The sidebar is always collapsed (icon-only) by default and can be toggled. The main content area takes full width when sidebar is collapsed.
-- PGAdmissionTab: extend status enum and add new workflow stages UI.
-- AppContext AmendmentRequest: add `attachmentUrl?: string` and `studentInitiated: boolean` fields.
+- App.tsx: Add ExamOfficer to DashboardRouter, add public route handling
+- Layout.tsx: Add ExamOfficer nav items, ensure sidebar is fully collapsible on all screens
+- Ensure all tabs referenced in NAV_BY_ROLE are handled in each dashboard
 
 ### Remove
-- Horizontal quick-action button pills in Admin/HOD/Dean/Lecturer/ExamOfficer/Student dashboards (replaced by sidebar).
+- Nothing to remove; preserve all existing functionality
 
 ## Implementation Plan
 
-1. Create a shared `DashboardSidebar.tsx` component in `src/frontend/src/components/` that renders a collapsible icon sidebar. Accept props: `items` (array of {label, tab, icon, badge?, group}), `activeTab`, `onTabChange`, `roleName`, `institutionName`. Collapsed = 56px wide showing icons + tooltips. Expanded = 220px wide. Toggle button (hamburger/chevron) at top.
-2. Update `AdminDashboard.tsx`, `HODDashboard.tsx`, `DeanDashboard.tsx`, `LecturerDashboard.tsx`, `ExamOfficerDashboard.tsx`, `StudentDashboard.tsx`, and the Registrar view (if in AdminDashboard) to use DashboardSidebar instead of the button bar. Wrap content in a flex layout: sidebar on left, content on right.
-3. Add `result_amendment` tab key to Admin, HOD, Dean, and Registrar navigation items. Import and render `<ResultAmendmentTab userRole={...} />` for each.
-4. Add `amendments` tab in StudentDashboard showing the student's own amendment requests with status tracking and a button to file a new request.
-5. Extend `PGAdmissionTab.tsx`: add interview scheduling modal, document checklist, admission letter modal (printable), PG registration step, matriculation step. Update status flow with new stages.
-6. Update `PGApplyPage.tsx` public form to upload supporting documents (any file type).
-7. Update `AccreditationReportTab.tsx`: add tabbed sections for Enrolment Stats, Graduation Rates, Staff Qualifications, Result Statistics, Facilities, Programme Outcomes, Compliance Checklist.
-8. All changes must preserve existing functionality and all previous components.
+1. Add ExamOfficer role to DashboardRouter in App.tsx
+2. Create ExamOfficerDashboard page with Faculty Collation, Score Entry, Results Pipeline, Exam Schedule, Biometrics tabs
+3. Add ExamOfficer nav items to Layout NAV_BY_ROLE
+4. Add public route handling in App.tsx for /results, /student-register, /feedback, /pg-apply, /parent
+5. Create PublicResultsLookup page (matric number lookup for published results)
+6. Ensure all dashboards have complete tab coverage matching their NAV_BY_ROLE entries
+7. Ensure session/localStorage persistence is robust
+8. Wire Student Academic Record to real score entry data across all dashboards
+9. Ensure Pass List, Failure List, Graduating List are populated from real data
+10. Complete PG admission pipeline with all stages
+11. Validate and build

@@ -72,6 +72,13 @@ const DEMO_USERS: {
     name: "Amara Okonkwo",
     principal: "student-1",
   },
+  {
+    label: "Exam Officer – Results & Collation",
+    role: "ExamOfficer" as const,
+    name: "Mr. Babatunde Adeyemi",
+    principal: "examofficer-1",
+    departmentId: BigInt(1),
+  },
 ];
 
 export interface PendingRegistration {
@@ -598,6 +605,9 @@ export default function LoginPage() {
                           </SelectItem>
                           <SelectItem value="Dean">Dean</SelectItem>
                           <SelectItem value="Registrar">Registrar</SelectItem>
+                          <SelectItem value="ExamOfficer">
+                            Exam Officer
+                          </SelectItem>
                           <SelectItem value="Student">Student</SelectItem>
                         </SelectContent>
                       </Select>
