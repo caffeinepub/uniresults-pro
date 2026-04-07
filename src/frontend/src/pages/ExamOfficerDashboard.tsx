@@ -26,6 +26,7 @@ import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
+import StudentProgressReportTab from "./tabs/StudentProgressReportTab";
 import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 
 function OverviewTab() {
@@ -170,6 +171,8 @@ export default function ExamOfficerDashboard() {
   else if (activeTab === "combined_results") content = <CombinedResultsTab />;
   else if (activeTab === "academic_record")
     content = <StudentAcademicRecordTab mode="admin" />;
+  else if (activeTab === "student_progress")
+    content = <StudentProgressReportTab />;
   else content = <OverviewTab />;
 
   const sidebarItems: SidebarItem[] = [
@@ -189,6 +192,7 @@ export default function ExamOfficerDashboard() {
     { id: "academic_record", label: "Academic Record", group: "Results" },
     { id: "exam_schedule", label: "Exam Schedule", group: "Scheduling" },
     { id: "biometric", label: "Biometric", group: "Scheduling" },
+    { id: "student_progress", label: "Student Progress", group: "Results" },
   ].map((item) => {
     const found = quickActions.find((a) => a.tab === item.id);
     return { ...item, icon: found?.icon ?? (() => null) } as SidebarItem;

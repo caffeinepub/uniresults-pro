@@ -54,6 +54,7 @@ import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CarryoverReportTab from "./tabs/CarryoverReportTab";
 import CombinedResultsTab from "./tabs/CombinedResultsTab";
+import ConvocationBookletTab from "./tabs/ConvocationBookletTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
 import DeansListTab from "./tabs/DeansListTab";
 import DepartmentBudgetTab from "./tabs/DepartmentBudgetTab";
@@ -71,8 +72,10 @@ import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import StaffAppraisalTab from "./tabs/StaffAppraisalTab";
+import StaffDirectoryTab from "./tabs/StaffDirectoryTab";
 import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
+import StudentProgressReportTab from "./tabs/StudentProgressReportTab";
 import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 
 export default function DeanDashboard() {
@@ -136,6 +139,10 @@ export default function DeanDashboard() {
   else if (activeTab === "staff_appraisal") view = <StaffAppraisalTab />;
   else if (activeTab === "result_amendment")
     view = <ResultAmendmentTab userRole="Dean" />;
+  else if (activeTab === "convocation") view = <ConvocationBookletTab />;
+  else if (activeTab === "student_progress")
+    view = <StudentProgressReportTab />;
+  else if (activeTab === "staff_directory") view = <StaffDirectoryTab />;
   else view = <OverviewTab />;
 
   const sidebarItems: SidebarItem[] = [
@@ -159,11 +166,14 @@ export default function DeanDashboard() {
     { id: "grade_sheet", label: "Grade Sheet", group: "Results" },
     { id: "pass_fail_list", label: "Pass/Fail Lists", group: "Results" },
     { id: "result_amendment", label: "Result Amendment", group: "Results" },
+    { id: "student_progress", label: "Student Progress", group: "Results" },
     { id: "graduation", label: "Graduation", group: "Graduation" },
+    { id: "convocation", label: "Convocation Booklet", group: "Graduation" },
     { id: "biometric", label: "Biometric", group: "Supervision" },
     { id: "departments", label: "Departments", group: "Admin" },
     { id: "dept_budget", label: "Budget", group: "Admin" },
     { id: "staff_appraisal", label: "Staff Appraisal", group: "Admin" },
+    { id: "staff_directory", label: "Staff Directory", group: "Admin" },
   ].map((item) => {
     const found = quickActions.find((a) => a.tab === item.id);
     return { ...item, icon: found?.icon ?? (() => null) } as SidebarItem;

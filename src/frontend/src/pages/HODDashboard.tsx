@@ -71,6 +71,7 @@ import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CarryoverReportTab from "./tabs/CarryoverReportTab";
 import CourseAssignmentsTab from "./tabs/CourseAssignmentsTab";
 import { CourseFeedbackView } from "./tabs/CourseEvaluationTab";
+import CourseHistoryTab from "./tabs/CourseHistoryTab";
 import DepartmentBudgetTab from "./tabs/DepartmentBudgetTab";
 import { HODTransferTab } from "./tabs/DepartmentTransferTab";
 import DeptReportTab from "./tabs/DeptReportTab";
@@ -88,11 +89,14 @@ import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
 import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
+import SIWESManagementTab from "./tabs/SIWESManagementTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import StaffAppraisalTab from "./tabs/StaffAppraisalTab";
+import StaffDirectoryTab from "./tabs/StaffDirectoryTab";
 import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
+import StudentProgressReportTab from "./tabs/StudentProgressReportTab";
 import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 import ThesisTrackerTab from "./tabs/ThesisTrackerTab";
 
@@ -183,6 +187,11 @@ export default function HODDashboard() {
     content = <AnnouncementsManagerTab />;
   else if (activeTab === "result_amendment")
     content = <ResultAmendmentTab userRole="HOD" />;
+  else if (activeTab === "siwes") content = <SIWESManagementTab />;
+  else if (activeTab === "staff_directory") content = <StaffDirectoryTab />;
+  else if (activeTab === "student_progress")
+    content = <StudentProgressReportTab />;
+  else if (activeTab === "course_history") content = <CourseHistoryTab />;
   else content = <OverviewTab />;
 
   const sidebarItems: SidebarItem[] = [
@@ -196,6 +205,10 @@ export default function HODDashboard() {
     },
     { id: "bulkReg", label: "Bulk Registration", group: "Academic" },
     { id: "jamb_import", label: "JAMB Import", group: "Academic" },
+    { id: "siwes", label: "SIWES", group: "Academic" },
+    { id: "staff_directory", label: "Staff Directory", group: "Admin" },
+    { id: "student_progress", label: "Student Progress", group: "Reports" },
+    { id: "course_history", label: "Course History", group: "Reports" },
     { id: "approvals", label: "Approve Results", group: "Results" },
     { id: "score_sheet", label: "Score Sheet", group: "Results" },
     { id: "results_processing", label: "Results Pipeline", group: "Results" },

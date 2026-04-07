@@ -63,6 +63,7 @@ import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import PhotoAvatar from "./tabs/PhotoAvatar";
 import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
+import SIWESManagementTab from "./tabs/SIWESManagementTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import ThesisTrackerTab from "./tabs/ThesisTrackerTab";
@@ -94,6 +95,7 @@ export default function LecturerDashboard() {
     { id: "course_outlines", label: "Course Outlines", group: "Teaching" },
     { id: "elibrary", label: "E-Library", group: "Teaching" },
     { id: "cbt_exam", label: "CBT Exams", group: "Teaching" },
+    { id: "siwes", label: "SIWES", group: "Teaching" },
     { id: "academic_record", label: "Academic Record", group: "Teaching" },
     { id: "attendance", label: "Attendance", group: "Supervision" },
     { id: "biometric", label: "Biometric", group: "Supervision" },
@@ -148,6 +150,8 @@ export default function LecturerDashboard() {
             <CBTExamTab />
           ) : activeTab === "thesis_tracker" ? (
             <ThesisTrackerTab mode="supervisor" />
+          ) : activeTab === "siwes" ? (
+            <SIWESManagementTab readOnly />
           ) : (
             <CoursesView />
           )}

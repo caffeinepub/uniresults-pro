@@ -59,6 +59,7 @@ import {
   DollarSign,
   GraduationCap,
   Mail,
+  MessageSquare,
   Monitor,
   QrCode,
   Shield,
@@ -115,6 +116,7 @@ import CBTExamTab from "./tabs/CBTExamTab";
 import CameraSecurityTab from "./tabs/CameraSecurityTab";
 import CarryoverReportTab from "./tabs/CarryoverReportTab";
 import ClearanceCertificateModal from "./tabs/ClearanceCertificateModal";
+import ConvocationBookletTab from "./tabs/ConvocationBookletTab";
 import CourseScanImportModal, {
   type CourseScanRow,
 } from "./tabs/CourseScanImportModal";
@@ -127,6 +129,7 @@ import DeptResultsTab from "./tabs/DeptResultsTab";
 import ExamScheduleTab from "./tabs/ExamScheduleTab";
 import ExamSupervisionTab from "./tabs/ExamSupervisionTab";
 import FeeManagementTab from "./tabs/FeeManagementTab";
+import FeedbackManagementTab from "./tabs/FeedbackManagementTab";
 import FinancialClearanceTab from "./tabs/FinancialClearanceTab";
 import GradeScaleConfigTab from "./tabs/GradeScaleConfigTab";
 import GradeSheetTab from "./tabs/GradeSheetTab";
@@ -149,18 +152,22 @@ import ReportMonitorTab from "./tabs/ReportMonitorTab";
 import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultStatsDashboard from "./tabs/ResultStatsDashboard";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
+import SIWESManagementTab from "./tabs/SIWESManagementTab";
 import ScholarshipTab from "./tabs/ScholarshipTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
 import SettingsTab from "./tabs/SettingsTab";
 import StaffAppraisalTab from "./tabs/StaffAppraisalTab";
+import StaffDirectoryTab from "./tabs/StaffDirectoryTab";
 import StaffTab from "./tabs/StaffTab";
 import StudentAcademicRecordTab from "./tabs/StudentAcademicRecordTab";
 import StudentClearanceTab from "./tabs/StudentClearanceTab";
 import { DocumentUploadDialog } from "./tabs/StudentDocumentsTab";
 import StudentProfileModal from "./tabs/StudentProfileModal";
+import StudentProgressReportTab from "./tabs/StudentProgressReportTab";
 import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 import SystemHealthTab from "./tabs/SystemHealthTab";
+import SystemSummaryTab from "./tabs/SystemSummaryTab";
 import ThesisTrackerTab from "./tabs/ThesisTrackerTab";
 import TranscriptRequestTab from "./tabs/TranscriptRequestTab";
 
@@ -206,6 +213,7 @@ export default function AdminDashboard() {
     { label: "Appraisal", tab: "staff_appraisal", icon: ClipboardList },
     { label: "CBT Exams", tab: "cbt_exam", icon: Monitor },
     { label: "PG Admission", tab: "pg_admission", icon: GraduationCap },
+    { label: "Feedback", tab: "feedback_mgmt", icon: MessageSquare },
   ];
 
   const _quickActions = allQuickActions.filter((a) => a.show !== false);
@@ -292,6 +300,13 @@ export default function AdminDashboard() {
   else if (activeTab === "pg_admission") view = <PGAdmissionTab />;
   else if (activeTab === "result_amendment")
     view = <ResultAmendmentTab userRole="Registrar" />;
+  else if (activeTab === "feedback_mgmt") view = <FeedbackManagementTab />;
+  else if (activeTab === "siwes") view = <SIWESManagementTab />;
+  else if (activeTab === "staff_directory") view = <StaffDirectoryTab />;
+  else if (activeTab === "convocation") view = <ConvocationBookletTab />;
+  else if (activeTab === "student_progress")
+    view = <StudentProgressReportTab />;
+  else if (activeTab === "system_summary") view = <SystemSummaryTab />;
   else view = <OverviewTab />;
 
   const sidebarItems: SidebarItem[] = [
@@ -305,6 +320,8 @@ export default function AdminDashboard() {
     { id: "bulkReg", label: "Bulk Registration", group: "Academic" },
     { id: "jamb_import", label: "JAMB Import", group: "Academic" },
     { id: "pg_admission", label: "PG Admission", group: "Academic" },
+    { id: "siwes", label: "SIWES", group: "Academic" },
+    { id: "staff_directory", label: "Staff Directory", group: "Academic" },
     {
       id: "pending_registrations",
       label: "Pending Registrations",
@@ -336,6 +353,7 @@ export default function AdminDashboard() {
     },
     { id: "multi_clearance", label: "Multi Clearance", group: "Graduation" },
     { id: "alumni", label: "Alumni", group: "Graduation" },
+    { id: "convocation", label: "Convocation Booklet", group: "Graduation" },
     { id: "timetable", label: "Timetable", group: "Scheduling" },
     { id: "exam_schedule", label: "Exam Schedule", group: "Scheduling" },
     { id: "invigilation", label: "Invigilation", group: "Scheduling" },
@@ -367,6 +385,7 @@ export default function AdminDashboard() {
     { id: "report_monitor", label: "Report Monitor", group: "Reports" },
     { id: "thesis_tracker", label: "Thesis Tracker", group: "Reports" },
     { id: "cbt_exam", label: "CBT Exams", group: "Reports" },
+    { id: "student_progress", label: "Student Progress", group: "Reports" },
     { id: "settings", label: "Settings", group: "System" },
     { id: "grade_scale", label: "Grade Scale", group: "System" },
     { id: "advisors", label: "Advisors", group: "System" },
@@ -374,6 +393,8 @@ export default function AdminDashboard() {
     { id: "audit_log", label: "Audit Log", group: "System" },
     { id: "data_backup", label: "Data Backup", group: "System" },
     { id: "cam_security", label: "Cam Security", group: "System" },
+    { id: "feedback_mgmt", label: "Feedback", group: "System" },
+    { id: "system_summary", label: "System Summary", group: "System" },
   ].map((item) => {
     const found = allQuickActions.find((a) => a.tab === item.id);
     return {
