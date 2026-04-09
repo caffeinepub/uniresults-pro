@@ -78,7 +78,6 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
-import type { Course } from "../backend.d";
 import DashboardSidebar, {
   type SidebarItem,
 } from "../components/DashboardSidebar";
@@ -86,6 +85,7 @@ import { InstitutionTypeBanner } from "../components/InstitutionTypeBanner";
 import { TabContext } from "../components/Layout";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
+import type { Course } from "../context/AppContext";
 import {
   type AcademicCalendar,
   type ExtendedStudent,
@@ -145,6 +145,8 @@ import MultiClearanceTab from "./tabs/MultiClearanceTab";
 import NoticeBoardPanel from "./tabs/NoticeBoardPanel";
 import NoticeManagementTab from "./tabs/NoticeManagementTab";
 import PGAdmissionTab from "./tabs/PGAdmissionTab";
+import PGCertificateTab from "./tabs/PGCertificateTab";
+import PGResultsTab from "./tabs/PGResultsTab";
 import PassFailGraduatingTab from "./tabs/PassFailGraduatingTab";
 import PayrollTab from "./tabs/PayrollTab";
 import QRScannerModal from "./tabs/QRScannerModal";
@@ -153,6 +155,7 @@ import ResultAmendmentTab from "./tabs/ResultAmendmentTab";
 import ResultStatsDashboard from "./tabs/ResultStatsDashboard";
 import ResultsProcessingTab from "./tabs/ResultsProcessingTab";
 import SIWESManagementTab from "./tabs/SIWESManagementTab";
+import ScanHistoryTab from "./tabs/ScanHistoryTab";
 import ScholarshipTab from "./tabs/ScholarshipTab";
 import ScoreEntrySheetTab from "./tabs/ScoreEntrySheetTab";
 import SenateReportTab from "./tabs/SenateReportTab";
@@ -213,6 +216,8 @@ export default function AdminDashboard() {
     { label: "Appraisal", tab: "staff_appraisal", icon: ClipboardList },
     { label: "CBT Exams", tab: "cbt_exam", icon: Monitor },
     { label: "PG Admission", tab: "pg_admission", icon: GraduationCap },
+    { label: "PG Results", tab: "pg_results", icon: FileText },
+    { label: "PG Certificates", tab: "pg_certificates", icon: ScrollText },
     { label: "Feedback", tab: "feedback_mgmt", icon: MessageSquare },
   ];
 
@@ -298,6 +303,8 @@ export default function AdminDashboard() {
   else if (activeTab === "staff_appraisal") view = <StaffAppraisalTab />;
   else if (activeTab === "cbt_exam") view = <CBTExamTab />;
   else if (activeTab === "pg_admission") view = <PGAdmissionTab />;
+  else if (activeTab === "pg_results") view = <PGResultsTab />;
+  else if (activeTab === "pg_certificates") view = <PGCertificateTab />;
   else if (activeTab === "result_amendment")
     view = <ResultAmendmentTab userRole="Registrar" />;
   else if (activeTab === "feedback_mgmt") view = <FeedbackManagementTab />;
@@ -307,6 +314,7 @@ export default function AdminDashboard() {
   else if (activeTab === "student_progress")
     view = <StudentProgressReportTab />;
   else if (activeTab === "system_summary") view = <SystemSummaryTab />;
+  else if (activeTab === "scan_history") view = <ScanHistoryTab />;
   else view = <OverviewTab />;
 
   const sidebarItems: SidebarItem[] = [
@@ -317,9 +325,12 @@ export default function AdminDashboard() {
     { id: "departments", label: "Departments", group: "Academic" },
     { id: "courses", label: "Courses", group: "Academic" },
     { id: "course_mgmt", label: "Course Management", group: "Academic" },
-    { id: "bulkReg", label: "Bulk Registration", group: "Academic" },
-    { id: "jamb_import", label: "JAMB Import", group: "Academic" },
+    { id: "bulkReg", label: "Bulk Registration", group: "Document Imports" },
+    { id: "jamb_import", label: "JAMB Import", group: "Document Imports" },
+    { id: "scan_history", label: "Scan History", group: "Document Imports" },
     { id: "pg_admission", label: "PG Admission", group: "Academic" },
+    { id: "pg_results", label: "PG Results", group: "Academic" },
+    { id: "pg_certificates", label: "PG Certificates", group: "Academic" },
     { id: "siwes", label: "SIWES", group: "Academic" },
     { id: "staff_directory", label: "Staff Directory", group: "Academic" },
     {
@@ -2013,7 +2024,7 @@ function CoursesTab() {
           departmentId: BigInt(deptId),
           lecturerPrincipal: "unassigned",
           semester: r.semester,
-        }) as import("../backend.d").Course,
+        }) as Course,
     );
     bulkAddCourses(newCourses);
     const newSources: Record<string, "official" | "auto" | "extra"> = {};
@@ -2153,7 +2164,7 @@ function CoursesTab() {
         departmentId: dept?.id ?? BigInt(1),
         lecturerPrincipal: "unassigned",
         semester: "First",
-      } as import("../backend.d").Course;
+      } as Course;
     });
     bulkAddCourses(newCourses);
     toast.success(`${newCourses.length} courses imported`);

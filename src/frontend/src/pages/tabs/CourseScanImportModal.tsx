@@ -31,9 +31,14 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { parseCourseText } from "../../utils/documentExtractor";
+import UniversalFileUpload from "../../components/UniversalFileUpload";
+import { useApp } from "../../context/AppContext";
+import {
+  parseCourseText,
+  rowsToCourseText,
+} from "../../utils/documentExtractor";
 
 export interface CourseScanRow {
   sn: number;
@@ -250,14 +255,13 @@ export default function CourseScanImportModal({
   departments,
   onImport,
 }: Props) {
+  const { addScanHistory } = useApp();
   // Upload tab state
   const [uploadRows, setUploadRows] = useState<CourseScanRow[]>([]);
   const [uploadDeptId, setUploadDeptId] = useState("");
   const [uploadFileName, setUploadFileName] = useState("");
   const [uploadFileType, setUploadFileType] = useState("");
-  const [uploadPreviewSrc, setUploadPreviewSrc] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [scanning] = useState(false);
 
   // Paste tab state
   const [pasteText, setPasteText] = useState("");
@@ -269,80 +273,46 @@ export default function CourseScanImportModal({
   const [history, setHistory] = useState<CourseScanBatch[]>(loadHistory);
   const [viewBatch, setViewBatch] = useState<CourseScanBatch | null>(null);
 
-  // Upload tab guidance state
-  const [uploadGuidance, setUploadGuidance] = useState("");
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadFileName(file.name);
-    setUploadPreviewSrc(null);
-    setUploadRows([]);
-    setUploadGuidance("");
-    setScanning(true);
-
-    const ext = file.name.toLowerCase().split(".").pop() || "";
-    setUploadFileType(ext);
-
-    const isImage = [
-      "png",
-      "jpg",
-      "jpeg",
-      "gif",
-      "webp",
-      "bmp",
-      "tiff",
-    ].includes(ext);
-    const isTextReadable = ["csv", "txt"].includes(ext);
-
-    if (isImage) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setUploadPreviewSrc(ev.target?.result as string);
-        setScanning(false);
-        setUploadGuidance("image");
-        toast.info(
-          "Image uploaded — switch to the Paste Data tab and paste the course text from the document.",
-        );
-      };
-      reader.readAsDataURL(file);
-    } else if (isTextReadable) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const text = ev.target?.result as string;
-        const extracted = parseCourseText(text);
-        const rows: CourseScanRow[] = extracted.map((r) => ({
-          sn: r.sn,
-          courseCode: r.courseCode,
-          title: r.title,
-          creditUnits: r.creditUnits,
-          level: r.level,
-          semester: r.semester,
-          status: r.status,
-        }));
-        setScanning(false);
-        setUploadRows(rows);
-        if (rows.length === 0) {
-          toast.error(
-            "No valid courses found. Check that the file contains course codes and titles.",
-          );
-        } else {
-          toast.success(`${rows.length} courses extracted from file`);
-        }
-      };
-      reader.readAsText(file);
-    } else {
-      // PDF/DOC/DOCX/XLSX — cannot be read directly
-      setScanning(false);
-      setUploadGuidance("binary");
-      toast.info(
-        "Open the file, select all course text, copy it, then switch to the Paste Data tab.",
-      );
-    }
-  }
+  // Upload tab guidance state (no longer used — guidance handled by UniversalFileUpload)
+  // handleFileChange removed — replaced by handleUniversalExtracted
 
   // Paste tab step state
   const [pasteStep, setPasteStep] = useState(1);
+
+  function handleUniversalExtracted(
+    text: string,
+    fileName: string,
+    fileType: string,
+  ) {
+    setUploadFileName(fileName);
+    setUploadFileType(fileType);
+    const extracted = parseCourseText(text);
+    const rows: CourseScanRow[] = extracted.map((r) => ({
+      sn: r.sn,
+      courseCode: r.courseCode,
+      title: r.title,
+      creditUnits: r.creditUnits,
+      level: r.level,
+      semester: r.semester,
+      status: r.status,
+    }));
+    setUploadRows(rows);
+    if (rows.length === 0) {
+      toast.warning("No courses found in this file. Try the Paste tab.");
+    } else {
+      toast.success(`Extracted ${rows.length} courses from ${fileName}`);
+    }
+  }
+
+  function handleUniversalRows(
+    rows: string[][],
+    headers: string[],
+    fileName: string,
+    fileType: string,
+  ) {
+    const text = rowsToCourseText(rows, headers);
+    handleUniversalExtracted(text, fileName, fileType);
+  }
 
   function handleParse() {
     setPasteError("");
@@ -388,7 +358,7 @@ export default function CourseScanImportModal({
     const dept = departments.find((d) => String(d.id) === deptId);
     onImport(deptId, rows, fileName, fileType);
 
-    // Save to history
+    // Save to local history (modal)
     const batch: CourseScanBatch = {
       id: String(Date.now()),
       date: new Date().toISOString(),
@@ -401,6 +371,30 @@ export default function CourseScanImportModal({
     const updated = [batch, ...loadHistory()].slice(0, 50);
     saveHistory(updated);
     setHistory(updated);
+
+    // Save to global scan history
+    addScanHistory({
+      type: "course",
+      fileName: fileName || "Pasted Data",
+      fileType: fileType || "paste",
+      extractedCount: rows.length,
+      previewText: rows
+        .slice(0, 5)
+        .map((r) => `${r.courseCode} - ${r.title}`)
+        .join("; "),
+      rows: rows.map((r) => [
+        r.courseCode,
+        r.title,
+        r.creditUnits,
+        r.level,
+        r.semester,
+        r.status,
+      ]),
+      headers: ["Code", "Title", "Credits", "Level", "Semester", "Status"],
+      departmentId: deptId,
+      departmentName: dept?.name,
+    });
+
     toast.success(
       `${rows.length} courses imported for ${dept?.name ?? "department"}`,
     );
@@ -412,8 +406,6 @@ export default function CourseScanImportModal({
     setHistory(updated);
     saveHistory(updated);
   }
-
-  const ftBadge = getFileTypeBadge(uploadFileType);
 
   return (
     <>
@@ -489,56 +481,14 @@ export default function CourseScanImportModal({
                 <div className="space-y-3">
                   <div>
                     <Label>Upload Course Document</Label>
-                    <label
-                      htmlFor="course-scan-file-input"
-                      className="mt-1 border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer hover:bg-muted/30 transition-colors"
+                    <UniversalFileUpload
+                      mode="course"
+                      onExtractedText={handleUniversalExtracted}
+                      onExtractedRows={handleUniversalRows}
+                      className="mt-1"
                       data-ocid="courses.scan.dropzone"
-                    >
-                      {uploadPreviewSrc ? (
-                        <img
-                          src={uploadPreviewSrc}
-                          alt="preview"
-                          className="max-h-40 rounded"
-                        />
-                      ) : uploadFileName ? (
-                        <div className="flex flex-col items-center gap-1">
-                          <FileText className="w-10 h-10 text-muted-foreground" />
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${ftBadge.color}`}
-                          >
-                            {ftBadge.label}
-                          </span>
-                          <p className="text-xs text-muted-foreground text-center truncate max-w-[180px]">
-                            {uploadFileName}
-                          </p>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload className="w-8 h-8 text-muted-foreground" />
-                          <p className="text-sm font-medium">Click to upload</p>
-                          <p className="text-xs text-muted-foreground text-center">
-                            PDF, DOC, DOCX, XLS, XLSX, CSV, PNG, JPG
-                          </p>
-                        </>
-                      )}
-                    </label>
-                    <input
-                      ref={fileInputRef}
-                      id="course-scan-file-input"
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
-                      onChange={handleFileChange}
-                      data-ocid="courses.scan.file_input"
                     />
                   </div>
-
-                  {scanning && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted/40 rounded-lg">
-                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                      Scanning document...
-                    </div>
-                  )}
 
                   {!scanning && uploadRows.length > 0 && (
                     <div className="text-xs p-2 bg-green-50 border border-green-200 rounded text-green-700 flex items-center gap-2">
@@ -549,34 +499,6 @@ export default function CourseScanImportModal({
                       </span>
                     </div>
                   )}
-
-                  {!scanning &&
-                    uploadGuidance === "image" &&
-                    uploadRows.length === 0 && (
-                      <div className="text-xs p-3 bg-amber-50 border border-amber-200 rounded text-amber-800 space-y-1">
-                        <p className="font-semibold">📷 Image uploaded</p>
-                        <p>
-                          Switch to the <strong>Paste Data</strong> tab and
-                          paste the course text from the document. You can open
-                          the image in another window to read the course codes.
-                        </p>
-                      </div>
-                    )}
-
-                  {!scanning &&
-                    uploadGuidance === "binary" &&
-                    uploadRows.length === 0 && (
-                      <div className="text-xs p-3 bg-blue-50 border border-blue-200 rounded text-blue-800 space-y-1">
-                        <p className="font-semibold">
-                          📄 File cannot be read directly
-                        </p>
-                        <p>
-                          Open the file in Word/Excel, select all course data,
-                          copy it (Ctrl+C), then switch to the{" "}
-                          <strong>Paste Data</strong> tab and paste.
-                        </p>
-                      </div>
-                    )}
 
                   <div>
                     <Label>Department</Label>

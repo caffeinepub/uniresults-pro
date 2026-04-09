@@ -104,6 +104,11 @@ export default function LecturerDashboard() {
     { id: "schedule", label: "Schedule", group: "Supervision" },
     { id: "appeals", label: "Grade Appeals", group: "Admin" },
     { id: "result_amendment", label: "Result Amendment", group: "Admin" },
+    {
+      id: "student_amendments",
+      label: "Student Amendment Requests",
+      group: "Admin",
+    },
   ].map((item) => {
     const found = quickActions.find((a) => a.tab === item.id);
     return { ...item, icon: found?.icon ?? (() => null) } as SidebarItem;
@@ -123,6 +128,8 @@ export default function LecturerDashboard() {
         />
         <div className="flex-1 min-w-0 overflow-auto">
           {activeTab === "result_amendment" ? (
+            <ResultAmendmentTab userRole="Lecturer" />
+          ) : activeTab === "student_amendments" ? (
             <ResultAmendmentTab userRole="Lecturer" />
           ) : activeTab === "bulk_upload" ? (
             <BulkUploadView />

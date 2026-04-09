@@ -1,7 +1,8 @@
 /**
  * documentExtractor.ts
  * Shared utility for extracting student rows and course rows from pasted/uploaded text.
- * Used by BulkRegistrationTab, JambAdmissionScannerTab, and CourseScanImportModal.
+ * Also handles file-based extraction: CSV (BOM-safe), Excel (xlsx), TXT, PDF guidance.
+ * Used by BulkRegistrationTab, JambAdmissionScannerTab, CourseScanImportModal, and UniversalFileUpload.
  */
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,19 +33,215 @@ export interface ParsedCourseRow {
   status: "Core" | "Elective";
 }
 
+export type ExtractedFileResult =
+  | { type: "rows"; rows: string[][]; headers: string[] }
+  | { type: "text"; text: string }
+  | { type: "image"; dataUrl: string; name: string }
+  | { type: "word_guidance"; fileName: string }
+  | { type: "unsupported"; fileType: string; fileName: string };
+
 type Department = { id: bigint | number; name: string };
+
+// ─── File-based extraction ────────────────────────────────────────────────────
+
+/**
+ * Extract rows from a CSV file — handles BOM, Windows line endings, quoted fields.
+ */
+export function extractFromCSV(text: string): string[][] {
+  // Remove BOM if present
+  const clean = text
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+  const lines = clean.split("\n");
+  const results: string[][] = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const fields = parseCSVLine(line);
+    if (fields.length > 0) results.push(fields);
+  }
+  return results;
+}
+
+/**
+ * Parse a single CSV line handling quoted fields.
+ */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+/**
+ * Extract rows from an Excel file using SheetJS (xlsx).
+ * Returns a 2D array of string values.
+ */
+export async function extractFromExcel(file: File): Promise<string[][]> {
+  const XLSX = await import("xlsx");
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+
+  // Use first non-empty sheet
+  let sheetName = workbook.SheetNames[0];
+  for (const name of workbook.SheetNames) {
+    const sheet = workbook.Sheets[name];
+    const range = sheet["!ref"];
+    if (range) {
+      sheetName = name;
+      break;
+    }
+  }
+
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) return [];
+
+  // Convert to array of objects, then to 2D array
+  const jsonData = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    defval: "",
+    raw: false,
+  }) as (string | number | boolean | null)[][];
+
+  return jsonData.map((row) =>
+    row.map((cell) => (cell == null ? "" : String(cell).trim())),
+  );
+}
+
+/**
+ * Read a plain text file and return its contents.
+ */
+export async function extractFromText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve((e.target?.result as string) ?? "");
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsText(file);
+  });
+}
+
+/**
+ * Read an image file as a data URL.
+ */
+export async function readImageAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve((e.target?.result as string) ?? "");
+    reader.onerror = () => reject(new Error("Failed to read image"));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Classify and extract from any uploaded file.
+ * Returns a typed ExtractedFileResult the caller can handle.
+ */
+export async function extractFromFile(
+  file: File,
+): Promise<ExtractedFileResult> {
+  const name = file.name.toLowerCase();
+  const type = file.type.toLowerCase();
+
+  // CSV
+  if (name.endsWith(".csv") || type === "text/csv") {
+    const text = await extractFromText(file);
+    const rows = extractFromCSV(text);
+    const headers = rows[0] ?? [];
+    return { type: "rows", rows: rows.slice(1), headers };
+  }
+
+  // Excel
+  if (
+    name.endsWith(".xlsx") ||
+    name.endsWith(".xls") ||
+    type.includes("spreadsheetml") ||
+    type.includes("ms-excel")
+  ) {
+    const rows = await extractFromExcel(file);
+    const headers = rows[0]?.map(String) ?? [];
+    return { type: "rows", rows: rows.slice(1), headers };
+  }
+
+  // Plain text
+  if (name.endsWith(".txt") || type === "text/plain") {
+    const text = await extractFromText(file);
+    return { type: "text", text };
+  }
+
+  // Images
+  if (
+    name.match(/\.(jpg|jpeg|png|webp|gif|bmp)$/) ||
+    type.startsWith("image/")
+  ) {
+    const dataUrl = await readImageAsDataUrl(file);
+    return { type: "image", dataUrl, name: file.name };
+  }
+
+  // Word / Office docs
+  if (
+    name.endsWith(".doc") ||
+    name.endsWith(".docx") ||
+    name.endsWith(".odt") ||
+    type.includes("word") ||
+    type.includes("officedocument.wordprocessing")
+  ) {
+    return { type: "word_guidance", fileName: file.name };
+  }
+
+  // PDF — guide user to copy-paste since we can't parse client-side without pdfjs bundling
+  if (name.endsWith(".pdf") || type === "application/pdf") {
+    return { type: "word_guidance", fileName: file.name };
+  }
+
+  return {
+    type: "unsupported",
+    fileType: (file.type || name.split(".").pop()) ?? "unknown",
+    fileName: file.name,
+  };
+}
+
+/**
+ * Convert rows[][]/headers[] from extractFromFile into text that parseStudentText can consume.
+ */
+export function rowsToStudentText(rows: string[][], headers: string[]): string {
+  if (rows.length === 0) return "";
+  const headerLine = headers.join("\t");
+  const dataLines = rows.map((r) => r.join("\t"));
+  return [headerLine, ...dataLines].join("\n");
+}
+
+/**
+ * Convert rows[][]/headers[] from extractFromFile into text that parseCourseText can consume.
+ */
+export function rowsToCourseText(rows: string[][], headers: string[]): string {
+  if (rows.length === 0) return "";
+  const headerLine = headers.join("\t");
+  const dataLines = rows.map((r) => r.join("\t"));
+  return [headerLine, ...dataLines].join("\n");
+}
 
 // ─── Department fuzzy match ───────────────────────────────────────────────────
 
 /**
  * Fuzzy match a department by name.
- * Strategy (ordered by specificity):
- *  1. Exact match (case-insensitive)
- *  2. Dept name contains the search term
- *  3. Search term contains dept name
- *  4. Match ignoring "Education" suffix
- *  5. Match first word of search against dept name
- *  6. Abbreviation match ("CSC" → "Computer Science")
  */
 export function fuzzyMatchDept(
   name: string,
@@ -54,19 +251,15 @@ export function fuzzyMatchDept(
   const norm = (s: string) => s.toLowerCase().trim();
   const search = norm(name);
 
-  // 1. Exact match
   const exact = departments.find((d) => norm(d.name) === search);
   if (exact) return exact;
 
-  // 2. Dept name contains search
   const contains = departments.find((d) => norm(d.name).includes(search));
   if (contains) return contains;
 
-  // 3. Search contains dept name
   const reverse = departments.find((d) => search.includes(norm(d.name)));
   if (reverse) return reverse;
 
-  // 4. Strip "Education" suffix from both and compare
   const stripEdu = (s: string) =>
     s
       .replace(/\beducation\b/gi, "")
@@ -83,7 +276,6 @@ export function fuzzyMatchDept(
   });
   if (noEdu) return noEdu;
 
-  // 5. Match first word of search term against dept name
   const firstWord = search.split(/\s+/)[0];
   if (firstWord && firstWord.length > 2) {
     const firstWordMatch = departments.find((d) =>
@@ -92,7 +284,6 @@ export function fuzzyMatchDept(
     if (firstWordMatch) return firstWordMatch;
   }
 
-  // 6. Abbreviation match — build abbrev from dept name words
   const abbrevMatch = departments.find((d) => {
     const words = d.name.split(/\s+/);
     const abbrev = words
@@ -117,9 +308,6 @@ export function fuzzyMatchDept(
 
 // ─── Student text parser ──────────────────────────────────────────────────────
 
-/**
- * Header keywords that signal a row is a header row to skip.
- */
 const STUDENT_HEADER_KEYWORDS = [
   "s/n",
   "serial",
@@ -155,37 +343,26 @@ function isBlankOrTotal(line: string): boolean {
   const t = line.trim();
   if (!t) return true;
   if (/^(total|grand\s*total|sub.*total|summary)/i.test(t)) return true;
-  if (/^\d+\.?$/.test(t)) return true; // just a number
+  if (/^\d+\.?$/.test(t)) return true;
   return false;
 }
 
-/**
- * Detect separator used in a line: tab, comma, or multi-space.
- */
 function detectSeparator(line: string): string {
   if (line.includes("\t")) return "\t";
   if (line.includes(",")) return ",";
   return "multi-space";
 }
 
-/**
- * Split a line using the detected separator.
- */
 function splitLine(line: string, sep: string): string[] {
   if (sep === "\t") return line.split("\t").map((c) => c.trim());
   if (sep === ",")
     return line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-  // multi-space: split on 2+ spaces
   return line
     .split(/\s{2,}/)
     .map((c) => c.trim())
     .filter(Boolean);
 }
 
-/**
- * Detect column positions from a header line.
- * Returns a map of { fieldName: columnIndex }.
- */
 function detectColumnPositions(
   headerLine: string,
   sep: string,
@@ -213,9 +390,6 @@ function detectColumnPositions(
   return pos;
 }
 
-/**
- * Normalize gender string to "Male" or "Female".
- */
 function normalizeGender(g: string): string {
   const u = g.toUpperCase().trim();
   if (u === "M" || u === "MALE") return "Male";
@@ -223,10 +397,6 @@ function normalizeGender(g: string): string {
   return g;
 }
 
-/**
- * Parse student rows from pasted/imported text.
- * Supports tab-separated, comma-separated, multi-space, and multi-line block formats.
- */
 export function parseStudentText(
   text: string,
   departments: Department[],
@@ -239,12 +409,10 @@ export function parseStudentText(
     .filter(Boolean);
   if (rawLines.length === 0) return [];
 
-  // Detect separator from first non-empty line
   const firstDataLine =
     rawLines.find((l) => !isHeaderRow(l) && !isBlankOrTotal(l)) ?? rawLines[0];
   const sep = detectSeparator(firstDataLine);
 
-  // Find header row if any (search first 3 lines)
   let headerLine = "";
   let dataStartIdx = 0;
   for (let i = 0; i < Math.min(3, rawLines.length); i++) {
@@ -255,9 +423,7 @@ export function parseStudentText(
     }
   }
 
-  // Build column position map
   const colPos = headerLine ? detectColumnPositions(headerLine, sep) : {};
-
   const hasColMap = Object.keys(colPos).length >= 2;
 
   const results: ParsedStudentRow[] = [];
@@ -283,7 +449,6 @@ export function parseStudentText(
     let level = "100";
 
     if (hasColMap) {
-      // Use detected column positions
       snVal = colPos.sn !== undefined ? (parts[colPos.sn] ?? "") : "";
       regNo = colPos.regNo !== undefined ? (parts[colPos.regNo] ?? "") : "";
       name = colPos.name !== undefined ? (parts[colPos.name] ?? "") : "";
@@ -302,12 +467,9 @@ export function parseStudentText(
       level =
         colPos.level !== undefined ? (parts[colPos.level] ?? "100") : "100";
     } else {
-      // Heuristic column assignment based on common JAMB printout formats
-      // Try to detect if first column is a serial number (pure number or like "1.")
       const firstIsSerial = /^\d+\.?$/.test(parts[0]);
       if (firstIsSerial && parts.length >= 3) {
         snVal = parts[0];
-        // Check if second field looks like a JAMB reg number (alphanumeric, 8-12 chars)
         const secondIsReg = /^[A-Z0-9]{6,15}$/i.test(
           parts[1].replace(/[\s-]/g, ""),
         );
@@ -322,7 +484,6 @@ export function parseStudentText(
           aggregate = parts[8] ?? "";
           status = parts[9] ?? "accepted";
         } else {
-          // No reg number column — S/N, Name, Dept, State...
           name = parts[1] ?? "";
           deptHint = parts[2] ?? "";
           state = parts[3] ?? "";
@@ -331,7 +492,6 @@ export function parseStudentText(
           status = parts[6] ?? "accepted";
         }
       } else {
-        // No serial — assume: RegNo, Name, Dept, State, LGA, Gender...
         const firstIsReg = /^[A-Z0-9]{6,15}$/i.test(
           parts[0].replace(/[\s-]/g, ""),
         );
@@ -346,7 +506,6 @@ export function parseStudentText(
           aggregate = parts[7] ?? "";
           status = parts[8] ?? "accepted";
         } else {
-          // Fallback: name is first non-trivial field
           name = parts[0];
           deptHint = parts[1] ?? "";
           state = parts[2] ?? "";
@@ -357,13 +516,10 @@ export function parseStudentText(
       }
     }
 
-    // Skip rows that look like headers that slipped through
     if (isHeaderRow(name) || isHeaderRow(regNo)) continue;
 
-    // Normalize gender
     gender = normalizeGender(gender);
 
-    // Clean up status
     if (!status || status.toLowerCase().trim() === "") status = "accepted";
     const knownStatuses = [
       "accepted",
@@ -376,17 +532,15 @@ export function parseStudentText(
     ];
     if (!knownStatuses.includes(status.toLowerCase())) status = "accepted";
 
-    // Normalize level
     const levelMatch = level.match(/(\d{3})/);
     if (levelMatch) level = levelMatch[1];
     else level = "100";
 
-    // Fuzzy match department
     const matchedDept = deptHint
       ? fuzzyMatchDept(deptHint, departments)
       : undefined;
 
-    const row: ParsedStudentRow = {
+    results.push({
       sn: snVal || String(sn),
       regNo: regNo.trim(),
       name: name.trim(),
@@ -400,9 +554,7 @@ export function parseStudentText(
       aggregate: aggregate.trim(),
       status: status.toLowerCase().trim(),
       hasError: !name.trim(),
-    };
-
-    results.push(row);
+    });
     sn++;
   }
 
@@ -416,7 +568,7 @@ function normalizeCourseStatus(s: string): "Core" | "Elective" {
   if (u === "C" || u === "CORE" || u === "COMPULSORY" || u === "REQUIRED")
     return "Core";
   if (u === "E" || u === "ELECTIVE" || u === "OPTIONAL") return "Elective";
-  return "Core"; // default to Core if unclear
+  return "Core";
 }
 
 function normalizeSemester(s: string): "First" | "Second" {
@@ -435,9 +587,6 @@ function normalizeCourseCode(raw: string): string {
   return raw.replace(/[.\s]/g, "").toUpperCase();
 }
 
-/**
- * Check if lines look like a multi-line block format (code on its own line, title on next, etc.)
- */
 function isMultiLineBlockFormat(lines: string[]): boolean {
   const codePattern = /^[A-Z]{2,5}[.\s]*\d{3}$/i;
   let codeMatches = 0;
@@ -447,9 +596,6 @@ function isMultiLineBlockFormat(lines: string[]): boolean {
   return lines.length > 3 && codeMatches / lines.length > 0.12;
 }
 
-/**
- * Parse courses from multi-line block format (code on line, title on next line, units on next, status on next).
- */
 function parseMultiLineBlocks(
   lines: string[],
   rawText: string,
@@ -458,11 +604,9 @@ function parseMultiLineBlocks(
   const noisePattern =
     /^(s\/n|course\s*code|course\s*title|credit|unit|status|total|note[s]?|direct|students|minimum|maximum)/i;
 
-  // Detect semester markers from raw text
   const rawLower = rawText.toLowerCase();
   const semesterMarkers: { pos: number; semester: "First" | "Second" }[] = [];
 
-  // Match patterns like "First Semester 100 Level", "100 LEVEL FIRST SEMESTER COURSES", "Second Semester 200 level"
   const semPatterns = [
     /(?:first|second)\s+semester\s+\d{3}\s*level/gi,
     /\d{3}\s*level\s+(?:first|second)\s+semester/gi,
@@ -489,7 +633,6 @@ function parseMultiLineBlocks(
       continue;
     }
     if (codePattern.test(line)) {
-      // Find title (next non-noise line)
       let titleIdx = i + 1;
       while (
         titleIdx < lines.length &&
@@ -499,13 +642,11 @@ function parseMultiLineBlocks(
         titleIdx++;
       const title = lines[titleIdx]?.trim() || "";
 
-      // Find credit units (next pure number)
       let unitsIdx = titleIdx + 1;
       while (unitsIdx < lines.length && !/^\d+$/.test(lines[unitsIdx].trim()))
         unitsIdx++;
       const creditUnits = lines[unitsIdx]?.trim() || "2";
 
-      // Find status (next C/E/Core/Elective)
       let statusIdx = unitsIdx + 1;
       while (
         statusIdx < lines.length &&
@@ -514,7 +655,6 @@ function parseMultiLineBlocks(
         statusIdx++;
       const status = normalizeCourseStatus(lines[statusIdx]?.trim() || "Core");
 
-      // Determine semester from position in text
       const normalizedCode = normalizeCourseCode(line);
       const codePos = rawText.toUpperCase().indexOf(normalizedCode);
       let semester: "First" | "Second" = "First";
@@ -541,19 +681,11 @@ function parseMultiLineBlocks(
   return results;
 }
 
-/**
- * Detect level from a heading line like "100 Level First Semester" or "200 LEVEL".
- */
 function extractLevelFromHeading(line: string): string | null {
   const m = line.match(/(\d{3})\s*(?:level|l|lev)/i);
   return m ? m[1] : null;
 }
 
-/**
- * Parse course rows from pasted/copied text.
- * Handles multi-line block, tab-separated, and comma-separated formats.
- * Auto-detects semester and level from heading lines.
- */
 export function parseCourseText(text: string): ParsedCourseRow[] {
   if (!text.trim()) return [];
 
@@ -561,10 +693,8 @@ export function parseCourseText(text: string): ParsedCourseRow[] {
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
-
   const skipPatterns =
     /^(s\/n|course code|course title|credit unit|unit|title|total|#|note[s]?|^federal|^department|^school)/i;
-
   const lines = rawLines.filter((l) => !skipPatterns.test(l));
 
   if (isMultiLineBlockFormat(lines)) {
@@ -573,7 +703,6 @@ export function parseCourseText(text: string): ParsedCourseRow[] {
     );
   }
 
-  // Determine starting index (skip headers)
   const firstLower = lines[0]?.toLowerCase() || "";
   let startIdx =
     firstLower.includes("course") ||
@@ -582,22 +711,18 @@ export function parseCourseText(text: string): ParsedCourseRow[] {
       ? 1
       : 0;
 
-  // Track current semester and level from heading lines
   let currentSemester: "First" | "Second" = "First";
   let currentLevel = "100";
-
   const results: ParsedCourseRow[] = [];
 
   for (let idx = startIdx; idx < lines.length; idx++) {
     const line = lines[idx];
-
-    // Check if this is a section heading like "First Semester 100 Level Courses"
     const semInLine = /\b(first|second)\s+semester/i.exec(line);
     const levelInLine = extractLevelFromHeading(line);
     if (semInLine) {
       currentSemester = normalizeSemester(semInLine[1]);
       if (levelInLine) currentLevel = levelInLine;
-      continue; // don't parse as course row
+      continue;
     }
     if (levelInLine && line.toLowerCase().includes("level")) {
       currentLevel = levelInLine;
@@ -617,19 +742,16 @@ export function parseCourseText(text: string): ParsedCourseRow[] {
     if (parts.length >= 5) {
       const firstIsNum = /^\d+$/.test(parts[0]);
       if (firstIsNum) {
-        // S/N, Code, Title, Units, Status
         [, courseCode, title, creditUnits, statusStr] = parts;
         level = parts[5] || currentLevel;
         semester = normalizeSemester(parts[6] || currentSemester);
       } else {
-        // Code, Title, Units, Status, Level, Semester
         [courseCode, title, creditUnits, statusStr, level] = parts;
         semester = normalizeSemester(parts[5] || currentSemester);
       }
     } else if (parts.length >= 4) {
       const firstIsNum = /^\d+$/.test(parts[0]);
       if (firstIsNum) {
-        // S/N, Code, Title, Units
         [, courseCode, title, creditUnits] = parts;
         statusStr = parts[4] || "C";
       } else {
@@ -645,14 +767,11 @@ export function parseCourseText(text: string): ParsedCourseRow[] {
     }
 
     if (!courseCode) continue;
-
     const normalizedCode = normalizeCourseCode(courseCode);
-    if (!normalizedCode.match(/[A-Z]{2,}/)) continue; // skip if code has no letters
+    if (!normalizedCode.match(/[A-Z]{2,}/)) continue;
 
-    // Extract level from course code if not already set
     if (!level || level === currentLevel) {
-      const codeLevel = extractLevelFromCode(courseCode);
-      level = codeLevel;
+      level = extractLevelFromCode(courseCode);
     }
 
     const row: ParsedCourseRow = {
@@ -665,9 +784,7 @@ export function parseCourseText(text: string): ParsedCourseRow[] {
       status: normalizeCourseStatus(statusStr),
     };
 
-    if (row.courseCode && row.title) {
-      results.push(row);
-    }
+    if (row.courseCode && row.title) results.push(row);
   }
 
   return results;

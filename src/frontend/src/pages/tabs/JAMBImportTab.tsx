@@ -30,6 +30,7 @@ import {
   Pencil,
   Printer,
   Search,
+  Sparkles,
   Trash2,
   Upload,
   UserCheck,
@@ -39,6 +40,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { type ExtendedStudent, useApp } from "../../context/AppContext";
+import { generateMatricNumber } from "../../utils/matricUtils";
 
 interface ParsedCandidate {
   regNo: string;
@@ -155,6 +157,8 @@ export default function JAMBImportTab() {
     updateStudent,
     logAudit,
     currentUser,
+    jambRegistrationOpen,
+    setJambRegistrationOpen,
   } = useApp();
   const [csvText, setCsvText] = useState("");
   const [parsedRows, setParsedRows] = useState<ParsedCandidate[]>([]);
@@ -527,6 +531,76 @@ export default function JAMBImportTab() {
     setTimeout(() => setActiveTab("imported"), 800);
   };
 
+  const handleGenerateSingle = (student: ExtendedStudent) => {
+    if (!jambRegistrationOpen) {
+      toast.error("Enable JAMB Registration to generate matric numbers.");
+      return;
+    }
+    const dept = departments.find(
+      (d) => String(d.id) === String(student.departmentId),
+    );
+    const deptName = dept?.name ?? "";
+    const newMatric = generateMatricNumber({
+      deptName,
+      departmentId: student.departmentId,
+      students,
+    });
+    updateStudent(student.id, { matricNumber: newMatric });
+    logAudit(
+      currentUser?.name ?? "Admin",
+      currentUser?.role ?? "Registrar",
+      "Generate Matric",
+      `Generated matric ${newMatric} for ${student.name}`,
+    );
+    toast.success(`Matric number assigned: ${newMatric}`);
+  };
+
+  const handleGenerateAll = () => {
+    if (!jambRegistrationOpen) {
+      toast.error("Enable JAMB Registration to generate matric numbers.");
+      return;
+    }
+    const pending = jambStudents.filter((s) => !s.matricNumber?.trim());
+    if (pending.length === 0) {
+      toast.info("All imported students already have matric numbers.");
+      return;
+    }
+    const updatedStudents = [...students];
+    let count = 0;
+    for (const student of pending) {
+      const dept = departments.find(
+        (d) => String(d.id) === String(student.departmentId),
+      );
+      const deptName = dept?.name ?? "";
+      const newMatric = generateMatricNumber({
+        deptName,
+        departmentId: student.departmentId,
+        students: updatedStudents,
+      });
+      updateStudent(student.id, { matricNumber: newMatric });
+      const idx = updatedStudents.findIndex(
+        (s) => String(s.id) === String(student.id),
+      );
+      if (idx !== -1) {
+        updatedStudents[idx] = {
+          ...updatedStudents[idx],
+          matricNumber: newMatric,
+        };
+      }
+      count++;
+    }
+    logAudit(
+      currentUser?.name ?? "Admin",
+      currentUser?.role ?? "Registrar",
+      "Generate All Matrics",
+      `Generated ${count} matric numbers for JAMB imported students`,
+    );
+    toast.success(`Matric numbers generated for ${count} students`);
+  };
+
+  const isAdminOrRegistrar =
+    currentUser?.role === "SuperAdmin" || currentUser?.role === "Registrar";
+
   const duplicateCount = parsedRows.filter((r) => r.isDuplicate).length;
   const selectedCount = parsedRows.filter(
     (r) => r.selected && !r.isDuplicate,
@@ -842,6 +916,50 @@ export default function JAMBImportTab() {
 
         {/* ===== IMPORTED STUDENTS TAB ===== */}
         <TabsContent value="imported" className="space-y-4 mt-4">
+          {/* Registration toggle row */}
+          {isAdminOrRegistrar && (
+            <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-border bg-card">
+              <span className="text-sm font-medium">JAMB Registration:</span>
+              {jambRegistrationOpen ? (
+                <Badge className="bg-green-100 text-green-700 border-green-300">
+                  OPEN
+                </Badge>
+              ) : (
+                <Badge className="bg-red-100 text-red-700 border-red-300">
+                  CLOSED
+                </Badge>
+              )}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={jambRegistrationOpen}
+                aria-label="Toggle JAMB Registration"
+                onClick={() => setJambRegistrationOpen(!jambRegistrationOpen)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${jambRegistrationOpen ? "bg-primary" : "bg-muted-foreground/40"}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 rounded-full bg-background shadow transition-transform ${jambRegistrationOpen ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="ml-auto"
+                disabled={!jambRegistrationOpen}
+                title={
+                  jambRegistrationOpen
+                    ? "Generate matric numbers for all students without one"
+                    : "Enable JAMB Registration to generate matric numbers"
+                }
+                onClick={handleGenerateAll}
+                data-ocid="jamb_import.generate_all_button"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Generate All Matric Numbers
+              </Button>
+            </div>
+          )}
+
           {/* Filters row */}
           <div className="flex flex-wrap gap-3 items-end">
             <div className="relative flex-1 min-w-[200px]">
@@ -1020,7 +1138,13 @@ export default function JAMBImportTab() {
                           {student.name}
                         </TableCell>
                         <TableCell className="font-mono text-xs">
-                          {student.matricNumber ?? "—"}
+                          {student.matricNumber?.trim() ? (
+                            student.matricNumber
+                          ) : (
+                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 text-xs">
+                              Pending
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm">
                           <div>{getDeptName(student.departmentId)}</div>
@@ -1056,6 +1180,23 @@ export default function JAMBImportTab() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            {!student.matricNumber?.trim() && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-yellow-600 hover:text-yellow-700"
+                                title={
+                                  jambRegistrationOpen
+                                    ? "Generate matric number"
+                                    : "Enable JAMB Registration to generate matric numbers"
+                                }
+                                disabled={!jambRegistrationOpen}
+                                onClick={() => handleGenerateSingle(student)}
+                                data-ocid={`jamb_import.generate.${student.id}`}
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
                             <Button
                               size="icon"
                               variant="ghost"

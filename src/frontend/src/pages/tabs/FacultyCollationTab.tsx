@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import type { Course } from "../../backend.d";
+import type { Course } from "../../context/AppContext";
 import {
   type ExtendedDepartment,
   type ExtendedResult,

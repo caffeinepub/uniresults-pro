@@ -297,8 +297,35 @@ function OverviewTab() {
           <div>
             <h1 className="text-2xl font-bold">Student Portal</h1>
             <p className="text-sm text-muted-foreground">
-              {me?.name} &middot; {me?.matricNumber}
+              {me?.name}
+              {me && (
+                <>
+                  {" "}
+                  &middot;{" "}
+                  {me.matricNumber ? (
+                    <span
+                      className="font-mono font-semibold text-primary"
+                      data-ocid="student.matric_number"
+                    >
+                      {me.matricNumber}
+                    </span>
+                  ) : (
+                    <span
+                      className="text-amber-600 font-medium"
+                      data-ocid="student.matric_pending"
+                    >
+                      Matric No: Pending Assignment
+                    </span>
+                  )}
+                </>
+              )}
             </p>
+            {me && !me.matricNumber && (
+              <p className="text-xs text-amber-600 mt-1 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 px-2 py-1 rounded-md inline-block max-w-sm">
+                Your matric number will be assigned once JAMB registration is
+                confirmed by the Registrar.
+              </p>
+            )}
             {me &&
               (() => {
                 const dept = getStudentDepartment(me, departments);
@@ -385,7 +412,18 @@ function OverviewTab() {
                   <span className="text-xs text-muted-foreground block">
                     Matric No.
                   </span>
-                  <span className="font-medium">{me.matricNumber}</span>
+                  {me.matricNumber ? (
+                    <span
+                      className="font-semibold font-mono text-primary"
+                      data-ocid="student.profile.matric"
+                    >
+                      {me.matricNumber}
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 text-xs font-medium">
+                      Pending Assignment
+                    </span>
+                  )}
                 </div>
                 {me.jambRegNo && (
                   <div>
@@ -1608,6 +1646,7 @@ function CourseRegistrationTab() {
 function ResultsTab() {
   const { me, myResults, courses, cgpa } = getStudentData();
   const { courseRegistrations } = useApp();
+  const { setActiveTab } = useContext(TabContext);
   const [activeSemFilter, setActiveSemFilter] = useState("all");
 
   // Group published results by semester
@@ -1745,13 +1784,14 @@ function ResultsTab() {
               <TableHead>Points</TableHead>
               <TableHead>Remarks</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {displayedResults.length === 0 && awaitingCourses.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="text-center py-8 text-muted-foreground"
                   data-ocid="results.empty_state"
                 >
@@ -1811,6 +1851,18 @@ function ResultsTab() {
                   <TableCell>
                     <StatusBadge status={r.status} />
                   </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title="Request Score Amendment"
+                      data-ocid={`results.amend_button.${i + 1}`}
+                      onClick={() => setActiveTab("my_amendments")}
+                    >
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -1826,7 +1878,7 @@ function ResultsTab() {
                   <TableCell className="font-mono text-sm text-muted-foreground">
                     {c!.code}
                   </TableCell>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={8}>
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
                       Awaiting Publication
                     </span>
@@ -3470,9 +3522,21 @@ function StudentAmendmentsTab() {
   const [requestOpen, setRequestOpen] = useState(false);
   const [form, setForm] = useState({
     courseId: "",
+    claimedScore: "",
     reason: "",
     evidence: "",
   });
+
+  // Allow opening the modal pre-filled from My Results tab
+  function openRequest(courseId?: string) {
+    setForm({
+      courseId: courseId ?? "",
+      claimedScore: "",
+      reason: "",
+      evidence: "",
+    });
+    setRequestOpen(true);
+  }
 
   const myAmendments = amendmentRequests.filter(
     (a) => me && String(a.studentId) === String(me.id),
@@ -3486,6 +3550,7 @@ function StudentAmendmentsTab() {
   );
 
   const STATUS_LABELS: Record<AmendmentRequest["status"], string> = {
+    pending_lecturer: "Awaiting Lecturer Review",
     pending_hod: "Pending HOD Review",
     pending_dean: "Pending Dean Review",
     pending_registrar: "Pending Registrar",
@@ -3499,6 +3564,8 @@ function StudentAmendmentsTab() {
         return "bg-success/10 text-success border-success/30";
       case "rejected":
         return "bg-destructive/10 text-destructive border-destructive/30";
+      case "pending_lecturer":
+        return "bg-primary/10 text-primary border-primary/30";
       default:
         return "bg-warning/10 text-warning border-warning/30";
     }
@@ -3520,6 +3587,12 @@ function StudentAmendmentsTab() {
       toast.error("No published result found for this course");
       return;
     }
+    const course = courses.find((c) => String(c.id) === form.courseId);
+    const claimedScore = form.claimedScore
+      ? Number(form.claimedScore)
+      : undefined;
+    // Find lecturer for this course
+    const courseObj = courses.find((c) => String(c.id) === form.courseId);
     const req: AmendmentRequest = {
       id: BigInt(Date.now()),
       resultId: origResult.id,
@@ -3530,22 +3603,29 @@ function StudentAmendmentsTab() {
       newCa: origResult.caScore ?? 0,
       newExam: origResult.examScore ?? 0,
       reason: form.reason,
-      lecturerName: me.name,
-      status: "pending_hod",
+      lecturerName: courseObj?.lecturerPrincipal ?? "",
+      status: "pending_lecturer",
       createdAt: new Date().toISOString(),
       studentInitiated: true,
       attachmentUrl: form.evidence || undefined,
+      studentName: me.name,
+      courseCode: course?.code,
+      courseTitle: course?.name,
+      recordedScore: origResult.totalScore,
+      claimedScore,
     };
     addAmendmentRequest(req);
     logAudit(
       currentUser?.name ?? "",
       currentUser?.role ?? "",
       "Amendment Request (Student)",
-      `Student ${me.name} requested amendment for course ${form.courseId}`,
+      `Student ${me.name} requested amendment for ${course?.code ?? form.courseId}`,
     );
-    toast.success("Amendment request submitted successfully");
+    toast.success(
+      "Amendment request submitted — your lecturer will review it first",
+    );
     setRequestOpen(false);
-    setForm({ courseId: "", reason: "", evidence: "" });
+    setForm({ courseId: "", claimedScore: "", reason: "", evidence: "" });
   }
 
   return (
@@ -3560,7 +3640,7 @@ function StudentAmendmentsTab() {
         <Button
           size="sm"
           data-ocid="student_amendment.open_modal_button"
-          onClick={() => setRequestOpen(true)}
+          onClick={() => openRequest()}
         >
           <FileText className="w-4 h-4 mr-1" /> Request Amendment
         </Button>
@@ -3641,7 +3721,8 @@ function StudentAmendmentsTab() {
           <div className="space-y-3 py-2">
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs text-amber-800 dark:text-amber-200">
               ⚠️ Only submit if you believe there was a clerical error in score
-              recording. All requests are reviewed by your HOD and Registrar.
+              recording. Your lecturer will review it first, then HOD → Dean →
+              Registrar.
             </div>
             <div className="grid gap-2">
               <Label>Course</Label>
@@ -3662,12 +3743,26 @@ function StudentAmendmentsTab() {
                         key={String(r.courseId)}
                         value={String(r.courseId)}
                       >
-                        {c.code} — {c.name} (Score: {r.totalScore})
+                        {c.code} — {c.name} (Recorded: {r.totalScore})
                       </SelectItem>
                     ) : null;
                   })}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Score You Believe is Correct (optional)</Label>
+              <Input
+                data-ocid="student_amendment.claimed_score.input"
+                type="number"
+                min={0}
+                max={100}
+                value={form.claimedScore}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, claimedScore: e.target.value }))
+                }
+                placeholder="e.g. 72 (leave blank if unsure)"
+              />
             </div>
             <div className="grid gap-2">
               <Label>Reason for Amendment</Label>

@@ -20,19 +20,30 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Building2,
   Database,
   Download,
+  Eye,
+  Hash,
   Link,
   Lock,
+  Pencil,
   Save,
   Shield,
   Trash2,
   UserPlus,
   Wifi,
   WifiOff,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -41,6 +52,15 @@ import {
   INSTITUTION_TYPE_OPTIONS,
   getInstitutionConfig,
 } from "../../utils/institutionConfig";
+import {
+  type MatricSettings,
+  generateMatricNumber,
+  getDeptCodeFromName,
+  getDeptCodeOverrides,
+  getMatricSettings,
+  saveDeptCodeOverrides,
+  saveMatricSettings,
+} from "../../utils/matricUtils";
 
 const PREFIX = "unires_";
 
@@ -122,6 +142,8 @@ export default function SettingsTab() {
     logAudit,
     selfRegistrationOpen,
     setSelfRegistrationOpen,
+    departments,
+    students,
   } = useApp();
 
   const isSuperAdmin = currentUser?.role === "SuperAdmin";
@@ -145,6 +167,18 @@ export default function SettingsTab() {
   });
 
   const [storageUsage, setStorageUsage] = useState(getStorageUsage);
+
+  // Matric number settings
+  const [matricSettings, setMatricSettings] = useState<MatricSettings>(() =>
+    getMatricSettings(),
+  );
+  const [deptCodeOverrides, setDeptCodeOverrides] = useState<
+    Record<string, string>
+  >(() => getDeptCodeOverrides());
+  const [editingDeptCode, setEditingDeptCode] = useState<string | null>(null);
+  const [editDeptCodeValue, setEditDeptCodeValue] = useState("");
+  const [previewDept, setPreviewDept] = useState("");
+  const [previewMatric, setPreviewMatric] = useState("");
 
   useEffect(() => {
     setForm(institutionSettings);
@@ -697,6 +731,284 @@ export default function SettingsTab() {
             >
               <Link className="w-3.5 h-3.5" /> Copy Link
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Matric Number Settings ─────────────────────────── */}
+      <Card data-ocid="settings.matric.panel">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Hash className="w-4 h-4" />
+            Matric Number Settings
+          </CardTitle>
+          <CardDescription>
+            Configure the format, year, sequence padding, and department code
+            overrides used when generating student matric numbers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Format preview */}
+          <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center gap-3">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">
+                Current Format Preview
+              </p>
+              <code className="text-sm font-mono font-bold text-primary">
+                {getDeptCodeFromName("Biology Education", deptCodeOverrides)}/
+                {matricSettings.year}/
+                {"1".padStart(matricSettings.padding, "0")}
+              </code>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Admission Year</Label>
+              <Input
+                type="number"
+                min="2000"
+                max="2100"
+                data-ocid="settings.matric.year.input"
+                value={matricSettings.year}
+                onChange={(e) => {
+                  const yr = Number.parseInt(e.target.value, 10);
+                  if (!Number.isNaN(yr))
+                    setMatricSettings((prev) => ({ ...prev, year: yr }));
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Year in matric format (e.g. 2025 → BIO/2025/001)
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Sequence Padding</Label>
+              <Select
+                value={String(matricSettings.padding)}
+                onValueChange={(v) =>
+                  setMatricSettings((prev) => ({
+                    ...prev,
+                    padding: Number(v) as 2 | 3 | 4,
+                  }))
+                }
+              >
+                <SelectTrigger data-ocid="settings.matric.padding.select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2">2 digits (01, 02 … 99)</SelectItem>
+                  <SelectItem value="3">3 digits (001, 002 … 999)</SelectItem>
+                  <SelectItem value="4">4 digits (0001 … 9999)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Number of digits in the sequence
+              </p>
+            </div>
+          </div>
+
+          <Button
+            size="sm"
+            data-ocid="settings.matric.save.button"
+            onClick={() => {
+              saveMatricSettings(matricSettings);
+              toast.success("Matric number settings saved.");
+            }}
+          >
+            <Save className="w-3.5 h-3.5 mr-1.5" />
+            Save Matric Settings
+          </Button>
+
+          {/* Preview next matric */}
+          <div className="pt-2 border-t border-border space-y-2">
+            <p className="text-sm font-medium">Preview Next Matric Number</p>
+            <div className="flex gap-2 items-end flex-wrap">
+              <div className="flex-1 min-w-[180px]">
+                <Label className="text-xs mb-1 block">Select Department</Label>
+                <Select value={previewDept} onValueChange={setPreviewDept}>
+                  <SelectTrigger data-ocid="settings.matric.preview.select">
+                    <SelectValue placeholder="Choose department..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={String(d.id)} value={d.name}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                data-ocid="settings.matric.preview.button"
+                disabled={!previewDept}
+                onClick={() => {
+                  if (!previewDept) return;
+                  const matric = generateMatricNumber({
+                    deptName: previewDept,
+                    year: matricSettings.year,
+                    students,
+                    sequencePadding: matricSettings.padding,
+                    customDeptCodes: deptCodeOverrides,
+                  });
+                  setPreviewMatric(matric);
+                }}
+              >
+                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                Preview Next Matric
+              </Button>
+            </div>
+            {previewMatric && (
+              <div className="flex items-center gap-2 p-2 rounded bg-muted">
+                <Hash className="w-4 h-4 text-primary" />
+                <span className="font-mono font-bold text-primary">
+                  {previewMatric}
+                </span>
+                <span className="text-xs text-muted-foreground ml-1">
+                  (next available for {previewDept})
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Department Code Overrides */}
+          <div className="pt-2 border-t border-border space-y-3">
+            <div>
+              <p className="text-sm font-medium">Department Code Overrides</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Customize the code used in matric numbers for any department.
+                Leave as-is to use the auto-derived default.
+              </p>
+            </div>
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-muted/50">
+                    <th className="text-left px-3 py-2 font-medium">
+                      Department
+                    </th>
+                    <th className="text-left px-3 py-2 font-medium">Code</th>
+                    <th className="w-20 px-3 py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {departments.slice(0, 15).map((d) => {
+                    const defaultCode = getDeptCodeFromName(d.name);
+                    const overrideCode = deptCodeOverrides[d.name];
+                    const displayCode = overrideCode ?? defaultCode;
+                    const isEditing = editingDeptCode === d.name;
+                    return (
+                      <tr key={String(d.id)} className="border-t border-border">
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {d.name}
+                        </td>
+                        <td className="px-3 py-2">
+                          {isEditing ? (
+                            <Input
+                              className="h-6 w-16 text-xs font-mono uppercase"
+                              maxLength={4}
+                              value={editDeptCodeValue}
+                              onChange={(e) =>
+                                setEditDeptCodeValue(
+                                  e.target.value.toUpperCase(),
+                                )
+                              }
+                              autoFocus
+                              data-ocid={`settings.matric.deptcode.input.${d.id}`}
+                            />
+                          ) : (
+                            <code
+                              className={`font-mono font-bold ${overrideCode ? "text-primary" : "text-muted-foreground"}`}
+                            >
+                              {displayCode}
+                              {overrideCode && (
+                                <Badge
+                                  variant="outline"
+                                  className="ml-1.5 text-[10px] text-primary border-primary/30 h-4"
+                                >
+                                  custom
+                                </Badge>
+                              )}
+                            </code>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {isEditing ? (
+                            <div className="flex gap-1 justify-end">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 text-success"
+                                onClick={() => {
+                                  if (editDeptCodeValue.trim()) {
+                                    const updated = {
+                                      ...deptCodeOverrides,
+                                      [d.name]: editDeptCodeValue.trim(),
+                                    };
+                                    setDeptCodeOverrides(updated);
+                                    saveDeptCodeOverrides(updated);
+                                    toast.success(
+                                      `Code for "${d.name}" set to ${editDeptCodeValue}`,
+                                    );
+                                  }
+                                  setEditingDeptCode(null);
+                                }}
+                              >
+                                <Save className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => setEditingDeptCode(null)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-1 justify-end">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                data-ocid={`settings.matric.deptcode.edit.${d.id}`}
+                                onClick={() => {
+                                  setEditingDeptCode(d.name);
+                                  setEditDeptCodeValue(displayCode);
+                                }}
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </Button>
+                              {overrideCode && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 text-destructive"
+                                  title="Reset to default"
+                                  onClick={() => {
+                                    const updated = { ...deptCodeOverrides };
+                                    delete updated[d.name];
+                                    setDeptCodeOverrides(updated);
+                                    saveDeptCodeOverrides(updated);
+                                    toast.success(
+                                      `Code for "${d.name}" reset to default`,
+                                    );
+                                  }}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </CardContent>
       </Card>

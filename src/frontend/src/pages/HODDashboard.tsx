@@ -63,6 +63,7 @@ import type { GraduationApplication } from "../context/AppContext";
 import type { ExtendedResult, GradeAppeal } from "../context/AppContext";
 import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
 import { UpcomingEventsWidget } from "./tabs/AcademicCalendarEventsTab";
+import AccreditationReportTab from "./tabs/AccreditationReportTab";
 import AdvancedAnalyticsTab from "./tabs/AdvancedAnalyticsTab";
 import AnnouncementsManagerTab from "./tabs/AnnouncementsManagerTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
@@ -192,6 +193,13 @@ export default function HODDashboard() {
   else if (activeTab === "student_progress")
     content = <StudentProgressReportTab />;
   else if (activeTab === "course_history") content = <CourseHistoryTab />;
+  else if (activeTab === "accreditation")
+    content = (
+      <AccreditationReportTab
+        filterDeptId={(hodUser as any)?.departmentId}
+        userRole="HOD"
+      />
+    );
   else content = <OverviewTab />;
 
   const sidebarItems: SidebarItem[] = [
@@ -225,6 +233,7 @@ export default function HODDashboard() {
     { id: "analytics", label: "Analytics", group: "Reports" },
     { id: "dept_report", label: "Dept Report", group: "Reports" },
     { id: "adv_analytics", label: "Adv Analytics", group: "Reports" },
+    { id: "accreditation", label: "Accreditation", group: "Reports" },
     { id: "graduation", label: "Graduation", group: "Reports" },
     { id: "carryovers", label: "Carry-overs", group: "Reports" },
     { id: "biometric", label: "Biometric", group: "Supervision" },

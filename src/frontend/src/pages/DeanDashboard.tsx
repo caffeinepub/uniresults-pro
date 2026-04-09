@@ -50,6 +50,7 @@ import StatusBadge from "../components/StatusBadge";
 import { useApp } from "../context/AppContext";
 import type { GraduationApplication } from "../context/AppContext";
 import { useInstitutionConfig } from "../hooks/useInstitutionConfig";
+import AccreditationReportTab from "./tabs/AccreditationReportTab";
 import BiometricAttendanceTab from "./tabs/BiometricAttendanceTab";
 import BulkRegistrationTab from "./tabs/BulkRegistrationTab";
 import CarryoverReportTab from "./tabs/CarryoverReportTab";
@@ -80,6 +81,7 @@ import SupplementaryExamsTab from "./tabs/SupplementaryExamsTab";
 
 export default function DeanDashboard() {
   const { activeTab, setActiveTab } = useContext(TabContext);
+  const { currentUser } = useApp();
   const _instConfig = useInstitutionConfig();
 
   const allQuickActions = [
@@ -143,6 +145,13 @@ export default function DeanDashboard() {
   else if (activeTab === "student_progress")
     view = <StudentProgressReportTab />;
   else if (activeTab === "staff_directory") view = <StaffDirectoryTab />;
+  else if (activeTab === "accreditation")
+    view = (
+      <AccreditationReportTab
+        filterFacultyId={(currentUser as any)?.facultyId as bigint | undefined}
+        userRole="Dean"
+      />
+    );
   else view = <OverviewTab />;
 
   const sidebarItems: SidebarItem[] = [
@@ -174,6 +183,7 @@ export default function DeanDashboard() {
     { id: "dept_budget", label: "Budget", group: "Admin" },
     { id: "staff_appraisal", label: "Staff Appraisal", group: "Admin" },
     { id: "staff_directory", label: "Staff Directory", group: "Admin" },
+    { id: "accreditation", label: "Accreditation", group: "Reports" },
   ].map((item) => {
     const found = quickActions.find((a) => a.tab === item.id);
     return { ...item, icon: found?.icon ?? (() => null) } as SidebarItem;

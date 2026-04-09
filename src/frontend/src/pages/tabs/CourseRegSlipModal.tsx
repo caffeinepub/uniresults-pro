@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Printer } from "lucide-react";
-import type { Course } from "../../backend.d";
+import type { Course } from "../../context/AppContext";
 import type {
   ExtendedStudent,
   InstitutionSettings,

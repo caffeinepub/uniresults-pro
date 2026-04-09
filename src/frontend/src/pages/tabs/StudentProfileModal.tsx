@@ -6,16 +6,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Printer, User } from "lucide-react";
+import { Check, Hash, Pencil, Printer, X } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import {
   getAcademicStanding,
   getStudentDepartment,
   getStudentFaculty,
   useApp,
 } from "../../context/AppContext";
+import {
+  generateMatricNumber,
+  getDeptCodeOverrides,
+  getMatricSettings,
+} from "../../utils/matricUtils";
 import PhotoAvatar from "./PhotoAvatar";
 
 interface Props {
@@ -34,7 +42,14 @@ export default function StudentProfileModal({ studentId, onClose }: Props) {
     feeRecords,
     attendanceSessions,
     institutionSettings,
+    updateStudent,
+    logAudit,
+    currentUser,
+    addNotification,
   } = useApp();
+
+  const [editingMatric, setEditingMatric] = useState(false);
+  const [matricInputVal, setMatricInputVal] = useState("");
 
   const student = studentId
     ? students.find((s) => String(s.id) === String(studentId))
@@ -139,9 +154,139 @@ export default function StudentProfileModal({ studentId, onClose }: Props) {
               <DialogTitle className="text-lg font-bold">
                 {student.name}
               </DialogTitle>
-              <p className="text-sm text-muted-foreground">
-                {student.matricNumber} &bull; {dept?.name ?? "—"} &bull; Level{" "}
-                {String(student.level)}
+              {/* Matric Number — prominent with inline edit */}
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Hash className="w-3.5 h-3.5 text-primary shrink-0" />
+                {editingMatric ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      className="h-6 text-xs font-mono w-36"
+                      value={matricInputVal}
+                      placeholder="e.g. BIO/2025/001"
+                      autoFocus
+                      onChange={(e) =>
+                        setMatricInputVal(e.target.value.toUpperCase())
+                      }
+                      data-ocid="student_profile.matric.input"
+                    />
+                    <button
+                      type="button"
+                      className="text-success hover:text-success/80"
+                      onClick={() => {
+                        if (matricInputVal.trim()) {
+                          const oldMatric = student.matricNumber ?? "";
+                          updateStudent(student.id, {
+                            matricNumber: matricInputVal.trim(),
+                          });
+                          logAudit(
+                            currentUser?.name ?? "Admin",
+                            currentUser?.role ?? "Admin",
+                            "MATRIC_UPDATED",
+                            `Updated matric for ${student.name}: "${oldMatric}" → "${matricInputVal.trim()}"`,
+                          );
+                          addNotification(
+                            `student-${student.id}`,
+                            `Your Matric Number has been updated to: ${matricInputVal.trim()}. You can now use this to log in.`,
+                            "overview",
+                          );
+                          toast.success("Matric number updated.");
+                        }
+                        setEditingMatric(false);
+                      }}
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => setEditingMatric(false)}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    {student.matricNumber ? (
+                      <span className="text-sm font-semibold font-mono text-foreground">
+                        {student.matricNumber}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-amber-600 flex items-center gap-1">
+                        <Badge
+                          variant="outline"
+                          className="text-amber-600 border-amber-300 bg-amber-50 text-xs h-5"
+                          data-ocid="student_profile.matric.pending_badge"
+                        >
+                          Not Assigned
+                        </Badge>
+                      </span>
+                    )}
+                    {(currentUser?.role === "SuperAdmin" ||
+                      currentUser?.role === "Registrar") && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          title="Edit matric number"
+                          className="text-muted-foreground hover:text-primary transition-colors"
+                          onClick={() => {
+                            setMatricInputVal(student.matricNumber ?? "");
+                            setEditingMatric(true);
+                          }}
+                          data-ocid="student_profile.matric.edit_button"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        {!student.matricNumber && (
+                          <button
+                            type="button"
+                            title="Auto-generate matric"
+                            className="text-primary hover:text-primary/80 transition-colors text-xs underline"
+                            onClick={() => {
+                              const deptName = dept?.name;
+                              if (!deptName) {
+                                toast.error(
+                                  "Student has no department assigned.",
+                                );
+                                return;
+                              }
+                              const overrides = getDeptCodeOverrides();
+                              const settings = getMatricSettings();
+                              const matric = generateMatricNumber({
+                                deptName,
+                                year: settings.year,
+                                students,
+                                departmentId: student.departmentId,
+                                sequencePadding: settings.padding,
+                                customDeptCodes: overrides,
+                              });
+                              updateStudent(student.id, {
+                                matricNumber: matric,
+                              });
+                              addNotification(
+                                `student-${student.id}`,
+                                `Your Matric Number has been assigned: ${matric}. You can now use this to log in.`,
+                                "overview",
+                              );
+                              logAudit(
+                                currentUser?.name ?? "Admin",
+                                currentUser?.role ?? "Admin",
+                                "MATRIC_GENERATED",
+                                `Generated matric ${matric} for ${student.name}`,
+                              );
+                              toast.success(`Matric ${matric} assigned.`);
+                            }}
+                            data-ocid="student_profile.matric.generate_button"
+                          >
+                            Generate
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {dept?.name ?? "—"} &bull; Level {String(student.level)}
               </p>
               <p className="text-xs text-muted-foreground">
                 {fac?.name ?? "—"}

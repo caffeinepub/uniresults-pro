@@ -35,7 +35,7 @@ import { isCourseCore } from "../../context/AppContext";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-import type { Course } from "../../backend.d";
+import type { Course } from "../../context/AppContext";
 
 interface ScanCourseModalProps {
   open: boolean;

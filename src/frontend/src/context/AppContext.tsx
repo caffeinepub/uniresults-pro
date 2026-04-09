@@ -7,7 +7,58 @@ import {
   useRef,
   useState,
 } from "react";
-import type { AcademicResult, Course, Department, Student } from "../backend.d";
+
+export interface Student {
+  id: bigint;
+  name: string;
+  matricNumber: string;
+  departmentId: bigint;
+  level: bigint;
+  status: string;
+  userPrincipal: string;
+  gender?: string;
+  jambRegNo?: string;
+  state?: string;
+  lga?: string;
+}
+
+export interface Course {
+  id: bigint;
+  name: string;
+  code: string;
+  creditUnits: bigint;
+  departmentId: bigint;
+  lecturerPrincipal: string;
+  semester: string;
+  level?: bigint;
+}
+
+export interface Department {
+  id: bigint;
+  name: string;
+  facultyId?: bigint;
+}
+
+export interface AcademicResult {
+  id: bigint;
+  studentId: bigint;
+  courseId: bigint;
+  caScore: number;
+  examScore: number;
+  totalScore: number;
+  grade: string;
+  gradePoint: number;
+  remarks: string;
+  status: string;
+  session?: string;
+  semester?: string;
+  courseCode?: string;
+  courseName?: string;
+  lecturerStaffId?: string;
+  moderatorApproved?: boolean;
+  isResit?: boolean;
+  originalGrade?: string;
+}
 
 export type RoleName =
   | "SuperAdmin"
@@ -86,6 +137,20 @@ export interface JambScanBatch {
     status: string;
   }>;
   importedCount: number;
+}
+
+export interface ScanHistoryEntry {
+  id: string;
+  type: "student" | "course" | "jamb" | "result";
+  fileName: string;
+  fileType: string;
+  extractedCount: number;
+  timestamp: string;
+  previewText: string;
+  rows: string[][];
+  headers: string[];
+  departmentId?: string;
+  departmentName?: string;
 }
 
 export interface Faculty {
@@ -211,15 +276,29 @@ export interface AmendmentRequest {
   reason: string;
   lecturerName: string;
   status:
+    | "pending_lecturer"
     | "pending_hod"
     | "pending_dean"
     | "pending_registrar"
     | "approved"
     | "rejected";
   createdAt: string;
+  updatedAt?: string;
   attachmentUrl?: string;
   studentInitiated?: boolean;
   rejectionReason?: string;
+  rejectedBy?: "Lecturer" | "HOD" | "Dean" | "Registrar";
+  // enriched metadata
+  studentName?: string;
+  courseCode?: string;
+  courseTitle?: string;
+  recordedScore?: number;
+  claimedScore?: number;
+  // per-stage comments
+  lecturerComment?: string;
+  hodComment?: string;
+  deanComment?: string;
+  registrarComment?: string;
 }
 
 export interface AcademicCalendar {
@@ -434,7 +513,9 @@ interface AppState {
   siwesRecords: SIWESRecord[];
   evaluationWindowOpen: boolean;
   selfRegistrationOpen: boolean;
+  jambRegistrationOpen: boolean;
   jambScanBatches: JambScanBatch[];
+  scanHistory: ScanHistoryEntry[];
 }
 
 interface AppContextValue extends AppState {
@@ -469,8 +550,24 @@ interface AppContextValue extends AppState {
     id: bigint,
     status: AmendmentRequest["status"],
   ) => void;
-  approveAmendmentFinal: (id: bigint) => void;
-  rejectAmendment: (id: bigint) => void;
+  updateAmendmentWithComment: (
+    id: bigint,
+    status: AmendmentRequest["status"],
+    commentField:
+      | "lecturerComment"
+      | "hodComment"
+      | "deanComment"
+      | "registrarComment",
+    comment: string,
+    rejectionReason?: string,
+    rejectedBy?: AmendmentRequest["rejectedBy"],
+  ) => void;
+  approveAmendmentFinal: (id: bigint, registrarComment?: string) => void;
+  rejectAmendment: (
+    id: bigint,
+    reason?: string,
+    rejectedBy?: AmendmentRequest["rejectedBy"],
+  ) => void;
   addAcademicCalendar: (cal: AcademicCalendar) => void;
   setActiveCalendar: (id: bigint) => void;
   toggleRegistrationOpen: (id: bigint) => void;
@@ -551,8 +648,13 @@ interface AppContextValue extends AppState {
   updateSIWESRecord: (record: SIWESRecord) => void;
   setEvaluationWindowOpen: (open: boolean) => void;
   setSelfRegistrationOpen: (open: boolean) => void;
+  setJambRegistrationOpen: (open: boolean) => void;
   addJambScanBatch: (batch: JambScanBatch) => void;
   removeJambScanBatch: (id: string) => void;
+  addScanHistory: (entry: Omit<ScanHistoryEntry, "id" | "timestamp">) => void;
+  getScanHistory: (type?: ScanHistoryEntry["type"]) => ScanHistoryEntry[];
+  deleteScanHistoryEntry: (id: string) => void;
+  clearScanHistory: (type?: ScanHistoryEntry["type"]) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -5375,8 +5477,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     useState<boolean>(() => lsGet<boolean>("unirp_evalWindowOpen") ?? false);
   const [selfRegistrationOpen, setSelfRegistrationOpenState] =
     useState<boolean>(() => lsGet<boolean>("unirp_selfRegOpen") ?? true);
+  const [jambRegistrationOpen, setJambRegistrationOpenState] =
+    useState<boolean>(() => lsGet<boolean>("jambRegistrationOpen") ?? false);
   const [jambScanBatches, setJambScanBatches] = useState<JambScanBatch[]>(
     () => lsGet<JambScanBatch[]>("jamb_scan_batches") ?? [],
+  );
+  const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>(
+    () => lsGet<ScanHistoryEntry[]>("unirp_scan_history") ?? [],
   );
 
   const DEFAULT_INSTITUTION: InstitutionSettings = {
@@ -5748,14 +5855,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateAmendmentStatus = useCallback(
     (id: bigint, status: AmendmentRequest["status"]) => {
       setAmendmentRequests((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status } : a)),
+        prev.map((a) =>
+          a.id === id
+            ? { ...a, status, updatedAt: new Date().toISOString() }
+            : a,
+        ),
+      );
+    },
+    [],
+  );
+
+  const updateAmendmentWithComment = useCallback(
+    (
+      id: bigint,
+      status: AmendmentRequest["status"],
+      commentField:
+        | "lecturerComment"
+        | "hodComment"
+        | "deanComment"
+        | "registrarComment",
+      comment: string,
+      rejectionReason?: string,
+      rejectedBy?: AmendmentRequest["rejectedBy"],
+    ) => {
+      setAmendmentRequests((prev) =>
+        prev.map((a) =>
+          a.id === id
+            ? {
+                ...a,
+                status,
+                [commentField]: comment,
+                updatedAt: new Date().toISOString(),
+                ...(rejectionReason ? { rejectionReason } : {}),
+                ...(rejectedBy ? { rejectedBy } : {}),
+              }
+            : a,
+        ),
       );
     },
     [],
   );
 
   const approveAmendmentFinal = useCallback(
-    (id: bigint) => {
+    (id: bigint, registrarComment?: string) => {
       setAmendmentRequests((prev) => {
         const req = prev.find((a) => a.id === id);
         if (!req) return prev;
@@ -5780,6 +5922,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           "Amendment approved for your submission",
           "results",
         );
+        addNotification(
+          "Student",
+          `Your amendment request for ${req.courseCode ?? "course"} has been approved`,
+          "my_amendments",
+        );
         const u = currentUserRef.current;
         if (u)
           logAudit(
@@ -5789,7 +5936,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             `Amendment ${id} approved`,
           );
         return prev.map((a) =>
-          a.id === id ? { ...a, status: "approved" } : a,
+          a.id === id
+            ? {
+                ...a,
+                status: "approved",
+                updatedAt: new Date().toISOString(),
+                ...(registrarComment ? { registrarComment } : {}),
+              }
+            : a,
         );
       });
     },
@@ -5797,11 +5951,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const rejectAmendment = useCallback(
-    (id: bigint) => {
+    (
+      id: bigint,
+      reason?: string,
+      rejectedBy?: AmendmentRequest["rejectedBy"],
+    ) => {
       setAmendmentRequests((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: "rejected" } : a)),
+        prev.map((a) =>
+          a.id === id
+            ? {
+                ...a,
+                status: "rejected",
+                updatedAt: new Date().toISOString(),
+                ...(reason ? { rejectionReason: reason } : {}),
+                ...(rejectedBy ? { rejectedBy } : {}),
+              }
+            : a,
+        ),
       );
       addNotification("Lecturer", "Amendment request was rejected", "results");
+      addNotification(
+        "Student",
+        "Your amendment request was not approved",
+        "my_amendments",
+      );
       const u = currentUserRef.current;
       if (u)
         logAudit(
@@ -6381,6 +6554,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSelfRegistrationOpenState(open);
     lsSet("unirp_selfRegOpen", open);
   }, []);
+  const setJambRegistrationOpen = useCallback((open: boolean) => {
+    setJambRegistrationOpenState(open);
+    lsSet("jambRegistrationOpen", open);
+  }, []);
 
   const addJambScanBatch = useCallback((batch: JambScanBatch) => {
     setJambScanBatches((prev) => {
@@ -6394,6 +6571,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setJambScanBatches((prev) => {
       const next = prev.filter((b) => b.id !== id);
       lsSet("jamb_scan_batches", next);
+      return next;
+    });
+  }, []);
+
+  const addScanHistory = useCallback(
+    (entry: Omit<ScanHistoryEntry, "id" | "timestamp">) => {
+      setScanHistory((prev) => {
+        const newEntry: ScanHistoryEntry = {
+          ...entry,
+          id: Math.random().toString(36).slice(2) + Date.now(),
+          timestamp: new Date().toISOString(),
+        };
+        const next = [newEntry, ...prev].slice(0, 200); // keep last 200
+        lsSet("unirp_scan_history", next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const getScanHistory = useCallback(
+    (type?: ScanHistoryEntry["type"]) => {
+      return type ? scanHistory.filter((e) => e.type === type) : scanHistory;
+    },
+    [scanHistory],
+  );
+
+  const deleteScanHistoryEntry = useCallback((id: string) => {
+    setScanHistory((prev) => {
+      const next = prev.filter((e) => e.id !== id);
+      lsSet("unirp_scan_history", next);
+      return next;
+    });
+  }, []);
+
+  const clearScanHistory = useCallback((type?: ScanHistoryEntry["type"]) => {
+    setScanHistory((prev) => {
+      const next = type ? prev.filter((e) => e.type !== type) : [];
+      lsSet("unirp_scan_history", next);
       return next;
     });
   }, []);
@@ -6574,6 +6790,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         dropCourseRegistration,
         addAmendmentRequest,
         updateAmendmentStatus,
+        updateAmendmentWithComment,
         approveAmendmentFinal,
         rejectAmendment,
         addAcademicCalendar,
@@ -6650,9 +6867,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setEvaluationWindowOpen,
         selfRegistrationOpen,
         setSelfRegistrationOpen,
+        jambRegistrationOpen,
+        setJambRegistrationOpen,
         jambScanBatches,
         addJambScanBatch,
         removeJambScanBatch,
+        scanHistory,
+        addScanHistory,
+        getScanHistory,
+        deleteScanHistoryEntry,
+        clearScanHistory,
       }}
     >
       {children}

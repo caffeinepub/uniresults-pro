@@ -133,6 +133,8 @@ export default function LibraryClearanceTab() {
       matricNumber: s.matricNumber,
       department: dept?.name ?? "N/A",
       status: "Not Cleared" as const,
+      clearedDate: undefined,
+      notes: undefined,
     };
   });
 

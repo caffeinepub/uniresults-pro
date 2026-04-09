@@ -10,7 +10,75 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface _SERVICE {}
+export interface Course {
+  'id' : bigint,
+  'semester' : string,
+  'code' : string,
+  'name' : string,
+  'creditUnits' : bigint,
+  'departmentId' : bigint,
+  'lecturerPrincipal' : string,
+}
+export interface Department { 'id' : bigint, 'name' : string }
+export interface Result {
+  'id' : bigint,
+  'status' : string,
+  'studentId' : bigint,
+  'examScore' : number,
+  'totalScore' : number,
+  'grade' : string,
+  'courseId' : bigint,
+  'caScore' : number,
+  'gradePoint' : number,
+}
+export interface Student {
+  'id' : bigint,
+  'status' : string,
+  'matricNumber' : string,
+  'name' : string,
+  'level' : bigint,
+  'userPrincipal' : string,
+  'departmentId' : bigint,
+}
+export type URole = { 'HOD' : null } |
+  { 'Lecturer' : null } |
+  { 'Registrar' : null } |
+  { 'SuperAdmin' : null } |
+  { 'Student' : null };
+export interface _SERVICE {
+  'approveResult' : ActorMethod<[bigint], [] | [Result]>,
+  'calculateStudentGPA' : ActorMethod<[bigint], number>,
+  'createCourse' : ActorMethod<
+    [string, string, bigint, bigint, string, string],
+    Course
+  >,
+  'createDepartment' : ActorMethod<[string], Department>,
+  'createStudent' : ActorMethod<
+    [string, string, bigint, bigint, string],
+    Student
+  >,
+  'enterResult' : ActorMethod<[bigint, bigint, number, number], Result>,
+  'getAllResults' : ActorMethod<[], Array<Result>>,
+  'getAllUserRoles' : ActorMethod<[], Array<[string, URole]>>,
+  'getApprovedResults' : ActorMethod<[], Array<Result>>,
+  'getCourses' : ActorMethod<[], Array<Course>>,
+  'getCoursesByDepartment' : ActorMethod<[bigint], Array<Course>>,
+  'getDepartments' : ActorMethod<[], Array<Department>>,
+  'getMyCourses' : ActorMethod<[], Array<Course>>,
+  'getMyStudentProfile' : ActorMethod<[], [] | [Student]>,
+  'getMyURole' : ActorMethod<[], [] | [URole]>,
+  'getPendingResults' : ActorMethod<[], Array<Result>>,
+  'getResultsByCourse' : ActorMethod<[bigint], Array<Result>>,
+  'getResultsByStudent' : ActorMethod<[bigint], Array<Result>>,
+  'getStudentCourses' : ActorMethod<[bigint], Array<Course>>,
+  'getStudents' : ActorMethod<[], Array<Student>>,
+  'publishResult' : ActorMethod<[bigint], [] | [Result]>,
+  'registerStudentCourse' : ActorMethod<[bigint, bigint], undefined>,
+  'rejectResult' : ActorMethod<[bigint], [] | [Result]>,
+  'setUserRole' : ActorMethod<[string, URole], undefined>,
+  'submitResult' : ActorMethod<[bigint], [] | [Result]>,
+  'updateResult' : ActorMethod<[bigint, number, number], [] | [Result]>,
+}
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
 export declare const idlFactory: IDL.InterfaceFactory;

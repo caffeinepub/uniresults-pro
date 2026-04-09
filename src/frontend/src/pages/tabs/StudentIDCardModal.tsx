@@ -18,9 +18,10 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { ExternalBlob } from "../../blob-storage/ExternalBlob";
 import { useCamera } from "../../camera/useCamera";
-import type {
-  ExtendedStudent,
-  InstitutionSettings,
+import {
+  type ExtendedStudent,
+  type InstitutionSettings,
+  useApp,
 } from "../../context/AppContext";
 
 const PHOTO_STORAGE_PREFIX = "student_photo_url_";
@@ -56,6 +57,10 @@ function getSettings(): InstitutionSettings {
 
 export default function StudentIDCardModal({ student, open, onClose }: Props) {
   const settings = getSettings();
+  const { departments } = useApp();
+  const deptName =
+    departments.find((d) => String(d.id) === String(student.departmentId))
+      ?.name ?? "N/A";
   const studentKey = String(student.id);
   const [photoUrl, setPhotoUrl] = useState<string | null>(() =>
     getStudentPhotoUrl(studentKey),
@@ -112,7 +117,11 @@ export default function StudentIDCardModal({ student, open, onClose }: Props) {
   }
 
   const year = new Date().getFullYear();
-  const qrCode = `UNIPRO:STUDENT:${student.matricNumber}`;
+  const hasMatric = !!student.matricNumber?.trim();
+  const matricDisplay = hasMatric ? student.matricNumber : "PENDING";
+  const qrCode = hasMatric
+    ? `UNIPRO:MATRIC:${student.matricNumber}`
+    : `UNIPRO:STUDENT:${student.id}`;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -245,21 +254,30 @@ export default function StudentIDCardModal({ student, open, onClose }: Props) {
               <p
                 style={{
                   fontSize: 11,
-                  color: "#4b5563",
+                  color: hasMatric ? "#4b5563" : "#d97706",
                   margin: "0 0 6px",
                   fontFamily: "monospace",
+                  fontWeight: hasMatric ? 400 : 700,
                 }}
               >
-                {student.matricNumber}
+                {matricDisplay}
+                {!hasMatric && (
+                  <span
+                    style={{
+                      fontSize: 8,
+                      display: "block",
+                      color: "#d97706",
+                      fontWeight: 400,
+                    }}
+                  >
+                    Visit Registrar to collect matric number
+                  </span>
+                )}
               </p>
               <div
                 style={{ display: "grid", gridTemplateColumns: "1fr", gap: 2 }}
               >
-                <Field
-                  label="DEPT"
-                  value={String(student.departmentId)}
-                  short
-                />
+                <Field label="DEPT" value={deptName} short />
                 <Field label="LEVEL" value={`${student.level} Level`} short />
                 <Field label="SESSION" value={`${year}/${year + 1}`} short />
               </div>

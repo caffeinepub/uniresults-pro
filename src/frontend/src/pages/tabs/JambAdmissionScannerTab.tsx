@@ -26,8 +26,12 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import UniversalFileUpload from "../../components/UniversalFileUpload";
 import { useApp } from "../../context/AppContext";
-import { parseStudentText } from "../../utils/documentExtractor";
+import {
+  parseStudentText,
+  rowsToStudentText,
+} from "../../utils/documentExtractor";
 
 interface JambRow {
   id: string;
@@ -110,7 +114,8 @@ const STATUS_OPTIONS = [
 ];
 
 export default function JambAdmissionScannerTab() {
-  const { students, departments, faculties, addStudent } = useApp();
+  const { students, departments, faculties, addStudent, addScanHistory } =
+    useApp();
 
   // ── Scanner state ────────────────────────────────────────────────
   const [scanImage, setScanImage] = useState<string | null>(null);
@@ -132,7 +137,6 @@ export default function JambAdmissionScannerTab() {
   const [csvText, setCsvText] = useState("");
   const [csvRows, setCsvRows] = useState<JambRow[]>([]);
   const [csvImported, setCsvImported] = useState(0);
-  const csvFileRef = useRef<HTMLInputElement>(null);
 
   const deptOptions = departments.map((d) => ({
     id: String(d.id),
@@ -286,19 +290,62 @@ export default function JambAdmissionScannerTab() {
     });
   }
 
-  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      setCsvText(text);
-      const parsed = parseCSV(text);
-      setCsvRows(parsed);
-      toast.success(`Parsed ${parsed.length} rows from CSV`);
-    };
-    reader.readAsText(file);
-    e.target.value = "";
+  function handleUniversalExtracted(
+    text: string,
+    fileName: string,
+    fileType: string,
+  ) {
+    const parsed = parseCSV(text);
+    setCsvRows(parsed);
+    setCsvText(text);
+    if (parsed.length > 0) {
+      toast.success(
+        `Extracted ${parsed.length} JAMB candidates from ${fileName}`,
+      );
+      addScanHistory({
+        type: "jamb",
+        fileName,
+        fileType,
+        extractedCount: parsed.length,
+        previewText: text.slice(0, 500),
+        rows: parsed.map((r) => [
+          r.sn,
+          r.jambRegNo,
+          r.name,
+          r.courseAdmitted,
+          r.state,
+          r.lga,
+          r.gender,
+          r.jambScore,
+          r.aggregate,
+        ]),
+        headers: [
+          "S/N",
+          "JAMB Reg No",
+          "Name",
+          "Course",
+          "State",
+          "LGA",
+          "Gender",
+          "Score",
+          "Aggregate",
+        ],
+      });
+    } else {
+      toast.warning(
+        "Could not parse candidates. Try pasting text in the text area.",
+      );
+    }
+  }
+
+  function handleUniversalRows(
+    rows: string[][],
+    headers: string[],
+    fileName: string,
+    fileType: string,
+  ) {
+    const text = rowsToStudentText(rows, headers);
+    handleUniversalExtracted(text, fileName, fileType);
   }
 
   function handleCsvPaste() {
@@ -770,28 +817,19 @@ export default function JambAdmissionScannerTab() {
               <Download className="w-3.5 h-3.5 mr-1.5" />
               Download Template
             </Button>
-            <div>
-              <input
-                ref={csvFileRef}
-                type="file"
-                accept=".csv,.txt"
-                className="hidden"
-                onChange={handleCsvFile}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => csvFileRef.current?.click()}
-              >
-                <Upload className="w-3.5 h-3.5 mr-1.5" />
-                Upload CSV
-              </Button>
-            </div>
           </div>
+
+          {/* Universal file upload */}
+          <UniversalFileUpload
+            mode="student"
+            onExtractedText={handleUniversalExtracted}
+            onExtractedRows={handleUniversalRows}
+            data-ocid="jamb.universal-upload"
+          />
 
           <div>
             <Label className="text-xs text-muted-foreground mb-1 block">
-              Paste CSV data here (or upload file above)
+              Or paste CSV/text data here
             </Label>
             <textarea
               className="w-full h-32 text-xs border border-border rounded-lg p-3 font-mono bg-background resize-none"

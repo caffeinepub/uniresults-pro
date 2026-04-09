@@ -2,14 +2,8 @@ import Array "mo:core/Array";
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 import Prim "mo:prim";
-import AccessControl "./authorization/access-control";
-import MixinAuthorization "./authorization/MixinAuthorization";
 
 persistent actor {
-  // ─── Auth state
-  transient let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
-
   // ─── Types
   public type URole = { #SuperAdmin; #Registrar; #HOD; #Lecturer; #Student };
 

@@ -259,7 +259,7 @@ export default function LoginPage() {
     // Look up student by matric number, JAMB reg number, or regNo
     let foundStudent = students.find(
       (s) =>
-        s.matricNumber.toUpperCase() === matric ||
+        s.matricNumber?.toUpperCase() === matric ||
         (s.regNo && s.regNo.toUpperCase() === matric) ||
         (s.jambRegNo && s.jambRegNo.toUpperCase() === matric),
     );
@@ -268,7 +268,7 @@ export default function LoginPage() {
       try {
         const stored = JSON.parse(localStorage.getItem("students") || "[]");
         foundStudent = stored.find(
-          (s: any) =>
+          (s: { matricNumber?: string; regNo?: string; jambRegNo?: string }) =>
             s.matricNumber?.toUpperCase() === matric ||
             (s.regNo && s.regNo.toUpperCase() === matric) ||
             (s.jambRegNo && s.jambRegNo.toUpperCase() === matric),
@@ -278,6 +278,13 @@ export default function LoginPage() {
     if (!foundStudent) {
       setMatricError(
         "Student record not found. Please check your matric number or JAMB registration number.",
+      );
+      return;
+    }
+    // Guard: student found but has no matric number yet
+    if (!foundStudent.matricNumber?.trim() && !foundStudent.jambRegNo?.trim()) {
+      setMatricError(
+        "Your matric number has not been assigned yet. Please contact the Registrar or use your JAMB Registration Number.",
       );
       return;
     }
@@ -656,9 +663,19 @@ export default function LoginPage() {
             <div className="space-y-4">
               <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
                 <GraduationCap className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  Enter your matric number to access your results and portal.
-                </p>
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Enter your Matric Number or JAMB Registration Number to
+                    access your results and portal.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 font-medium">
+                    Format: e.g.{" "}
+                    <code className="font-mono bg-background px-1 rounded">
+                      BIO/2025/001
+                    </code>{" "}
+                    or your JAMB reg number
+                  </p>
+                </div>
               </div>
               <div>
                 <Label className="text-sm font-medium mb-2 block">

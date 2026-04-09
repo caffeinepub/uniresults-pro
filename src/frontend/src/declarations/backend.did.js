@@ -8,10 +8,186 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const idlService = IDL.Service({});
+export const Result = IDL.Record({
+  'id' : IDL.Nat,
+  'status' : IDL.Text,
+  'studentId' : IDL.Nat,
+  'examScore' : IDL.Float64,
+  'totalScore' : IDL.Float64,
+  'grade' : IDL.Text,
+  'courseId' : IDL.Nat,
+  'caScore' : IDL.Float64,
+  'gradePoint' : IDL.Float64,
+});
+export const Course = IDL.Record({
+  'id' : IDL.Nat,
+  'semester' : IDL.Text,
+  'code' : IDL.Text,
+  'name' : IDL.Text,
+  'creditUnits' : IDL.Nat,
+  'departmentId' : IDL.Nat,
+  'lecturerPrincipal' : IDL.Text,
+});
+export const Department = IDL.Record({ 'id' : IDL.Nat, 'name' : IDL.Text });
+export const Student = IDL.Record({
+  'id' : IDL.Nat,
+  'status' : IDL.Text,
+  'matricNumber' : IDL.Text,
+  'name' : IDL.Text,
+  'level' : IDL.Nat,
+  'userPrincipal' : IDL.Text,
+  'departmentId' : IDL.Nat,
+});
+export const URole = IDL.Variant({
+  'HOD' : IDL.Null,
+  'Lecturer' : IDL.Null,
+  'Registrar' : IDL.Null,
+  'SuperAdmin' : IDL.Null,
+  'Student' : IDL.Null,
+});
+
+export const idlService = IDL.Service({
+  'approveResult' : IDL.Func([IDL.Nat], [IDL.Opt(Result)], []),
+  'calculateStudentGPA' : IDL.Func([IDL.Nat], [IDL.Float64], ['query']),
+  'createCourse' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Nat, IDL.Nat, IDL.Text, IDL.Text],
+      [Course],
+      [],
+    ),
+  'createDepartment' : IDL.Func([IDL.Text], [Department], []),
+  'createStudent' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Nat, IDL.Nat, IDL.Text],
+      [Student],
+      [],
+    ),
+  'enterResult' : IDL.Func(
+      [IDL.Nat, IDL.Nat, IDL.Float64, IDL.Float64],
+      [Result],
+      [],
+    ),
+  'getAllResults' : IDL.Func([], [IDL.Vec(Result)], ['query']),
+  'getAllUserRoles' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Text, URole))],
+      ['query'],
+    ),
+  'getApprovedResults' : IDL.Func([], [IDL.Vec(Result)], ['query']),
+  'getCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
+  'getCoursesByDepartment' : IDL.Func([IDL.Nat], [IDL.Vec(Course)], ['query']),
+  'getDepartments' : IDL.Func([], [IDL.Vec(Department)], ['query']),
+  'getMyCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
+  'getMyStudentProfile' : IDL.Func([], [IDL.Opt(Student)], ['query']),
+  'getMyURole' : IDL.Func([], [IDL.Opt(URole)], ['query']),
+  'getPendingResults' : IDL.Func([], [IDL.Vec(Result)], ['query']),
+  'getResultsByCourse' : IDL.Func([IDL.Nat], [IDL.Vec(Result)], ['query']),
+  'getResultsByStudent' : IDL.Func([IDL.Nat], [IDL.Vec(Result)], ['query']),
+  'getStudentCourses' : IDL.Func([IDL.Nat], [IDL.Vec(Course)], ['query']),
+  'getStudents' : IDL.Func([], [IDL.Vec(Student)], ['query']),
+  'publishResult' : IDL.Func([IDL.Nat], [IDL.Opt(Result)], []),
+  'registerStudentCourse' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+  'rejectResult' : IDL.Func([IDL.Nat], [IDL.Opt(Result)], []),
+  'setUserRole' : IDL.Func([IDL.Text, URole], [], []),
+  'submitResult' : IDL.Func([IDL.Nat], [IDL.Opt(Result)], []),
+  'updateResult' : IDL.Func(
+      [IDL.Nat, IDL.Float64, IDL.Float64],
+      [IDL.Opt(Result)],
+      [],
+    ),
+});
 
 export const idlInitArgs = [];
 
-export const idlFactory = ({ IDL }) => { return IDL.Service({}); };
+export const idlFactory = ({ IDL }) => {
+  const Result = IDL.Record({
+    'id' : IDL.Nat,
+    'status' : IDL.Text,
+    'studentId' : IDL.Nat,
+    'examScore' : IDL.Float64,
+    'totalScore' : IDL.Float64,
+    'grade' : IDL.Text,
+    'courseId' : IDL.Nat,
+    'caScore' : IDL.Float64,
+    'gradePoint' : IDL.Float64,
+  });
+  const Course = IDL.Record({
+    'id' : IDL.Nat,
+    'semester' : IDL.Text,
+    'code' : IDL.Text,
+    'name' : IDL.Text,
+    'creditUnits' : IDL.Nat,
+    'departmentId' : IDL.Nat,
+    'lecturerPrincipal' : IDL.Text,
+  });
+  const Department = IDL.Record({ 'id' : IDL.Nat, 'name' : IDL.Text });
+  const Student = IDL.Record({
+    'id' : IDL.Nat,
+    'status' : IDL.Text,
+    'matricNumber' : IDL.Text,
+    'name' : IDL.Text,
+    'level' : IDL.Nat,
+    'userPrincipal' : IDL.Text,
+    'departmentId' : IDL.Nat,
+  });
+  const URole = IDL.Variant({
+    'HOD' : IDL.Null,
+    'Lecturer' : IDL.Null,
+    'Registrar' : IDL.Null,
+    'SuperAdmin' : IDL.Null,
+    'Student' : IDL.Null,
+  });
+  
+  return IDL.Service({
+    'approveResult' : IDL.Func([IDL.Nat], [IDL.Opt(Result)], []),
+    'calculateStudentGPA' : IDL.Func([IDL.Nat], [IDL.Float64], ['query']),
+    'createCourse' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Nat, IDL.Nat, IDL.Text, IDL.Text],
+        [Course],
+        [],
+      ),
+    'createDepartment' : IDL.Func([IDL.Text], [Department], []),
+    'createStudent' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Nat, IDL.Nat, IDL.Text],
+        [Student],
+        [],
+      ),
+    'enterResult' : IDL.Func(
+        [IDL.Nat, IDL.Nat, IDL.Float64, IDL.Float64],
+        [Result],
+        [],
+      ),
+    'getAllResults' : IDL.Func([], [IDL.Vec(Result)], ['query']),
+    'getAllUserRoles' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Text, URole))],
+        ['query'],
+      ),
+    'getApprovedResults' : IDL.Func([], [IDL.Vec(Result)], ['query']),
+    'getCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
+    'getCoursesByDepartment' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(Course)],
+        ['query'],
+      ),
+    'getDepartments' : IDL.Func([], [IDL.Vec(Department)], ['query']),
+    'getMyCourses' : IDL.Func([], [IDL.Vec(Course)], ['query']),
+    'getMyStudentProfile' : IDL.Func([], [IDL.Opt(Student)], ['query']),
+    'getMyURole' : IDL.Func([], [IDL.Opt(URole)], ['query']),
+    'getPendingResults' : IDL.Func([], [IDL.Vec(Result)], ['query']),
+    'getResultsByCourse' : IDL.Func([IDL.Nat], [IDL.Vec(Result)], ['query']),
+    'getResultsByStudent' : IDL.Func([IDL.Nat], [IDL.Vec(Result)], ['query']),
+    'getStudentCourses' : IDL.Func([IDL.Nat], [IDL.Vec(Course)], ['query']),
+    'getStudents' : IDL.Func([], [IDL.Vec(Student)], ['query']),
+    'publishResult' : IDL.Func([IDL.Nat], [IDL.Opt(Result)], []),
+    'registerStudentCourse' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+    'rejectResult' : IDL.Func([IDL.Nat], [IDL.Opt(Result)], []),
+    'setUserRole' : IDL.Func([IDL.Text, URole], [], []),
+    'submitResult' : IDL.Func([IDL.Nat], [IDL.Opt(Result)], []),
+    'updateResult' : IDL.Func(
+        [IDL.Nat, IDL.Float64, IDL.Float64],
+        [IDL.Opt(Result)],
+        [],
+      ),
+  });
+};
 
 export const init = ({ IDL }) => { return []; };

@@ -1,53 +1,35 @@
+// useQueries.ts — stub hooks; app state is managed via AppContext (localStorage)
+// These hooks return empty arrays to satisfy callers that may import them.
 import { useQuery } from "@tanstack/react-query";
-import type { backendInterface } from "../backend.d";
-import { useActor } from "./useActor";
-
-type FullActor = backendInterface;
 
 export function useDepartments() {
-  const { actor, isFetching } = useActor();
   return useQuery({
     queryKey: ["departments"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return (actor as unknown as FullActor).getDepartments();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: async () => [] as unknown[],
+    enabled: false,
   });
 }
 
 export function useCourses() {
-  const { actor, isFetching } = useActor();
   return useQuery({
     queryKey: ["courses"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return (actor as unknown as FullActor).getCourses();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: async () => [] as unknown[],
+    enabled: false,
   });
 }
 
 export function useStudents() {
-  const { actor, isFetching } = useActor();
   return useQuery({
     queryKey: ["students"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return (actor as unknown as FullActor).getStudents();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: async () => [] as unknown[],
+    enabled: false,
   });
 }
 
 export function useAllResults() {
-  const { actor, isFetching } = useActor();
   return useQuery({
     queryKey: ["allResults"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return (actor as unknown as FullActor).getAllResults();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: async () => [] as unknown[],
+    enabled: false,
   });
 }

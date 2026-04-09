@@ -33,8 +33,12 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import UniversalFileUpload from "../../components/UniversalFileUpload";
 import { useApp } from "../../context/AppContext";
-import { parseStudentText } from "../../utils/documentExtractor";
+import {
+  parseStudentText,
+  rowsToStudentText,
+} from "../../utils/documentExtractor";
 
 interface ImportRow {
   id: string;
@@ -71,6 +75,7 @@ export default function BulkRegistrationTab() {
     addJambScanBatch,
     removeJambScanBatch,
     jambScanBatches,
+    addScanHistory,
   } = useApp();
 
   // ── CSV Upload state ────────────────────────────────────────────
@@ -139,6 +144,75 @@ export default function BulkRegistrationTab() {
     onDone(count);
   }
 
+  // ── Universal file extraction for CSV tab ───────────────────────
+  function handleUniversalExtracted(
+    text: string,
+    fileName: string,
+    fileType: string,
+  ) {
+    const extracted = parseStudentText(text, departments);
+    if (extracted.length === 0) {
+      toast.warning(
+        "No student rows could be parsed from this file. Try the Paste tab.",
+      );
+      return;
+    }
+    const parsed: ImportRow[] = extracted.map((r) => ({
+      id: Math.random().toString(36).slice(2),
+      sn: r.sn,
+      regNo: r.regNo,
+      name: r.name,
+      deptId: r.deptId || (departments[0] ? String(departments[0].id) : ""),
+      level: r.level || "100",
+      state: r.state,
+      lga: r.lga,
+      gender: r.gender,
+      status: r.status || "accepted",
+    }));
+    setCsvRows(parsed.filter((r) => r.name));
+    // Save to scan history
+    addScanHistory({
+      type: "student",
+      fileName,
+      fileType,
+      extractedCount: parsed.length,
+      previewText: text.slice(0, 500),
+      rows: extracted.map((r) => [
+        r.sn,
+        r.regNo,
+        r.name,
+        r.deptName,
+        r.level,
+        r.state,
+        r.lga,
+        r.gender,
+        r.status,
+      ]),
+      headers: [
+        "S/N",
+        "Reg No",
+        "Name",
+        "Department",
+        "Level",
+        "State",
+        "LGA",
+        "Gender",
+        "Status",
+      ],
+    });
+    toast.success(`${parsed.length} students extracted from ${fileName}`);
+  }
+
+  function handleUniversalExtractedRows(
+    rows: string[][],
+    headers: string[],
+    fileName: string,
+    fileType: string,
+  ) {
+    const text = rowsToStudentText(rows, headers);
+    handleUniversalExtracted(text, fileName, fileType);
+  }
+
   // ── CSV upload ──────────────────────────────────────────────────
   function handleDownloadTemplate() {
     const headers = "S/N,Reg No,Name,Department,Level,State,LGA,Sex,Status";
@@ -152,7 +226,7 @@ export default function BulkRegistrationTab() {
     URL.revokeObjectURL(a.href);
   }
 
-  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function _handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -347,26 +421,15 @@ export default function BulkRegistrationTab() {
               <Download className="w-3.5 h-3.5 mr-1.5" />
               Download Blank Template
             </Button>
-            <div>
-              <input
-                ref={csvFileRef}
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={handleCsvFile}
-                id="csv-upload"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                data-ocid="bulk_reg.upload_button"
-                onClick={() => csvFileRef.current?.click()}
-              >
-                <Upload className="w-3.5 h-3.5 mr-1.5" />
-                Upload CSV File
-              </Button>
-            </div>
           </div>
+
+          {/* Universal file upload — accepts CSV, Excel, TXT, images, etc. */}
+          <UniversalFileUpload
+            mode="student"
+            onExtractedText={handleUniversalExtracted}
+            onExtractedRows={handleUniversalExtractedRows}
+            data-ocid="bulk_reg.universal-upload"
+          />
 
           {csvImported > 0 && csvRows.length === 0 && (
             <div
